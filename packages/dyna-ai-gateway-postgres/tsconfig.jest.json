@@ -1,0 +1,8 @@
+{
+  // Jest-only: CommonJS for jest, es2020 as the gateway's (the ESM-only packages jest transpiles need it)
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2020"
+  }
+}

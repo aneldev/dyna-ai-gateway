@@ -1,0 +1,88 @@
+{
+  "name": "dyna-ai-gateway",
+  "version": "0.0.1-beta.2",
+  "description": "AI Gateway (beta): provider-agnostic LLM orchestration (ask/run, tools, human gate, KB/RAG, memory, usage control, traces) behind repository/adapter contracts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aneldev/dyna-ai-gateway",
+    "directory": "packages/dyna-ai-gateway"
+  },
+  "private": false,
+  "publishConfig": {
+    "tag": "beta"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": true,
+  "source": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./vercel-ui": {
+      "types": "./dist/entries/vercel-ui/index.d.ts",
+      "import": "./dist/vercel-ui.mjs",
+      "require": "./dist/vercel-ui.js"
+    },
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "prepublishOnly": "pnpm build",
+    "build": "pnpm lint && pnpm typecheck && rimraf ./dist && webpack --config webpack.dist.config.js",
+    "build-watch": "rimraf ./dist && webpack --watch --config webpack.dist.config.js",
+    "build-analyze": "webpack --config webpack.dist.analyze.config.js",
+    "sandbox-cli": "./src/dev-sandbox/sandbox.cli.sh",
+    "sandbox-debug": "./src/dev-sandbox/sandbox.debug.sh",
+    "lint": "eslint -c .eslintrc.js ./src",
+    "lint-fix": "eslint -c .eslintrc.js --fix ./src",
+    "lint-watch": "nodemon --watch src --ext ts,tsx --exec \"pnpm lint\"",
+    "typecheck": "tsc --noEmit -p tsconfig.tests.json",
+    "test": "jest --coverage --no-cache --runInBand",
+    "test-debug": "node --inspect-brk ../../node_modules/.bin/jest --runInBand",
+    "test-watch": "jest --watch --verbose --runInBand",
+    "test-no-coverage": "jest --collectCoverage=false --no-cache --runInBand",
+    "test-update-snapshots": "jest --updateSnapshot --runInBand",
+    "publish-push": "pnpm version patch && pnpm publish --no-git-checks && git push && git push --tags"
+  },
+  "keywords": [
+    "ai",
+    "llm",
+    "agent",
+    "gateway",
+    "rag",
+    "tools",
+    "human-in-the-loop",
+    "vercel-ai-sdk",
+    "openai",
+    "anthropic"
+  ],
+  "author": "Anel dev",
+  "license": "MIT",
+  "peerDependencies": {
+    "zod": "^4.6.5"
+  },
+  "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^5.0.113",
+    "@ai-sdk/anthropic": "^4.0.69",
+    "@ai-sdk/google": "^4.0.93",
+    "@ai-sdk/mistral": "^4.0.62",
+    "@ai-sdk/openai": "^4.0.82",
+    "ai": "^7.0.123",
+    "dyna-error": "^6.0.7",
+    "js-tiktoken": "^1.0.21"
+  },
+  "devDependencies": {
+    "zod": "^4.6.5"
+  },
+  "engines": {
+    "npm": ">=10.0.0 <11.0.0",
+    "node": ">=24.0.0 <25.0.0"
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)",
+      "Bash(pnpm exec tsc *)",
+      "Bash(pnpm build)",
+      "Bash(pnpm build *)",
+      "Bash(pnpm build-watch)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm lint *)",
+      "Bash(pnpm lint-fix)",
+      "Bash(pnpm test-no-coverage)",
+      "Bash(pnpm test-no-coverage *)",
+      "Bash(pnpm test *)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(nvm use *)",
+      "Bash(source env_variables.sh)",
+      "Bash(npm view *)",
+      "Bash(pnpm --version)",
+      "Bash(pnpm build-watch *)",
+      "Bash(pnpm tsc *)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm add *)",
+      "Bash(pnpm exec *)",
+      "Bash(pnpm config *)",
+      "Bash(pnpm lint-fix *)",
+      "Bash(pnpm format-sql *)",
+      "Bash(pnpm drizzle-kit *)",
+      "Bash(pnpm pg-update-migrations *)",
+      "Bash(./node_modules/.bin/tsc *)",
+      "Bash(npx jest *)",
+      "Bash(npx tsx *)",
+      "Bash(npx eslint *)",
+      "Bash(node *)",
+      "Bash(python3 *)",
+      "Bash(git *)",
+      "Bash(grep *)",
+      "Bash(chmod +x *)",
+      "Bash(docker compose *)",
+      "Bash(docker stop *)",
+      "Bash(docker rm *)",
+      "Bash(docker rmi *)",
+      "Bash(docker tag *)",
+      "Bash(docker --version)",
+      "Bash(gh search *)",
+      "Bash(gh api *)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:support.atlassian.com)",
+      "mcp__ide__getDiagnostics",
+      "mcp__github__search_code",
+      "mcp__claude_ai_Trello",
+      "Skill(fewer-permission-prompts)",
+      "Skill(update-config)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "agent",
+            "statusMessage": "hook-test-universal: checking for related tests...",
+            "timeout": 120,
+            "prompt": "A TypeScript file was just modified. Hook input: $ARGUMENTS\n\nExtract `file_path` from `tool_input`. If the file does not end in `.ts` or `.tsx`, stop silently with no output.\n\nFind the monorepo package root for this file (the nearest ancestor directory containing a `package.json`). All test commands must be run from that package root.\n\nSearch for related test files using these patterns (FILE = base name without extension):\n1. Same directory: `<dir>/FILE.test.ts`, `<dir>/FILE.spec.ts`, `<dir>/FILE.test.tsx`, `<dir>/FILE.spec.tsx`\n2. `<dir>/__tests__/FILE.test.ts`, `<dir>/__tests__/FILE.spec.ts`\n3. `<dir>/test/FILE.test.ts`, `<dir>/tests/FILE.test.ts`\n\nIf NO matching test files exist, stop silently.\n\nIf matching test files ARE found:\n- Run: `pnpm test --run <testfile>` from the package root\n- If tests pass, stop with no output.\n- If tests fail, attempt to fix the source file or test file to make them pass.\n- Re-run tests after each fix. Maximum 3 fix attempts.\n- If tests still fail after 3 attempts, report the test output and what you tried to the user."
+          }
+        ]
+      }
+    ]
+  }
+}

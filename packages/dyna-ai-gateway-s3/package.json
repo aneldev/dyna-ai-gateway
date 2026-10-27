@@ -1,0 +1,56 @@
+{
+  "name": "dyna-ai-gateway-s3",
+  "version": "0.0.1",
+  "description": "S3 adapter of dyna-ai-gateway: the blob store of the files",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aneldev/dyna-ai-gateway",
+    "directory": "packages/dyna-ai-gateway-s3"
+  },
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "sideEffects": true,
+  "source": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "prepublishOnly": "pnpm build",
+    "build": "pnpm lint && pnpm typecheck && rimraf ./dist && webpack --config webpack.dist.config.js",
+    "build-watch": "rimraf ./dist && webpack --watch --config webpack.dist.config.js",
+    "build-analyze": "webpack --config webpack.dist.analyze.config.js",
+    "lint": "eslint -c .eslintrc.js ./src",
+    "lint-fix": "eslint -c .eslintrc.js --fix ./src",
+    "lint-watch": "nodemon --watch src --ext ts,tsx --exec \"pnpm lint\"",
+    "typecheck": "tsc --noEmit -p tsconfig.tests.json",
+    "test": "jest --coverage --no-cache --runInBand",
+    "test-debug": "node --inspect-brk ../../node_modules/.bin/jest --runInBand",
+    "test-watch": "jest --watch --verbose --runInBand",
+    "test-no-coverage": "jest --collectCoverage=false --no-cache --runInBand",
+    "test-update-snapshots": "jest --updateSnapshot --runInBand",
+    "publish-push": "pnpm version patch && pnpm publish --no-git-checks && git push && git push --tags"
+  },
+  "keywords": [],
+  "author": "Anel dev",
+  "license": "MIT",
+  "peerDependencies": {},
+  "dependencies": {},
+  "devDependencies": {
+    "dyna-ai-gateway": "workspace:*"
+  },
+  "engines": {
+    "npm": ">=10.0.0 <11.0.0",
+    "node": ">=24.0.0 <25.0.0"
+  }
+}

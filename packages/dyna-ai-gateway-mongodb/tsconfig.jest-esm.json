@@ -1,0 +1,13 @@
+{
+  // Jest-only: transpiles the ESM-only node_modules packages listed in jest.config.base.js (ESM_ONLY_PACKAGES) to CJS.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "isolatedModules": true,
+    "declaration": false,
+    "declarationMap": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  }
+}

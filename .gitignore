@@ -1,0 +1,12 @@
+.git/
+.idea/
+.vscode/
+.DS_Store
+.env
+coverage/
+dist/
+node_modules/
+temp/
+**/.claude/settings.local.json
+**/docs/plans/
+**/docs/internal/

@@ -1,0 +1,14 @@
+{
+  // Jest-only: transpiles the ESM-only node_modules packages listed in jest.config.js (ESM_ONLY_PACKAGES) to CJS.
+  // `isolatedModules` is required: TypeScript's full program does not emit files that live in node_modules.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "isolatedModules": true,
+    "declaration": false,
+    "declarationMap": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  }
+}

@@ -1,0 +1,9 @@
+{
+  // Jest-only. `target` es2020: the ESM-only packages jest transpiles (jest.config.js, ESM_ONLY_PACKAGES) use BigInt
+  // (`@ai-sdk/amazon-bedrock`: `BigInt(62) ** BigInt(n)`); the es6 target of tsconfig.json would downlevel `**` to `Math.pow`, which throws on BigInt.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2020"
+  }
+}
