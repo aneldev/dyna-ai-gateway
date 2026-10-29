@@ -93,6 +93,17 @@ export interface IModelRequest {
    * @example [{text: "You are the assistant…", cache: true}, {text: "Today is Thursday, 2026-10-29…"}]
    */
   system: ISystemBlock[];
+  /**
+   * Puts the provider's cache marker on the last tool definition too (Anthropic).
+   *
+   * > A read point for the tool definitions alone, for calls whose system blocks differ but whose tools do not.
+   *
+   * Set by the ContextAssembler only when the prompt cache may be shared across tenants: tool definitions are the same
+   * for every tenant, so a tools-only entry is always shared.
+   *
+   * @default false
+   */
+  cacheTools?: boolean;
   messages: IMessage[];
   /** Zod schema for structured output; omitted = free text. */
   outputSchema?: ZodType;

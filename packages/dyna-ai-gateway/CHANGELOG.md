@@ -93,6 +93,15 @@ what breaks, the migration, and an AI prompt that performs the migration in your
   4. Verify: `tsc --noEmit` passes and the project's tests pass.
   ```
 
+### Added
+
+- Prompt caching of the stable part of the system prompt. `CHAT_MAIN` has a `{cacheBreakpoint}` placeholder after
+  `{addendum}`; with `contextAssembler.promptCaching: true` the prompt is sent as a stable block (marked for the provider's
+  cache) and a per-call block. `sharePromptCacheAcrossTenants: false` scopes the stable block to the tenant with a
+  `[cache scope <hash>]` line; `true` lets tenants share an entry and marks the tool definitions too
+  (`IModelRequest.cacheTools`). A stored template with a per-call slot before the breakpoint is sent uncached with the new
+  WARNING issue `prompt_cache_off`. See the FAQ, "Is the system prompt cached, and what does it cost?".
+
 ### Changed
 
 - The shipped `CHAT_MAIN` template puts its stable layers first: the base text, the output format and the profile addendum,

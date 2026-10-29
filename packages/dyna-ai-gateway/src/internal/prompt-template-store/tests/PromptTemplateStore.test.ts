@@ -36,6 +36,7 @@ const chatMainSlots = {
   locale: "de-AT",
   timezone: "Europe/Vienna",
   addendum: "Tenant text",
+  cacheBreakpoint: "",
   instructions: "",
   context: "",
   format: "Format the answer in Markdown.",

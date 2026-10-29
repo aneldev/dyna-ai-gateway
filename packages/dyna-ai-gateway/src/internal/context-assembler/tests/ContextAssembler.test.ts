@@ -2,11 +2,9 @@ import {z} from "zod";
 
 import {InMemoryPromptTemplateRepository} from "../../../adapters/in-memory";
 import {
-  ITurn,
   EIssueSeverity,
   EOutputFormat,
   EPartKind,
-  ETurnRole,
 } from "../../../contracts";
 import {countTokens} from "../../../utils/tokens/countTokens";
 
@@ -28,100 +26,15 @@ import {
 } from "../../llm-client";
 
 import {ContextAssembler} from "../ContextAssembler";
+import {IContextInput} from "../types";
+
 import {
-  IContextAssemblerConfig,
-  IContextInput,
-} from "../types";
-
-const makeTurn = (text: string): ITurn => ({
-  id: `turn-${text}`,
-  role: ETurnRole.USER,
-  parts: [
-    {
-      kind: EPartKind.TEXT,
-      text,
-    },
-  ],
-  createdAt: new Date(1_000),
-});
-
-const makeInput = (overrides: Partial<IContextInput> = {}, contextTokens = 128_000): IContextInput => ({
-  profile: {
-    id: "careful",
-    tenantId: "tenant-a",
-    name: "Careful",
-    modelId: "model-a",
-    allowedTools: [],
-    approvals: [],
-    promptAddendum: "Always mention the invoice number.",
-    limits: {
-      maxStepsPerRun: 5,
-      maxOutputTokens: 500,
-    },
-  },
-  model: {
-    id: "model-a",
-    provider: EModelProvider.OPENAI,
-    providerModelId: "model-a-2026",
-    label: "Model A",
-    caps: {
-      tools: true,
-      images: false,
-      pdf: false,
-      structuredOutput: true,
-      reasoning: false,
-      temperature: true,
-      embeddings: false,
-      contextTokens,
-      maxOutputTokens: 300,
-      costInPerMTokUsd: 1,
-      costOutPerMTokUsd: 2,
-    },
-    enabled: true,
-    deprecatedAt: null,
-  },
-  userContext: {
-    tenantId: "tenant-a",
-    userId: "user-a",
-    permissions: [],
-    locale: "de-AT",
-    timezone: "Europe/Vienna",
-    // 23:30 UTC on Sep 30 is already Oct 1 in Vienna
-    now: new Date("2026-09-30T23:30:00Z"),
-  },
-  userFacts: [],
-  threadId: "thread-1",
-  inlineFiles: [],
-  retrieval: {
-    query: "hello",
-    hits: [],
-    noMatch: true,
-    searched: false,
-  },
-  tools: [],
-  ...overrides,
-});
-
-/** A memory whose window is `turns` (default: one "hello" turn) and whose notes are `notes`. */
-const makeMemory = (turns: ITurn[] = [makeTurn("hello")], notes = ""): FakeWorkingMemory => new FakeWorkingMemory({
-  messages: new TurnBuilder().toMessages({turns}),
-  notes,
-});
-
-const assemblerConfigBase: IContextAssemblerConfig = {
-  promptCaching: true,
-  sharePromptCacheAcrossTenants: false,
-};
-
-const makeAssembler = (config: Partial<IContextAssemblerConfig> = {}, workingMemory: FakeWorkingMemory = makeMemory()): ContextAssembler =>
-  new ContextAssembler({
-    ...assemblerConfigBase,
-    ...config,
-  }, {
-    promptTemplateStore: new PromptTemplateStore({repository: new InMemoryPromptTemplateRepository()}),
-    turnBuilder: new TurnBuilder(),
-    workingMemory,
-  });
+  assemblerConfigBase,
+  makeAssembler,
+  makeInput,
+  makeMemory,
+  makeTurn,
+} from "./utils/contextAssemblerFixtures";
 
 const texts = (request: IModelRequest): string[] =>
   request.messages.flatMap(message => message.parts.map(part => part.kind === EPartKind.TEXT ? part.text : ""));
