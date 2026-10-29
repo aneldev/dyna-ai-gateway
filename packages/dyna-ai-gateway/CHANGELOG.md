@@ -6,6 +6,8 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+## [0.0.1-beta.3] - 2026-10-29
+
 ### Breaking changes
 
 - **`IModelRequest.system` is `ISystemBlock[]`, not `string`.** Affects a host that overrides the `LLMClient` or the

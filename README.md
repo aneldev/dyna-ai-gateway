@@ -29,8 +29,9 @@ included.
 > tested.
 
 **Status: beta.** The API is considered stable and keeps improving; the documentation is being completed. Versions follow
-[semver](https://semver.org): no breaking change without a major version. Every exported symbol carries its JSDoc, so the
-editor shows the contract of each option.
+[semver](https://semver.org); while the version is `0.x` a release may contain a breaking change, listed under *Breaking
+changes* in the package's `CHANGELOG.md` with what breaks, the migration and an AI prompt that performs it. Every exported
+symbol carries its JSDoc, so the editor shows the contract of each option.
 
 | Quality             |                                                                    |
 |---------------------|--------------------------------------------------------------------|

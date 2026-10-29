@@ -12,7 +12,8 @@
     "tag": "beta"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "sideEffects": true,
   "source": "src/index.ts",
