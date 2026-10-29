@@ -144,7 +144,13 @@ export interface IAIGatewayConfig {
   usageGuard: IUsageGuardConfig;
   guardrails?: IGuardrailsConfig;
   llmClient: ILLMClientConfig;
-  contextAssembler?: IContextAssemblerConfig;
+  /**
+   * How the system prompt is assembled: the prompt-cache switches (`promptCaching`, `sharePromptCacheAcrossTenants`) and
+   * the tokens reserved for the answer.
+   *
+   * @example {promptCaching: true, sharePromptCacheAcrossTenants: false} - the stable part of every call is cached, per tenant
+   */
+  contextAssembler: IContextAssemblerConfig;
   trace: ITraceConfig;
   kbIngestor?: IKbIngestorConfig;
   /** Platform-wide cheap model for helper calls when a profile names none. */

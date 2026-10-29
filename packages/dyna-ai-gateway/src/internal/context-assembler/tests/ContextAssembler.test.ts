@@ -108,8 +108,16 @@ const makeMemory = (turns: ITurn[] = [makeTurn("hello")], notes = ""): FakeWorki
   notes,
 });
 
-const makeAssembler = (config: IContextAssemblerConfig = {}, workingMemory: FakeWorkingMemory = makeMemory()): ContextAssembler =>
-  new ContextAssembler(config, {
+const assemblerConfigBase: IContextAssemblerConfig = {
+  promptCaching: true,
+  sharePromptCacheAcrossTenants: false,
+};
+
+const makeAssembler = (config: Partial<IContextAssemblerConfig> = {}, workingMemory: FakeWorkingMemory = makeMemory()): ContextAssembler =>
+  new ContextAssembler({
+    ...assemblerConfigBase,
+    ...config,
+  }, {
     promptTemplateStore: new PromptTemplateStore({repository: new InMemoryPromptTemplateRepository()}),
     turnBuilder: new TurnBuilder(),
     workingMemory,
@@ -425,7 +433,7 @@ describe("ContextAssembler", () => {
         key: EPromptTemplateKey.CHAT_MAIN,
         version: template.version,
       });
-      const {request} = await new ContextAssembler({}, {
+      const {request} = await new ContextAssembler(assemblerConfigBase, {
         promptTemplateStore,
         turnBuilder: new TurnBuilder(),
         workingMemory: makeMemory(undefined, notes),

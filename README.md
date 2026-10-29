@@ -136,6 +136,7 @@ const config: IAIGatewayConfig = {
   runStore: {repository: new InMemoryRunRepository()},
   humanGate: {userQuestions: {enabled: true}},
   usageGuard: {adapter: new InMemoryUsageAdapter()},
+  contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
   defaultCheapModelId: "gpt-5-mini",
 };

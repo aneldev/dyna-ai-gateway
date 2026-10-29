@@ -93,7 +93,7 @@ export const createGatewayDeps = (
     threadStore,
     turnBuilder,
   }, (config, deps) => new WorkingMemory(config, deps));
-  const contextAssembler = make(overrides.contextAssembler, config.contextAssembler ?? {}, {
+  const contextAssembler = make(overrides.contextAssembler, config.contextAssembler, {
     promptTemplateStore,
     turnBuilder,
     workingMemory,

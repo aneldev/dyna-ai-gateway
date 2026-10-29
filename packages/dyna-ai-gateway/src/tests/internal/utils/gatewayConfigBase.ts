@@ -57,6 +57,10 @@ export const gatewayConfigBase: IAIGatewayConfig = {
   humanGate: {userQuestions: {enabled: false}},
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   llmClient: {providers: loadProviderCredentials()},
+  contextAssembler: {
+    promptCaching: true,
+    sharePromptCacheAcrossTenants: false,
+  },
   trace: {repository: new InMemoryTraceRepository()},
   defaultCheapModelId: openAiModel.id,
 };

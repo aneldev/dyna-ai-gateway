@@ -53,6 +53,46 @@ what breaks, the migration, and an AI prompt that performs the migration in your
   5. Verify: `tsc --noEmit` passes and the project's tests pass.
   ```
 
+- **`IAIGatewayConfig.contextAssembler` is required, with two new required switches.** Affects every host: the gateway
+  does not start (TypeScript error) until the config says whether the stable part of the system prompt is marked for the
+  provider's prompt cache (`promptCaching`) and whether tenants may read each other's cache entries
+  (`sharePromptCacheAcrossTenants`). Neither has a default: whoever configures the gateway decides.
+
+  Migration — add the block (these values cache per tenant, with no sharing: the safe choice):
+
+  ```ts
+  // before
+  const config: IAIGatewayConfig = {
+    // …
+    usageGuard: {adapter: new InMemoryUsageAdapter()},
+    trace: {repository: new InMemoryTraceRepository()},
+  };
+  // after
+  const config: IAIGatewayConfig = {
+    // …
+    usageGuard: {adapter: new InMemoryUsageAdapter()},
+    contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
+    trace: {repository: new InMemoryTraceRepository()},
+  };
+  ```
+
+  A config that already has `contextAssembler: {reserveOutputTokens: …}` keeps it and adds the two switches next to it.
+  The JSDoc of `IContextAssemblerConfig` says what each value means and costs.
+
+  AI prompt that performs the migration:
+
+  ```text
+  Migrate this codebase to dyna-ai-gateway 0.0.1-beta.3, where `IAIGatewayConfig.contextAssembler` became required
+  and `IContextAssemblerConfig` gained two required booleans, `promptCaching` and `sharePromptCacheAcrossTenants`.
+  1. Find every object typed `IAIGatewayConfig` (search terms: `IAIGatewayConfig`, `new AIGateway(`).
+  2. If it has no `contextAssembler`, add `contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false}`.
+     If it has one (e.g. `{reserveOutputTokens: 2000}`), add the two keys inside it. A config built by spreading
+     another config inherits the block from it: add it only to the base.
+  3. Keep `sharePromptCacheAcrossTenants: false` unless the product runs one shipped profile text for every tenant
+     and accepts that tenants share cache entries; read the JSDoc of `IContextAssemblerConfig` before setting `true`.
+  4. Verify: `tsc --noEmit` passes and the project's tests pass.
+  ```
+
 ### Changed
 
 - The shipped `CHAT_MAIN` template puts its stable layers first: the base text, the output format and the profile addendum,

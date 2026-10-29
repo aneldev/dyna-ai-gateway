@@ -32,6 +32,38 @@ export interface IContextAssemblerConfig {
    * @default the call's maxOutputTokens: min(profile.limits.maxOutputTokens, model.caps.maxOutputTokens)
    */
   reserveOutputTokens?: number;
+  /**
+   * Marks the stable part of the system prompt (template text, output format, addendum) for the provider's prompt cache.
+   *
+   * > Calls of one profile then pay the cached rate for that part (Anthropic: a cache marker; OpenAI caches on its own).
+   * > Pays off when the stable part is longer than the model's minimum (512–4096 tokens): a long addendum, many tools.
+   *
+   * Required: whoever configures the gateway decides it. `false` sends the system prompt as one block with no marker.
+   *
+   * @example true - the stable part of every call is cached
+   */
+  promptCaching: boolean;
+  /**
+   * Lets calls of different tenants read one prompt-cache entry when their stable block is the same text.
+   *
+   * > Cheaper, faster calls for tenants that share a profile text, in exchange for no cache isolation between tenants.
+   *
+   * Only the stable block (template text, output format, addendum, tools) is shared, and only when it is identical to the
+   * byte. What follows `{cacheBreakpoint}` (date, instructions, context, memory, knowledge base, history, the question) is
+   * never shared, and answers are never cached. A call that reads another tenant's entry pays the cache-read price for
+   * that part (Anthropic: 0.1× the input price) and its answer starts sooner; the call that wrote the entry paid the
+   * cache-write price (Anthropic: 1.25×).
+   * `false`: the stable block opens with a line that scopes it to the tenant (a hash of the tenant id, never the id
+   * itself), so each tenant writes and reads its own entries; the tool definitions get no cache marker. Keep it `false`
+   * when a faster or cheaper call must not reveal that another tenant sent the same profile text within the cache's
+   * lifetime (5 minutes).
+   * `true`: every tenant runs the same shipped profile text, and one cache entry should serve them all.
+   * Required: whoever configures the gateway decides it. Ignored when `promptCaching` is `false`.
+   *
+   * @example false - each tenant has its own cache entries: isolation before cost
+   * @example true - every tenant uses the library's seed template with no addendum: one entry serves all
+   */
+  sharePromptCacheAcrossTenants: boolean;
 }
 
 /** Shared instances ContextAssembler needs; created once by AIGateway and passed as the second constructor argument. */

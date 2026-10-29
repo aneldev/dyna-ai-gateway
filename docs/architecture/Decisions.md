@@ -689,7 +689,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Why.** A provider's prompt cache matches an exact prefix and has to be told where the stable part of the prompt ends. One string cannot carry that boundary; a list of blocks carries it without a second field that has to agree with the text.
 
-**Consequence.** A host that overrides the `LLMClient` or the `ContextAssembler`, or builds an `IModelRequest` itself, builds or reads blocks (`[{text}]` for one unmarked block; `joinSystem` to get the text). The pseudonymised skeleton of a run has `system: []`. The `CHANGELOG.md` of the package carries the migration.
+**Consequence.** A host that overrides the `LLMClient` or the `ContextAssembler`, or builds an `IModelRequest` itself, builds or reads blocks (`[{text}]` for one unmarked block; `joinSystem` to get the text). The pseudonymised skeleton of a run has `system: []`. Whether the stable block is marked, and whether tenants may share a cache entry, is decided by two required switches, `contextAssembler.promptCaching` and `contextAssembler.sharePromptCacheAcrossTenants` (a switch is never optional in this library: whoever configures the gateway decides), so `IAIGatewayConfig.contextAssembler` is required. The `CHANGELOG.md` of the package carries both migrations.
 
 ---
 
