@@ -104,8 +104,17 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 - Anthropic cache markers: on an Anthropic model the stable block is sent as its own system message with
   `cache_control: ephemeral` (the 5-minute cache), and with `cacheTools` the last tool definition too. The other providers
   receive the blocks joined as one string, as before.
+- `IUsage.cacheWriteInputTokens`: the prompt tokens a call wrote to the provider's cache, next to `cachedInputTokens` (the
+  ones read) and `inputTokens` (the whole prompt). Reported to the usage adapter and the trace.
+- `IModelCaps.costCacheReadPerMTokUsd` and `costCacheWritePerMTokUsd`: the cache prices of a model entry, both optional.
+  Default on an Anthropic model: 0.1× and 1.25× `costInPerMTokUsd`; on any other provider: `costInPerMTokUsd`.
 
 ### Changed
+
+- The cost estimate of a call (`ModelRegistry.estimateCostUsd`, the `costUsd` of the usage report and the trace entry)
+  prices the cached tokens at the model's cache rates: the tokens read from the cache at `costCacheReadPerMTokUsd`, the
+  ones written at `costCacheWritePerMTokUsd`, the rest of the prompt at `costInPerMTokUsd`. A call without cache tokens
+  costs exactly what it did before.
 
 - The shipped `CHAT_MAIN` template puts its stable layers first: the base text, the output format and the profile addendum,
   then the per-call "Today is … locale … timezone" line, the call's instructions and context, the memory and the knowledge

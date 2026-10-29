@@ -17,7 +17,8 @@ import {
 
 /**
  * The stable prefix of the system prompt is cached by Anthropic: three calls on one thread, the first one writes the
- * cache, the second and the third read it (`usage.cachedInputTokens > 0` on their traced chat calls), and every answer
+ * cache (`usage.cacheWriteInputTokens > 0`), the second and the third read it (`usage.cachedInputTokens > 0` on their
+ * traced chat calls), `inputTokens` is the total that covers both (what the cost formula relies on), and every answer
  * still carries the addendum's token, so the cached block is the one the model reads.
  *
  * Three model calls: a cache read can only be observed on a call after the write. Runs when
@@ -56,11 +57,15 @@ describeWithProvider(EModelProvider.ANTHROPIC)("AIGateway — prompt caching on 
 
     expect({
       calls: chatCalls.length,
+      cacheWriteOnCall1: (chatCalls[0]?.usage.cacheWriteInputTokens ?? 0) > 0,
       cacheReadOnCalls2And3: chatCalls.slice(1).map(entry => (entry.usage.cachedInputTokens ?? 0) > 0),
+      inputTokensCoverTheCache: chatCalls.every(entry => entry.usage.inputTokens >= (entry.usage.cachedInputTokens ?? 0) + (entry.usage.cacheWriteInputTokens ?? 0)),
       tokenInEveryAnswer: answers.every(answer => answer.text.includes(PROMPT_CACHING_TOKEN)),
     }).toEqual({
       calls: 3,
+      cacheWriteOnCall1: true,
       cacheReadOnCalls2And3: [true, true],
+      inputTokensCoverTheCache: true,
       tokenInEveryAnswer: true,
     });
   });

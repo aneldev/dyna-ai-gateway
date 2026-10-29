@@ -508,6 +508,12 @@ history, the question and the answer are never cached. A model caches only a pre
 tokens on the Opus 5.5 / Sonnet 5.5 / Haiku 5.5 family, 1 024–4 096 on older ones, e.g. 4 096 on `claude-haiku-4-5`), so a
 short stable block is sent with the marker and simply not cached; a long addendum and many tools make it pay.
 
+- **The cost follows the cache.** `IUsage` of every call reports `inputTokens` (the whole prompt), `cachedInputTokens`
+  (read from the cache) and `cacheWriteInputTokens` (written by this call); the usage adapter and the trace get them. The
+  cost estimate prices the read tokens at `IModelCaps.costCacheReadPerMTokUsd` and the written ones at
+  `costCacheWritePerMTokUsd`, the rest at `costInPerMTokUsd`. Both are optional: on an Anthropic model they default to
+  0.1× and 1.25× the input price; on any other provider to the input price itself, so set `costCacheReadPerMTokUsd` on an
+  OpenAI model entry if its cached rate should show in the estimate.
 - **Switch it off:** `contextAssembler: {promptCaching: false, …}`: one block, no marker.
 - **A stored template** (`PromptTemplateStore`, a new version of `CHAT_MAIN`) is cached only when it keeps
   `{cacheBreakpoint}` with nothing per-call before it. A per-call slot before it switches the cache off for the call and

@@ -17,7 +17,8 @@ const MANUAL_RULES = 160;
 /**
  * A long "operating manual" addendum: Anthropic caches a prefix only from the model's minimum on (4096 tokens on
  * `claude-haiku-4-5`), so the stable block of this profile has to be that long. The rules are distinct sentences so the
- * tokenizer does not compress them.
+ * tokenizer does not compress them. The revision line changes per run: a run within the cache's lifetime of the previous
+ * one would otherwise read an entry it never wrote, and the first call's cache write could not be asserted.
  */
 const buildOperatingManual = (): string => {
   const departments = ["billing", "shipping", "returns", "warranty", "accounts", "loyalty", "privacy", "escalations"];
@@ -30,7 +31,7 @@ const buildOperatingManual = (): string => {
     "You are the support assistant of the Nordwind web shop. Answer with exactly the value asked for and nothing else.",
     `End every answer with ${PROMPT_CACHING_TOKEN}.`,
     "",
-    "Operating manual:",
+    `Operating manual, revision ${Date.now()}:`,
     ...rules,
   ].join("\n");
 };

@@ -236,6 +236,7 @@ export class LLMClient implements ILLMClient {
         inputTokens: outcome.usage?.inputTokens ?? 0,
         outputTokens: outcome.usage?.outputTokens ?? 0,
         cachedInputTokens: outcome.usage?.inputTokenDetails?.cacheReadTokens,
+        cacheWriteInputTokens: outcome.usage?.inputTokenDetails?.cacheWriteTokens,
       },
       latencyMs: Date.now() - startedAt,
       traceId,
@@ -502,6 +503,8 @@ export class LLMClient implements ILLMClient {
         modelId,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
+        cachedInputTokens: usage.cachedInputTokens,
+        cacheWriteInputTokens: usage.cacheWriteInputTokens,
       });
     }
     catch (error) {

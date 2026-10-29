@@ -126,10 +126,17 @@ export interface IFileRef {
 
 /** Token accounting of one model call. */
 export interface IUsage {
+  /** All prompt tokens, the cached ones included. */
   inputTokens: number;
   outputTokens: number;
-  /** Tokens served from provider cache, when reported. */
+  /** Of `inputTokens`, the ones read from the provider's prompt cache, when reported. */
   cachedInputTokens?: number;
+  /**
+   * Of `inputTokens`, the ones written to the provider's prompt cache by this call, when reported.
+   *
+   * > Anthropic bills them above the input price (1.25× for the 5-minute cache); the first call of a profile writes, the next ones read.
+   */
+  cacheWriteInputTokens?: number;
 }
 
 /**
