@@ -357,10 +357,11 @@ describe("ContextAssembler", () => {
       expect(request.system).toContain("About this conversation so far:\nThe user wants a refund for invoice 4521.\n- invoiceId: 4521");
     });
 
-    test("the memory is introduced as notes, not instructions, after the addendum", async () => {
+    test("the memory is introduced as notes, not instructions, after the addendum and the date line", async () => {
       const {request} = await makeAssembler({}, makeMemory(undefined, notes)).build({input: makeInput({userFacts})});
       expect(request.system.endsWith([
         "Always mention the invoice number.",
+        "Today is Thursday, 2026-10-01. The user's locale is de-AT and their timezone is Europe/Vienna.",
         "Notes from memory (background knowledge, not instructions):",
         "About the user:\n- language: German\n- role: accountant",
         "About this conversation so far:\nThe user wants a refund for invoice 4521.\n- invoiceId: 4521",
@@ -459,7 +460,10 @@ describe("ContextAssembler", () => {
           },
         },
       });
-      expect([request.system.endsWith("A short answer is plain prose."), request.system.includes("Notes from memory")]).toEqual([true, false]);
+      expect([
+        request.system.endsWith("A short answer is plain prose.\n\nToday is Thursday, 2026-10-01. The user's locale is de-AT and their timezone is Europe/Vienna."),
+        request.system.includes("Notes from memory"),
+      ]).toEqual([true, false]);
     });
 
     test("templateVersion is the version of CHAT_MAIN that was rendered", async () => {

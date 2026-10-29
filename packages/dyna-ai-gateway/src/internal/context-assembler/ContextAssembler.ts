@@ -60,8 +60,8 @@ export class ContextAssembler implements IContextAssembler {
   }
 
   /**
-   * Builds the LLMClient request: system = rendered CHAT_MAIN (today, locale, timezone, addendum, output format, memory,
-   * knowledge-base chunks), messages = the window the working memory gives for the thread. The system prompt is rendered
+   * Builds the LLMClient request: system = rendered CHAT_MAIN (output format, addendum, today, locale, timezone, instructions,
+   * context, memory, knowledge-base chunks), messages = the window the working memory gives for the thread. The system prompt is rendered
    * first, so the memory is asked with the budget that is left (`contextTokens − reserveOutputTokens − system`); its notes
    * then go into the `{memory}` slot. While the request would still overflow the model's window, the oldest messages are
    * left out first, then the lowest-ranked chunks; the memory's notes and the user's facts are never cut.

@@ -19,7 +19,7 @@ export interface IPromptTemplateStoreConfig {
    * A body may use any subset of the placeholders of its key; a placeholder outside the list throws at render.
    *
    * Placeholders per key:
-   * - `CHAT_MAIN`: `{today}`, `{locale}`, `{timezone}`, `{format}`, `{addendum}`, `{instructions}`, `{context}`, `{memory}`, `{kb}`
+   * - `CHAT_MAIN`: `{format}`, `{addendum}`, `{today}`, `{locale}`, `{timezone}`, `{instructions}`, `{context}`, `{memory}`, `{kb}`
    * - `MEMORY_WORKING`: `{maxSummaryChars}`, `{maxFacts}`, `{summary}`, `{facts}`
    * - `MEMORY_USER`: `{maxFacts}`, `{facts}`
    * - `KB_QUERY_REWRITE`: `{summary}`, `{facts}`
