@@ -101,3 +101,7 @@ export const toolsOf = (model: MockLanguageModelV4): [string, boolean][] =>
     sdkTool.name,
     sdkTool.type === "function" && sdkTool.providerOptions?.anthropic?.cacheControl !== undefined,
   ]);
+
+/** The call-level provider options the mock model received (`promptCacheKey` lives in `openai`). */
+export const providerOptionsOf = (model: MockLanguageModelV4): Record<string, Record<string, unknown>> | undefined =>
+  model.doGenerateCalls[0].providerOptions;

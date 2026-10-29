@@ -104,6 +104,9 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 - Anthropic cache markers: on an Anthropic model the stable block is sent as its own system message with
   `cache_control: ephemeral` (the 5-minute cache), and with `cacheTools` the last tool definition too. The other providers
   receive the blocks joined as one string, as before.
+- OpenAI `promptCacheKey`: on an OpenAI model a request with a stable block carries the provider option `promptCacheKey`,
+  a hash of the stable block's text, so the calls that share the block are routed to the same cache. Without a stable
+  block (caching off, a system job) the request is unchanged.
 - `IUsage.cacheWriteInputTokens`: the prompt tokens a call wrote to the provider's cache, next to `cachedInputTokens` (the
   ones read) and `inputTokens` (the whole prompt). Reported to the usage adapter and the trace.
 - `IModelCaps.costCacheReadPerMTokUsd` and `costCacheWritePerMTokUsd`: the cache prices of a model entry, both optional.

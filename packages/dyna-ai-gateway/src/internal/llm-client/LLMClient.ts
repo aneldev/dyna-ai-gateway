@@ -52,6 +52,10 @@ import {estimateRequestTokens} from "./estimateRequestTokens";
 import {createEmbeddingModel} from "./utils/createEmbeddingModel";
 import {createLanguageModel} from "./utils/createLanguageModel";
 import {toSdkMessages} from "./utils/toSdkMessages";
+import {
+  TSdkProviderOptions,
+  toSdkProviderOptions,
+} from "./utils/toSdkProviderOptions";
 import {toSdkSystem} from "./utils/toSdkSystem";
 import {toSdkTools} from "./utils/toSdkTools";
 import {withoutInlineBytes} from "./utils/withoutInlineBytes";
@@ -70,6 +74,7 @@ interface ISdkCallOptions {
   timeout: number;
   abortSignal: AbortSignal | undefined;
   output: ReturnType<typeof Output.object<unknown>> | undefined;
+  providerOptions: TSdkProviderOptions;
 }
 
 const DEFAULT_TIMEOUT_MS = 60_000;
@@ -180,6 +185,10 @@ export class LLMClient implements ILLMClient {
       output: request.outputSchema === undefined
         ? undefined
         : Output.object({schema: request.outputSchema}),
+      providerOptions: toSdkProviderOptions({
+        blocks: request.system,
+        provider: model.provider,
+      }),
     };
 
     const startedAt = Date.now();
