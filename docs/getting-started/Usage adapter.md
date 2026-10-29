@@ -24,8 +24,11 @@ each is checked and reported on its own. Keep `check` fast or cached.
 
 - A `check` that **throws** is a denial (the gateway fails closed), logged with the `denyCode` `usage_check_failed`.
 - An `addUsage` that throws is logged; the answer is still returned.
-- `costUsd` is informative: the model's list prices times the tokens. An application that bills in its own currency or in
-  credits computes from `usage`.
+- `usage` carries `inputTokens` (the whole prompt), `outputTokens` and, when the provider reports them, `cachedInputTokens`
+  and `cacheWriteInputTokens`, the part of the prompt read from or written to the provider's prompt cache (see the FAQ,
+  "Is the system prompt cached, and what does it cost?").
+- `costUsd` is informative: the model's list prices times the tokens, the cached ones at the model's cache rates. An
+  application that bills in its own currency or in credits computes from `usage`.
 
 ## 2. An adapter
 

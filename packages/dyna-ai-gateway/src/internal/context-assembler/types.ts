@@ -35,7 +35,7 @@ export interface IContextAssemblerConfig {
   /**
    * Marks the stable part of the system prompt (template text, output format, addendum) for the provider's prompt cache.
    *
-   * > Calls of one profile then pay the cached rate for that part (Anthropic: a cache marker; OpenAI caches on its own).
+   * > Calls of one profile then pay the cached rate for that part (Anthropic: a cache marker; OpenAI: a cache key, it caches the prefix on its own).
    * > Pays off when the stable part is longer than the model's minimum (512–4096 tokens): a long addendum, many tools.
    *
    * Required: whoever configures the gateway decides it. `false` sends the system prompt as one block with no marker.

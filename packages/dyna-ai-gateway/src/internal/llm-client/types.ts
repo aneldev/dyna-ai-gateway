@@ -87,8 +87,8 @@ export interface IModelRequest {
   /**
    * System prompt as blocks, in order (rendered CHAT_MAIN: the stable block, then the per-call block).
    *
-   * > A provider that takes cache markers (Anthropic) gets one system block per entry, marked where `cache` is set; the
-   * > others get the texts joined (`joinSystem`).
+   * > Anthropic gets one system block per entry, marked where `cache` is set; the others get the texts joined
+   * > (`joinSystem`), OpenAI with a cache key derived from the `cache` block.
    *
    * @example [{text: "You are the assistant…", cache: true}, {text: "Today is Thursday, 2026-10-29…"}]
    */
