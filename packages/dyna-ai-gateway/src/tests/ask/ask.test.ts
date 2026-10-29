@@ -7,6 +7,7 @@ import {
   EMessageRole,
   ETraceKind,
   ETurnRole,
+  joinSystem,
 } from "../..";
 
 import {
@@ -94,13 +95,13 @@ describe("AIGateway — M1: ask", () => {
   test("sends a system prompt with the profile addendum", async () => {
     const setup = await makeGateway();
     await ask(setup, "hello");
-    expect(setup.llmClient.completeCalls[0].request.system).toContain("Always mention the invoice number.");
+    expect(joinSystem({blocks: setup.llmClient.completeCalls[0].request.system})).toContain("Always mention the invoice number.");
   });
 
   test("sends a system prompt with today's date", async () => {
     const setup = await makeGateway();
     await ask(setup, "hello");
-    expect(setup.llmClient.completeCalls[0].request.system).toContain("Today is Thursday, 2026-10-01.");
+    expect(joinSystem({blocks: setup.llmClient.completeCalls[0].request.system})).toContain("Today is Thursday, 2026-10-01.");
   });
 
   test("uses the profile named by profileId: \"default\" runs on model-a", async () => {

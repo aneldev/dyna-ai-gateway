@@ -134,7 +134,7 @@ const meta: ILLMClientCallMeta = {
 
 const request: IModelRequest = {
   modelId: "model-a",
-  system: "",
+  system: [],
   messages: [],
   maxOutputTokens: 500,
 };

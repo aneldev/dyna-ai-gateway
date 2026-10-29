@@ -34,7 +34,7 @@ describeWithProvider(EModelProvider.OPENAI)("LLMClient.complete — real provide
     const call = client.complete({
       request: makeRequest({
         modelId: "openai-model",
-        system: "You are a patient storyteller.",
+        system: [{text: "You are a patient storyteller."}],
         messages: [{
           role: EMessageRole.USER,
           parts: [{

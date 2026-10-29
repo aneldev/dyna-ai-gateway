@@ -683,6 +683,14 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Consequence.** `embed` works on OpenAI, Google, Mistral and Bedrock. Anthropic has no embedding models, so an Anthropic entry with `caps.embeddings` is refused with a 400.
 
+### D123: The system prompt travels as blocks
+
+**Decision.** `IModelRequest.system` is an ordered list of `ISystemBlock` (`{text, cache?}`), not one string. The `ContextAssembler` builds the blocks; the `LLMClient` maps them per provider: a provider that takes cache markers (Anthropic) gets one system block per entry, with the marker where `cache` is set, every other provider gets the texts joined. `joinSystem({blocks})` is the one join (a blank line between the texts, the marks dropped); the token estimate and the `debug.system` of an answer, which stays a string, use it.
+
+**Why.** A provider's prompt cache matches an exact prefix and has to be told where the stable part of the prompt ends. One string cannot carry that boundary; a list of blocks carries it without a second field that has to agree with the text.
+
+**Consequence.** A host that overrides the `LLMClient` or the `ContextAssembler`, or builds an `IModelRequest` itself, builds or reads blocks (`[{text}]` for one unmarked block; `joinSystem` to get the text). The pseudonymised skeleton of a run has `system: []`. The `CHANGELOG.md` of the package carries the migration.
+
 ---
 
 ## 14. ContextAssembler

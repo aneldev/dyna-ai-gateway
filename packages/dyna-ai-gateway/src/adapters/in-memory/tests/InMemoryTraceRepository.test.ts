@@ -129,7 +129,7 @@ describe("InMemoryTraceRepository", () => {
         makeEntry("trace-1", {
           request: {
             modelId: "model-a",
-            system: "The user is Dennis",
+            system: [{text: "The user is Dennis"}],
             messages: [],
             maxOutputTokens: 500,
           },

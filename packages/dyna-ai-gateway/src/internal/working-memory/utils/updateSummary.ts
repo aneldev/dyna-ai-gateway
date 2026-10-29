@@ -86,7 +86,7 @@ export const updateSummary = async (
     result = await deps.llmClient.complete({
       request: {
         modelId: cheapModelId,
-        system: rendered.text,
+        system: [{text: rendered.text}],
         messages: [
           {
             role: EMessageRole.USER,

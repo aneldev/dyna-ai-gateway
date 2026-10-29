@@ -135,7 +135,7 @@ export class ContextAssembler implements IContextAssembler {
 
     const request: IModelRequest = {
       modelId: model.id,
-      system: rendered.text,
+      system: [{text: rendered.text}],
       messages: loaded.messages,
       outputSchema,
       maxOutputTokens,
@@ -153,7 +153,7 @@ export class ContextAssembler implements IContextAssembler {
     }) > windowTokens) {
       hits = hits.slice(0, -1);
       rendered = await render();
-      request.system = rendered.text;
+      request.system = [{text: rendered.text}];
     }
 
     if (request.messages.length < messagesBeforeWindow) {

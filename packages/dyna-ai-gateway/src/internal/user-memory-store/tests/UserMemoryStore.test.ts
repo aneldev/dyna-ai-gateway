@@ -14,6 +14,7 @@ import {
   ILLMClientCallMeta,
   EFinishReason,
   EMessageRole,
+  joinSystem,
 } from "../../llm-client";
 import {PromptTemplateStore} from "../../prompt-template-store";
 import {ETraceKind} from "../../trace";
@@ -455,7 +456,7 @@ describe("UserMemoryStore", () => {
       });
       await extract(context, toFacts({}));
       const {request} = context.llmClient.completeCalls[0];
-      expect([request.system.includes("language: German"), request.system.includes("at most 7 facts"), request.messages]).toEqual([
+      expect([joinSystem({blocks: request.system}).includes("language: German"), joinSystem({blocks: request.system}).includes("at most 7 facts"), request.messages]).toEqual([
         true,
         true,
         [

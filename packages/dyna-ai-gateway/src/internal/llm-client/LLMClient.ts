@@ -48,6 +48,7 @@ import {
 } from "./types";
 import {runAgentLoop} from "./runAgentLoop";
 import {estimateRequestTokens} from "./estimateRequestTokens";
+import {joinSystem} from "./joinSystem";
 import {createEmbeddingModel} from "./utils/createEmbeddingModel";
 import {createLanguageModel} from "./utils/createLanguageModel";
 import {toSdkMessages} from "./utils/toSdkMessages";
@@ -161,7 +162,7 @@ export class LLMClient implements ILLMClient {
         model,
         credentials: this.getCredentials(model),
       }),
-      system: request.system,
+      system: joinSystem({blocks: request.system}),
       messages: toSdkMessages(request.messages),
       tools: toSdkTools(tools),
       maxOutputTokens: request.maxOutputTokens,

@@ -81,7 +81,7 @@ export const createJudge = <TArgs extends IJudgeArgs>(
       const result = await llmClient.complete({
         request: {
           modelId,
-          system: SYSTEM_PROMPT,
+          system: [{text: SYSTEM_PROMPT}],
           messages: [{
             role: EMessageRole.USER,
             parts: [

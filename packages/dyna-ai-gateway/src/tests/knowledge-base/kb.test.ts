@@ -8,6 +8,7 @@ import {
   EGatewayResponseKind,
   EResumeAction,
   ETraceKind,
+  joinSystem,
 } from "../..";
 
 import {
@@ -91,7 +92,8 @@ const recordChunks = (seen: IChunk[][]): Partial<IAIGatewayConfig> => ({
   },
 });
 
-const getSystem = ({llmClient}: IGatewaySetup): string => llmClient.completeCalls.filter(call => call.meta.kind === ETraceKind.CHAT).at(-1)?.request.system ?? "";
+const getSystem = ({llmClient}: IGatewaySetup): string =>
+  joinSystem({blocks: llmClient.completeCalls.filter(call => call.meta.kind === ETraceKind.CHAT).at(-1)?.request.system ?? []});
 
 /** The embedding calls of questions: the two ingestions of setupKb come first. */
 const getSearchCalls = ({llmClient}: IGatewaySetup): typeof llmClient.embedCalls => llmClient.embedCalls.slice(2);
@@ -271,7 +273,7 @@ describe("AIGateway — M5: knowledge base", () => {
       expect([
         response.kind === EGatewayResponseKind.ANSWER && response.citations,
         getSearchCalls(setup).length,
-        setup.llmClient.runCalls[0].request.system.includes(refundText),
+        joinSystem({blocks: setup.llmClient.runCalls[0].request.system}).includes(refundText),
       ]).toEqual([["refund-doc#0"], 1, true]);
     });
 
@@ -296,7 +298,7 @@ describe("AIGateway — M5: knowledge base", () => {
       }).response;
       expect([
         response.kind === EGatewayResponseKind.ANSWER && response.citations,
-        setup.llmClient.runCalls[1].request.system.includes(refundText),
+        joinSystem({blocks: setup.llmClient.runCalls[1].request.system}).includes(refundText),
       ]).toEqual([["refund-doc#0"], true]);
     });
   });

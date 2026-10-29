@@ -11,6 +11,7 @@ import {
   ERunStatus,
   EThreadStatus,
   IResumeDecision,
+  joinSystem,
 } from "../internal";
 import {
   IAIGatewayDeps,
@@ -142,7 +143,7 @@ export const settleReview = async <TStructured>(
     ...answer.endedByTool === undefined ? {} : {endedByTool: answer.endedByTool},
     ...debug && {
       debug: {
-        system: run.request.system,
+        system: joinSystem({blocks: run.request.system}),
         messages: run.messages,
         steps: run.steps,
         run: settled,

@@ -34,6 +34,7 @@ import {
   ERunStatus,
   ETraceKind,
   isUsageDeniedError,
+  joinSystem,
 } from "./internal";
 
 import {
@@ -298,7 +299,7 @@ export class AIGateway {
             usage: result.usage,
             ...input.debug && {
               debug: {
-                system: context.request.system,
+                system: joinSystem({blocks: context.request.system}),
                 messages: [
                   ...context.request.messages,
                   {

@@ -1,4 +1,7 @@
-import {AIGateway} from "../..";
+import {
+  AIGateway,
+  joinSystem,
+} from "../..";
 
 import {FakeLLMClient} from "../internal/fakes/FakeLLMClient";
 import {openAiModel} from "../internal/samples/models";
@@ -38,7 +41,7 @@ test("the call's instructions and context reach the system prompt after the prof
     kbFilters: noKb,
   }).response;
 
-  const system = llmClient.completeCalls[0].request.system ?? "";
+  const system = joinSystem({blocks: llmClient.completeCalls[0].request.system});
   const positions = [
     CALL_LAYERS_ADDENDUM,
     "Answer in one sentence.",

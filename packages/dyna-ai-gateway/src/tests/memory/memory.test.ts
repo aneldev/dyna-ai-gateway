@@ -9,6 +9,7 @@ import {
   EResumeAction,
   ETraceKind,
   EUserMemoryFactOp,
+  joinSystem,
 } from "../..";
 
 import {FakeLLMClient} from "../internal/fakes/FakeLLMClient";
@@ -128,7 +129,7 @@ describe("AIGateway — M4: memory", () => {
       const threadId = await askAndRemember(setup, "The user wants a refund for invoice 4521.");
       await askAndRemember(setup, "second", {}, threadId);
       const mainCalls = setup.llmClient.completeCalls.filter(call => call.meta.kind === ETraceKind.CHAT);
-      expect(mainCalls[1].request.system).toContain("About this conversation so far:\nThe user wants a refund for invoice 4521.\n- invoiceId: 4521");
+      expect(joinSystem({blocks: mainCalls[1].request.system})).toContain("About this conversation so far:\nThe user wants a refund for invoice 4521.\n- invoiceId: 4521");
     });
   });
 
@@ -138,7 +139,7 @@ describe("AIGateway — M4: memory", () => {
       await askAndRemember(setup, "summary", {language: "German"});
       await askAndRemember(setup, "summary");
       const mainCalls = setup.llmClient.completeCalls.filter(call => call.meta.kind === ETraceKind.CHAT);
-      expect([mainCalls[0].request.system.includes("About the user"), mainCalls[1].request.system.includes("About the user:\n- language: German")]).toEqual([false, true]);
+      expect([joinSystem({blocks: mainCalls[0].request.system}).includes("About the user"), joinSystem({blocks: mainCalls[1].request.system}).includes("About the user:\n- language: German")]).toEqual([false, true]);
     });
 
     test("getUserFacts returns what was extracted, with the thread it came from", async () => {
@@ -431,7 +432,7 @@ describe("AIGateway — M6: memory for the UI", () => {
       });
       await askAndRemember(setup, "summary");
       const [mainCall] = setup.llmClient.completeCalls.filter(call => call.meta.kind === ETraceKind.CHAT);
-      expect([mainCall.request.system.includes("About the user:\n- language: German"), (await setup.gateway.getUserFacts({userContext}))[0].sourceThreadId])
+      expect([joinSystem({blocks: mainCall.request.system}).includes("About the user:\n- language: German"), (await setup.gateway.getUserFacts({userContext}))[0].sourceThreadId])
         .toEqual([true, undefined]);
     });
 
@@ -513,7 +514,7 @@ describe("AIGateway — M6: memory for the UI", () => {
       await askAndRemember(setup, "second", {}, threadId);
       const mainCalls = setup.llmClient.completeCalls.filter(call => call.meta.kind === ETraceKind.CHAT);
       const updates = getHelperCalls(setup).filter(call => call.meta.kind === ETraceKind.MEMORY_WORKING);
-      expect([mainCalls[1].request.system.includes("About this conversation"), getText(updates[1]).split("\n").length]).toEqual([false, 2]);
+      expect([joinSystem({blocks: mainCalls[1].request.system}).includes("About this conversation"), getText(updates[1]).split("\n").length]).toEqual([false, 2]);
     });
 
     test("resetThreadMemory waits for the update that is already queued, so it cannot bring the memory back", async () => {
