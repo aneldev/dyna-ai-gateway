@@ -1,6 +1,6 @@
 ---
 name: stepwise-plan
-description: Plan-then-implement workflow for non-trivial tasks (upgrades, migrations, multi-file features, refactors), from a ticket or from the developer's prompt. Writes a living markdown plan in the closest `docs/plans/active/<TICKET> <title>.md`, then implements it ONE small, testable step at a time — verify, record what was done in the plan, stop for the developer's check, continue — and on completion updates Roadmap / Backlog / Decisions and moves the plan to `docs/plans/archived/`. Use when the developer says "make a plan", "let's do this step by step", "plan and implement", "start the ticket", gives a ticket to work on, or when a task clearly spans many steps/files. Not for one-file fixes.
+description: Plan-then-implement workflow for non-trivial tasks (upgrades, migrations, multi-file features, refactors), from a ticket or from the developer's prompt. Writes a living markdown plan in the closest `docs/plans/active/<TICKET> <title>.md`, pressure-tests it (professional approach, side problems, contradictions with the repo's markdown docs and with the goal) until it is clean, then implements it ONE small, testable step at a time — verify, record what was done in the plan, stop for the developer's check, continue — and on completion updates Roadmap / Backlog / Decisions and moves the plan to `docs/plans/archived/`. Use when the developer says "make a plan", "let's do this step by step", "plan and implement", "start the ticket", gives a ticket to work on, or when a task clearly spans many steps/files. Not for one-file fixes.
 ---
 
 Source: worked out on DDE-20289 (React 19 / Next 16 upgrade); any plan under `docs/plans/archived/` is a real example of the format.
@@ -112,6 +112,9 @@ export interface IFooConfig {
 
 ## Follow-up tickets (not in this ticket)
 | Topic | Why separate | Ticket |
+
+## Pressure test
+Passed <date> after <n> round(s). One line per issue found: what it was → how the plan was changed (or what the developer decided).
 ```
 
 **Rules for good steps**
@@ -132,8 +135,41 @@ developer goes through every row and decides, per row, **in this ticket** (it be
 implementation starts while a row has no decision; a follow-up found during implementation is added to the table and
 decided the same way at the next handoff. The developer must know precisely what is left out and where it lives.
 
+### Pressure test — before the plan is presented
+
+A written plan is a draft until it survives a pressure test. Read it as a hostile senior reviewer would, not as its
+author: the goal is to find what breaks, not to confirm it works. Check it on three axes:
+
+1. **Professional approach.** Is every step the standard, mature way to do it today, or a shortcut, a workaround, an
+   invented pattern, an over-abstraction? Would a senior engineer approve it in review? Does it follow `CLAUDE.md`'s
+   coding and architecture rules?
+2. **Side problems.** What else does the change touch that the plan does not name: other callers, the public API, tests,
+   types, performance, security, data or migrations, docs that go stale, the other plans running in parallel in this
+   tree? Does every step really leave the repo green?
+3. **Contradictions.** Does the plan contradict the logic of the repo's markdown files: `CLAUDE.md`, the Roadmap (its
+   working rules), the decisions (`D…`), the class and architecture docs, the Backlog, the user docs, the other active
+   plans? And does it fix what the ticket asks: does every AC map to a step, and does any step work against the goal?
+
+**The loop:**
+
+- **Run** the three checks over the whole plan and list every issue.
+- **Fix** each issue in the plan. An issue that only the developer can settle (an unclear requirement, a choice between
+  two valid designs) → ask him (`AskUserQuestion`, the recommended option first) and write his answer into the plan.
+  Asking is not a failed round.
+- **Re-run** the full test on the changed plan, since a fix can create a new issue. Repeat until a round finds **zero
+  issues**.
+- **Stop after 3 unsuccessful rounds.** If issues are still there after the third round of fixes, stop fixing and hand
+  them to the developer. Per problem: what is wrong, in plain language and with a concrete example (no jargon, no
+  internal ids without their meaning), why it matters, and 1–3 possible solutions with the recommended one first. He
+  decides; apply his decisions and run the test once more.
+- **Record** the result in the plan's `## Pressure test` chapter: the date, the number of rounds, one line per issue and
+  how it was resolved.
+
+A change the developer makes to the plan during his review is pressure-tested again (the loop above) before Step 0.1.
+
 Present the plan, then **stop**: the developer reviews/adjusts it — the `## Interfaces (final state)` chapter, then the
-follow-ups — before step 0.1 starts.
+follow-ups — before step 0.1 starts. A plan is presented only after its pressure test passed, or with the open problems
+listed for the developer's decision.
 
 ## Phase 2 — Execute, one step at a time
 
