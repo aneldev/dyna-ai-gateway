@@ -101,6 +101,9 @@ what breaks, the migration, and an AI prompt that performs the migration in your
   `[cache scope <hash>]` line; `true` lets tenants share an entry and marks the tool definitions too
   (`IModelRequest.cacheTools`). A stored template with a per-call slot before the breakpoint is sent uncached with the new
   WARNING issue `prompt_cache_off`. See the FAQ, "Is the system prompt cached, and what does it cost?".
+- Anthropic cache markers: on an Anthropic model the stable block is sent as its own system message with
+  `cache_control: ephemeral` (the 5-minute cache), and with `cacheTools` the last tool definition too. The other providers
+  receive the blocks joined as one string, as before.
 
 ### Changed
 

@@ -3,6 +3,7 @@ import {
   LanguageModel,
   LanguageModelUsage,
   ModelMessage,
+  SystemModelMessage,
   ToolSet,
   NoObjectGeneratedError,
   Output,
@@ -48,10 +49,10 @@ import {
 } from "./types";
 import {runAgentLoop} from "./runAgentLoop";
 import {estimateRequestTokens} from "./estimateRequestTokens";
-import {joinSystem} from "./joinSystem";
 import {createEmbeddingModel} from "./utils/createEmbeddingModel";
 import {createLanguageModel} from "./utils/createLanguageModel";
 import {toSdkMessages} from "./utils/toSdkMessages";
+import {toSdkSystem} from "./utils/toSdkSystem";
 import {toSdkTools} from "./utils/toSdkTools";
 import {withoutInlineBytes} from "./utils/withoutInlineBytes";
 import {withoutOutputSchema} from "./utils/withoutOutputSchema";
@@ -60,7 +61,7 @@ import {withoutRequestBody} from "./utils/withoutRequestBody";
 /** The options both SDK entry points take. */
 interface ISdkCallOptions {
   model: LanguageModel;
-  system: string;
+  system: string | SystemModelMessage[];
   messages: ModelMessage[];
   tools: ToolSet;
   maxOutputTokens: number;
@@ -162,9 +163,15 @@ export class LLMClient implements ILLMClient {
         model,
         credentials: this.getCredentials(model),
       }),
-      system: joinSystem({blocks: request.system}),
+      system: toSdkSystem({
+        blocks: request.system,
+        provider: model.provider,
+      }),
       messages: toSdkMessages(request.messages),
-      tools: toSdkTools(tools),
+      tools: toSdkTools({
+        tools,
+        cacheLast: model.provider === EModelProvider.ANTHROPIC && request.cacheTools === true,
+      }),
       maxOutputTokens: request.maxOutputTokens,
       temperature: request.temperature,
       maxRetries: this.config.maxRetries ?? DEFAULT_MAX_RETRIES,
