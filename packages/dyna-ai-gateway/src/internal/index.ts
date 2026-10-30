@@ -13,6 +13,7 @@ export * from "./query-rewriter";
 export * from "./kb-retriever";
 export * from "./tool-registry";
 export * from "./tool-policy";
+export * from "./skill-registry";
 export * from "./run-store";
 export * from "./human-gate";
 export * from "./usage-guard";

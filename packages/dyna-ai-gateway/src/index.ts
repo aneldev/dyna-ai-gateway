@@ -33,6 +33,7 @@ export * from "./internal/query-rewriter/types";
 export * from "./internal/kb-retriever/types";
 export * from "./internal/tool-registry/types";
 export * from "./internal/tool-policy/types";
+export * from "./internal/skill-registry/types";
 export * from "./internal/run-store/types";
 export * from "./internal/human-gate/types";
 export * from "./internal/usage-guard/types";
@@ -91,6 +92,9 @@ export type {
 export type {
   ToolPolicy,
 } from "./internal/tool-policy";
+export type {
+  SkillRegistry,
+} from "./internal/skill-registry";
 export type {
   RunStore,
 } from "./internal/run-store";

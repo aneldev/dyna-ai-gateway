@@ -84,6 +84,14 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Consequence.** Neither is stored: a later call on the thread passes its own, a paused run keeps the prompt it started with and `resume()` takes none. Which layer to use for which text is in [System prompt layers](System%20prompt%20production%20layers.md#which-layer-to-use).
 
+### D124: Skills, instructions the model loads on demand
+
+**Decision.** A skill is `{name, description, body}`: instructions the model reads only when a task needs them. Skills are attached to a profile (`IAIProfile.skills`) and to one call (`IGatewayAskInput.skills`), never to the gateway's config. In a `run()` the system prompt lists every skill's name and description, and the model loads a body with the built-in `load_skill` tool. In an `ask()` the bodies are inlined. Without skills nothing is listed and no tool is offered.
+
+**Why.** A long rule that applies to few calls (a refund policy, an escalation procedure) was paid on every call through `promptAddendum`, whether the task needed it or not. A description costs a line; a body costs only the calls that load it.
+
+**Consequence.** Names must be unique across the profile's and the call's skills, and non-empty: a duplicate or empty name is a 400 before anything is stored, when the profile is saved and when the call starts. A load is one model step under `maxStepsPerRun`. A paused run keeps its skills and offers them again on `resume()`, together with the skills of the profile it resumes on; the stored system prompt keeps the list it started with, as it keeps the addendum. The caps and the prompt slot are configured once, in `IAIGatewayConfig.skillRegistry` and the `CHAT_MAIN` template.
+
 ### D42: The caller decides the format of a text answer
 
 **Decision.** `IGatewayAskInput.outputFormat` is `EOutputFormat.MARKDOWN` (default) or `PLAIN`. With an `outputSchema` the format instruction is left out: the provider's structured-output mode fixes the shape.

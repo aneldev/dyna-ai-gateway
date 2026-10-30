@@ -1,6 +1,9 @@
+import {ISkill} from "../../contracts";
+
 import {IModelRegistry} from "../model-registry";
 import {IRunStore} from "../run-store";
 import {IToolRegistry} from "../tool-registry";
+import {ISkillRegistry} from "../skill-registry";
 import {TWorkingMemoryStrategy} from "../working-memory";
 
 /** Configuration of the AIProfileStore. Lands in IAIGatewayConfig.aiProfileStore. */
@@ -16,6 +19,8 @@ export interface IAIProfileStoreDeps {
   modelRegistry: IModelRegistry;
   toolRegistry: IToolRegistry;
   runStore: IRunStore;
+  /** Validates `IAIProfile.skills` at `upsertProfile` (D124). */
+  skillRegistry: ISkillRegistry;
 }
 
 /**
@@ -43,7 +48,8 @@ export interface IAIProfileStore {
 
   /**
    * Admin: creates or replaces; validates modelId (and cheapModelId, when set) against ModelRegistry,
-   * and allowedTools / approvals against ToolRegistry. The registry's own error surfaces for an unknown or disabled model.
+   * allowedTools / approvals against ToolRegistry, and the names of `skills` with the SkillRegistry (unique, non-empty).
+   * The registry's own error surfaces for an unknown or disabled model.
    */
   upsertProfile(args: {
     tenantId: string;
@@ -142,6 +148,20 @@ export interface IAIProfile {
   workingMemory?: TWorkingMemoryStrategy;
   /** Tenant text appended to the CHAT_MAIN system prompt. */
   promptAddendum: string;
+  /**
+   * Instructions the model loads on demand on every call of this profile (D124).
+   *
+   * > A profile's long rules without paying for them on every call.
+   *
+   * Listed by name and description in the system prompt of a `run()`, loaded with `load_skill` when a task needs one;
+   * inlined whole in an `ask()`. Merged with the call's `skills`; a name present in both is a 400. Names must be unique
+   * here too: `upsertProfile` refuses a duplicate.
+   *
+   * @example [{name: "refund_policy", description: "…", body: "…"}] - the shop's refund rules, read only when a refund comes up
+   *
+   * @default undefined - no skills
+   */
+  skills?: ISkill[];
   /** The loop and output caps of the profile. */
   limits: IAIProfileLimits;
   /** Reserved v2 seam: per-key template body overrides. */

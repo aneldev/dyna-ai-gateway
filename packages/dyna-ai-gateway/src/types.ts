@@ -3,6 +3,7 @@ import {ZodType} from "zod";
 import {
   IFileRef,
   IIssue,
+  ISkill,
   IToolDef,
   IUsage,
   IUserContext,
@@ -74,6 +75,10 @@ import {
   IToolPolicyConfig,
 } from "./internal/tool-policy";
 import {
+  ISkillRegistry,
+  ISkillRegistryConfig,
+} from "./internal/skill-registry";
+import {
   IRun,
   IRunStore,
   IRunStoreConfig,
@@ -131,6 +136,13 @@ export interface IAIGatewayConfig {
   kbRetriever?: IKbRetrieverConfig;
   toolRegistry?: IToolRegistryConfig;
   toolPolicy?: IToolPolicyConfig;
+  /**
+   * What the gateway applies to the skills of every profile and call (D124). The skills themselves are on the profile
+   * (`IAIProfile.skills`) and on the call (`IGatewayAskInput.skills`), never here.
+   *
+   * @default {}
+   */
+  skillRegistry?: ISkillRegistryConfig;
   runStore: IRunStoreConfig;
   humanGate: IHumanGateConfig;
   /**
@@ -177,6 +189,7 @@ export interface IAIGatewayDeps {
   kbIngestor: IKbIngestor;
   toolRegistry: IToolRegistry;
   toolPolicy: IToolPolicy;
+  skillRegistry: ISkillRegistry;
   runStore: IRunStore;
   humanGate: IHumanGate;
   usageGuard: IUsageGuard;
@@ -217,6 +230,7 @@ export interface IAIGatewayOverrides {
   kbIngestor?: TDepFactory<IKbIngestorConfig, IKbIngestorDeps, IKbIngestor>;
   toolRegistry?: TDepFactory<IToolRegistryConfig, undefined, IToolRegistry>;
   toolPolicy?: TDepFactory<IToolPolicyConfig, undefined, IToolPolicy>;
+  skillRegistry?: TDepFactory<ISkillRegistryConfig, undefined, ISkillRegistry>;
   runStore?: TDepFactory<IRunStoreConfig, undefined, IRunStore>;
   humanGate?: TDepFactory<IHumanGateConfig, IHumanGateDeps, IHumanGate>;
   usageGuard?: TDepFactory<IUsageGuardConfig, undefined, IUsageGuard>;
@@ -311,6 +325,20 @@ export interface IGatewayAskInput<TStructured = unknown> {
    * @see docs/architecture "System prompt production layers.md"
    */
   context?: string;
+  /**
+   * Instructions the model may load for this call, on top of the profile's `skills` (D124).
+   *
+   * > What one screen or flow knows and the model should read only when the task needs it.
+   *
+   * `run()`: listed by name and description in the system prompt with the profile's; the model loads a body with the built-in
+   * `load_skill` tool (one model step per load, under `maxStepsPerRun`). `ask()`: the bodies are inlined in the prompt; no
+   * tool. A name that is also in the profile's `skills`, or twice here, is a 400 before anything is stored. A run that pauses
+   * stores them: `resume()` takes none. Not for a rule of every call (`IAIProfile.skills`, `promptAddendum`), nor for the
+   * rule of this one call that the model must always read (`instructions`).
+   *
+   * @example [{name: "export_wizard", description: "How the CSV export works and its limits", body: "…"}] - the help text of the screen the user is on
+   */
+  skills?: ISkill[];
   /** Already stored through uploadFile(). */
   files?: IFileRef[];
   /** Zod schema for a structured answer. */

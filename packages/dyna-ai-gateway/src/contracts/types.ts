@@ -252,6 +252,44 @@ export type TToolVisibleWhenHandler = (args: {
   executed: string[];
 }) => boolean;
 
+/**
+ * Instructions the model loads when a task needs them, instead of reading them on every call (D124).
+ *
+ * Attached to a profile (`IAIProfile.skills`) or to one call (`IGatewayAskInput.skills`). In `run()` the system prompt lists
+ * every skill's `name` and `description`, and the model fetches a `body` with the built-in `load_skill` tool when a task
+ * matches; in `ask()` the bodies are in the prompt (no tool loop there). A long rule that applies to few calls (a refund
+ * policy, an onboarding script, an escalation procedure) belongs here; a rule for every call belongs in `promptAddendum`.
+ */
+export interface ISkill {
+  /**
+   * The name the model loads the skill by; unique among the skills of a call (the profile's and the call's together).
+   *
+   * > A duplicate across the profile and the call is a 400 before anything is stored.
+   *
+   * snake_case, like a tool name, reads best for the model.
+   *
+   * @example "refund_policy"
+   */
+  name: string;
+  /**
+   * One or two sentences the model reads on every `run()` call: what the skill covers and when to load it.
+   *
+   * > The whole cost of a skill that is not loaded; keep it short and specific.
+   *
+   * @example "The refund rules of the shop: amounts, deadlines, who may approve. Load it before you promise or refuse a refund."
+   */
+  description: string;
+  /**
+   * The instructions themselves, Markdown; the model reads them only when it loads the skill (`run()`) or when they are
+   * inlined (`ask()`).
+   *
+   * > Paid only by the calls that need it.
+   *
+   * @example "# Refund policy\n\nA refund is possible within 14 days of delivery …"
+   */
+  body: string;
+}
+
 export interface IToolDef<TInput = unknown, TOutput = unknown> {
   /** Unique, snake_case; the model refers to it by this name. */
   name: string;
