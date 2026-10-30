@@ -3,7 +3,6 @@ import {dynaError} from "dyna-error";
 import {
   IChunk,
   IIssue,
-  ISkill,
 } from "../contracts";
 import {
   IAIProfile,
@@ -34,8 +33,6 @@ export interface IPreparedCall {
   thread: IThread;
   /** The tools of the call and which of them need approval; empty for ask(). */
   resolved: IResolvedTools;
-  /** The skills of the call (D124): the profile's, then the call's, validated; what a run remembers. */
-  skills: ISkill[];
   context: IAssembledContext;
   /** What the call reports before the model ran: the input rules' WARNINGs, then the assembler's (files dropped, turns trimmed). */
   issues: IIssue[];
@@ -284,7 +281,6 @@ export const prepareCall = async <TStructured>(
     profile,
     thread,
     resolved,
-    skills,
     context,
     issues: [...inputCheck.issues, ...context.issues],
     chunks: context.chunkIds.flatMap(chunkId => retrieval.hits.filter(hit => hit.chunk.id === chunkId).map(hit => hit.chunk)),

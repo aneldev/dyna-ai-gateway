@@ -66,7 +66,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** A stored run froze its model at the first step, so a profile change between the pause and the approval never reached the model.
 
-**Consequence.** A pending tool the new profile does not allow is a 400 and the run stays paused. The run is stored with the profile it continued on. What guards the run is not dropped by the switch: the [review of the answer and the approvals](#d113-a-profile-switch-on-resume-keeps-the-review-and-the-approvals) are those of both profiles.
+**Consequence.** A pending tool the new profile does not allow is a 400 and the run stays paused. The run is stored with the profile it continued on. The [skills](#d124-skills-instructions-the-model-loads-on-demand) follow the same rule: the profile's are those of the profile the run continues on, the call's travel with the run. What guards the run is not dropped by the switch: the [review of the answer and the approvals](#d113-a-profile-switch-on-resume-keeps-the-review-and-the-approvals) are those of both profiles.
 
 ### Resume is only for a paused run
 
@@ -90,7 +90,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** A long rule that applies to few calls (a refund policy, an escalation procedure) was paid on every call through `promptAddendum`, whether the task needed it or not. A description costs a line; a body costs only the calls that load it.
 
-**Consequence.** Names must be unique across the profile's and the call's skills, and non-empty: a duplicate or empty name is a 400 before anything is stored, when the profile is saved and when the call starts. A load is one model step under `maxStepsPerRun`. A paused run keeps its skills and offers them again on `resume()`, together with the skills of the profile it resumes on; the stored system prompt keeps the list it started with, as it keeps the addendum. The caps and the prompt slot are configured once, in `IAIGatewayConfig.skillRegistry` and the `CHAT_MAIN` template: the seed holds `{skills}` right after `{addendum}`, before `{cacheBreakpoint}`, so a profile's skills are part of the cached block; a stored template without the placeholder drops the skills of a call with the WARNING `skills_slot_missing`.
+**Consequence.** Names must be unique across the profile's and the call's skills, and non-empty: a duplicate or empty name is a 400 before anything is stored, when the profile is saved and when the call starts. A load is one model step under `maxStepsPerRun`. A paused run keeps the skills its call brought and offers them again on `resume()`, together with the skills of the profile it resumes on (a name in both is a 400 and the run stays paused); the stored system prompt keeps the list it started with, as it keeps the addendum, so a name listed there but no longer offered is an invalid-input tool result, not an error of the call. The caps and the prompt slot are configured once, in `IAIGatewayConfig.skillRegistry` and the `CHAT_MAIN` template: the seed holds `{skills}` right after `{addendum}`, before `{cacheBreakpoint}`, so a profile's skills are part of the cached block; a stored template without the placeholder drops the skills of a call with the WARNING `skills_slot_missing`.
 
 ### D42: The caller decides the format of a text answer
 

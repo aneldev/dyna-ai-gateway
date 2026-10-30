@@ -121,6 +121,7 @@ export class InMemoryRunRepository implements IRunRepository {
           system: [],
         },
         messages: [],
+        skills: undefined,
         pending: undefined,
         answer: undefined,
         updatedAt: isOpen ? new Date() : run.updatedAt,

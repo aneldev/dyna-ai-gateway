@@ -15,6 +15,8 @@ what breaks, the migration, and an AI prompt that performs the migration in your
   A name present in the profile and the call, or twice in one list, or empty, is a 400 before anything is stored, both
   at `upsertProfile` and at the call. `activeTools` cannot name `load_skill` (a 400, as for any tool the profile does
   not list). A stored `CHAT_MAIN` without `{skills}` drops the skills of a call with the WARNING issue `skills_slot_missing`.
+  A paused run stores the skills its call brought (`IRun.skills`, emptied by `anonymizeByUser`); `resume()` offers them
+  again with the skills of the profile it resumes on, the stored system prompt keeps the list of the start.
   `IAIGatewayConfig.skillRegistry` (optional) configures the `SkillRegistry`; `IContextAssemblerDeps.skillRegistry` is a
   new dependency of a host's own `ContextAssembler`.
 

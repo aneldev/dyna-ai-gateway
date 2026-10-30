@@ -4,6 +4,7 @@ import {randomUUID} from "node:crypto";
 import {
   IChunk,
   IIssue,
+  ISkill,
   IToolResultPart,
   IUserContext,
   EIssueSeverity,
@@ -94,6 +95,7 @@ export const settleRun = async <TStructured>(
     templateVersion,
     chunks = [],
     startTurnCount,
+    skills,
     previousRun,
     debug = false,
     onEvent,
@@ -119,6 +121,8 @@ export const settleRun = async <TStructured>(
     chunks?: IChunk[];
     /** The thread's turn count before the run's question was stored; omitted on a resume: the stored run's (D36). */
     startTurnCount?: number;
+    /** The skills the call brought (D124), stored on the run for its resumes; omitted on a resume: the stored run's. */
+    skills?: ISkill[];
     /** The run being resumed; omitted for a fresh run. */
     previousRun?: IRun;
     /** Attach the transcript to the answer (IGatewayRunInput.debug). */
@@ -140,12 +144,14 @@ export const settleRun = async <TStructured>(
       startTurnCount: previousRun.startTurnCount,
       chunkIds: previousRun.chunkIds,
       templateVersion: previousRun.templateVersion,
+      ...previousRun.skills && {skills: previousRun.skills},
     }
     : requireRunMemory({
       threadId,
       startTurnCount,
       chunkIds: chunks.map(chunk => chunk.id),
       templateVersion,
+      skills,
     });
   const {
     chunkIds,
@@ -568,11 +574,12 @@ const withoutFinalAnswer = (messages: IMessage[]): IMessage[] => {
   ];
 };
 
-/** What a stored run keeps of its first step, so a resumed run is not poorer than a fresh one (D36). */
+/** What a stored run keeps of its first step, so a resumed run is not poorer than a fresh one (D36); `skills` when the call brought any (D124). */
 export interface IRunMemory {
   startTurnCount: number;
   chunkIds: string[];
   templateVersion: number;
+  skills?: ISkill[];
 }
 
 /** A fresh run must bring its turn count and template version: a settlement without them is a gateway bug, not a resume. */
@@ -582,11 +589,13 @@ const requireRunMemory = (
     startTurnCount,
     chunkIds,
     templateVersion,
+    skills,
   }: {
     threadId: string;
     startTurnCount?: number;
     chunkIds: string[];
     templateVersion?: number;
+    skills?: ISkill[];
   },
 ): IRunMemory => {
   if (startTurnCount === undefined || templateVersion === undefined) {
@@ -605,5 +614,6 @@ const requireRunMemory = (
     startTurnCount,
     chunkIds,
     templateVersion,
+    ...skills !== undefined && skills.length > 0 && {skills},
   };
 };

@@ -1,5 +1,6 @@
 import {
   IIssue,
+  ISkill,
   TThreadIds,
 } from "../../contracts";
 
@@ -123,7 +124,7 @@ export interface IRunRepository {
   }): Promise<number>;
   /**
    * Keeps the runs of a user as skeletons (GDPR pseudonymisation): `userId` becomes the pseudonym; `messages`, `request.system`,
-   * `request.outputSchema`, `pending` and `answer` are emptied; a RUNNING or PAUSED run becomes CANCELLED; id, status, steps and dates stay.
+   * `request.outputSchema`, `skills`, `pending` and `answer` are emptied; a RUNNING or PAUSED run becomes CANCELLED; id, status, steps and dates stay.
    * Returns how many.
    */
   anonymizeByUser(args: {
@@ -146,8 +147,17 @@ export interface IRun {
    * is code, not data, so `resume` takes it again from its caller (D36).
    */
   request: Omit<IModelRequest, "messages" | "outputSchema">;
-  /** Tool names resolved for this run; re-fetched from ToolRegistry on resume. */
+  /** Tool names resolved for this run; re-fetched from ToolRegistry on resume. `load_skill` among them is rebuilt from `skills`. */
   toolNames: string[];
+  /**
+   * The skills the call brought (`IGatewayRunInput.skills`, D124), present when it brought any.
+   *
+   * > A skill is data, so the run keeps it: a resume offers it again, next to the skills of the profile it resumes on.
+   *
+   * The profile's skills are not stored: they are read from the profile of the resume, as its tools are (D65). Emptied by
+   * `anonymizeByUser`.
+   */
+  skills?: ISkill[];
   /**
    * The thread's turn count before the run's question was stored (D36).
    *

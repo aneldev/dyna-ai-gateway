@@ -52,7 +52,8 @@ profile it is given.
 - A paused run resumes on the profile it started with, unless `resume({profileId})` names [another one](../architecture/Decisions.md#d65-resume-continues-a-paused-run-on-another-profile): the
   continuation then runs on that profile's model, tools and limits; the system prompt and the messages so far stay. The
   review of the answer and the approvals stay those of both profiles together, so a switch cannot skip a reviewer or an
-  approval the run started under.
+  approval the run started under. The [skills](../architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)
+  the model can load are the new profile's and the ones the call brought; the list in the system prompt stays the one of the start.
 - `profileId` is required on every call, also on an existing thread. The gateway has no default profile: when the user has
   not picked a model, the application passes the profile it chose as its fallback ([D103](../architecture/Decisions.md#d103-a-call-always-names-its-profile)).
 
