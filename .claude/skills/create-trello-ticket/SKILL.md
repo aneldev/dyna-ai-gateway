@@ -38,6 +38,15 @@ Nothing is written to Trello (no template bump, no card) until the developer has
 2. Wait for the developer's answer. Revise and re-present until the developer says it is approved (e.g. "approved", "ok, create it"). Any change after approval re-opens the gate for the changed part.
 3. Only then continue with Step 1. The approved ACs become the `ACs - Given When Then` checklist, the approved Dev ACs the `Dev ACs` checklist, the approved Architecture the `### Architecture` chapter (Step 4).
 
+**When the ACs are not known yet** (the problem is clear, the solution is not): the gate presents the **Problem** and the
+**suggested approaches** (2–4, one line each, undecided) in place of the ACs and Dev ACs. It is still one ticket, the same
+card: the card's description states the problem and lists the approaches (`### Goal & Success Criteria _overview_` says
+that the ACs are written after the analysis), the `ACs - Given When Then` checklist holds exactly one item,
+`Analysis needed: the ACs are written from it`, and `Dev ACs` stays empty. The analysis is the first phase of the ticket's
+plan (`stepwise-plan` skill, Phase 0: "A ticket whose ACs are not known yet"); its outcome is written on this same card as
+the ACs and Dev ACs, approved in chat first, and the analysis itself is posted on the card as comments when the ticket is
+done. Never a second ticket for the analysis.
+
 ## Step 1 — Locate the template
 
 The prefix is the only key: the template card is found by it, and the card's own `board` and `list` are the ticket's board and list. Nothing is hard-coded.
@@ -116,7 +125,7 @@ All template checklists already exist on the new card (Step 3). This step only d
 | Checklist | Action |
 |---|---|
 | Goal & Success Criteria | Fill with very short, meaningful items |
-| ACs - Given When Then | Fill with very short Given/When/Then items |
+| ACs - Given When Then | Fill with very short Given/When/Then items; when the ACs are not known yet (Step 0) the single item `Analysis needed: the ACs are written from it` |
 | Dev ACs | Fill with the Dev ACs **approved in Step 0** (the tools developers get, one item each). If the developer defined none in the gate, leave it empty — never invent them. |
 | Dev | Exactly **one** item — Step 5a |
 | QA - Edge Cases & Test Scenarios | Fill **only if necessary**, very short items |
