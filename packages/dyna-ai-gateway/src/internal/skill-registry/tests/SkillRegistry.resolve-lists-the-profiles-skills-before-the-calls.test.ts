@@ -7,7 +7,7 @@ import {
 
 /** The merged list keeps the order the model reads it in: the profile's skills, then the call's, unchanged. */
 test("resolve lists the profile's skills before the call's, as given", () => {
-  const registry = new SkillRegistry({});
+  const registry = new SkillRegistry();
   const profileSkills = [makeSkill("refund_policy"), makeSkill("escalation")];
   const skills = [makeSkill("export_wizard")];
 

@@ -7,7 +7,7 @@ import {
 
 /** The call wins nothing over the profile: the same name in both is a 400 that names it, before anything is stored. */
 test("resolve refuses a skill name present in the profile and in the call with a 400 naming the duplicate", () => {
-  const registry = new SkillRegistry({});
+  const registry = new SkillRegistry();
 
   const refused = (): unknown => registry.resolve({
     profile: makeProfileWithSkills([makeSkill("refund_policy")]),

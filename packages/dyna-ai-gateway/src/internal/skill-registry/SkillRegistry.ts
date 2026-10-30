@@ -1,10 +1,19 @@
+import {z} from "zod";
 import {dynaError} from "dyna-error";
 
-import {ISkill} from "../../contracts";
+import {
+  ISkill,
+  IToolDef,
+  EToolCallVerdict,
+} from "../../contracts";
 
 import {IAIProfile} from "../ai-profile-store";
+import {defineTool} from "../tool-registry";
 
+import {LOAD_SKILL_TOOL_NAME} from "./constants";
 import {
+  ILoadSkillInput,
+  ILoadSkillResult,
   ISkillRegistry,
   ISkillRegistryConfig,
 } from "./types";
@@ -12,6 +21,11 @@ import {
 const SKILLS_LIST_INTRO =
   "Skills — instructions you can load when a task needs them. Call load_skill with the name to read one; do not guess its content.";
 const SKILLS_INLINE_INTRO = "Skills — instructions for this call:";
+const LOAD_SKILL_DESCRIPTION = [
+  "Loads the full instructions of one of the skills listed in the system prompt and returns them as {name, body}.",
+  "Call it before acting on a topic a skill covers, and follow the body you get; do not guess what a skill says.",
+  "Load only the skill the task needs, once per run.",
+].join(" ");
 
 /**
  * SkillRegistry -- the skills of a call, from the profile's and the call's lists to what the model gets
@@ -25,6 +39,7 @@ const SKILLS_INLINE_INTRO = "Skills — instructions for this call:";
  *
  * - `resolve` merges the two lists and refuses duplicate or empty names, so the model never sees two skills of one name.
  * - `renderSlot` writes the `{skills}` slot of CHAT_MAIN: the list the model loads from with `load_skill`, or the bodies inline.
+ * - `makeLoadSkillTool` builds the per-call built-in `load_skill`, whose input names only the skills of the call.
  *
  * It sits between the stores and the call: `AIProfileStore` asks it when a profile is saved, the call preparation asks it
  * before the system prompt is rendered and the tools are resolved. It holds no state beyond its config.
@@ -42,7 +57,8 @@ const SKILLS_INLINE_INTRO = "Skills — instructions for this call:";
  *
  * ## When shouldn't use it
  *
- * To read a skill at run time: the model does that through the `load_skill` tool, which is built from the resolved list.
+ * To read a skill at run time: the model does that through the `load_skill` tool, which `makeLoadSkillTool` builds from the
+ * resolved list.
  */
 export class SkillRegistry implements ISkillRegistry {
   constructor(protected readonly config: ISkillRegistryConfig = {}) {
@@ -138,5 +154,73 @@ export class SkillRegistry implements ISkillRegistry {
       SKILLS_INLINE_INTRO,
       ...skills.map(skill => `## ${skill.name}\n\n${skill.body.trim()}`),
     ].join("\n\n");
+  }
+
+  /**
+   * makeLoadSkillTool -- the built-in `load_skill` tool of one call
+   *
+   * # About
+   *
+   * > The model asks for a skill by name and gets its instructions; nothing else can be asked for.
+   *
+   * The tool's `name` input is an enum of the given skills' names, so the model cannot load a skill the call does not have.
+   * `policy` is ALLOW, it never ends the run and is visible on every step; `maxOutputChars` is sized to the longest
+   * serialised `{name, body}`, so a long body is never cut by the registry's default. `execute` returns `{name, body}`.
+   *
+   * # Who needs it
+   *
+   * The call preparation of a `run()` and of a `resume()`, with the list `resolve` returned, when that list is not empty.
+   * An `ask()` never builds it: without tools the bodies are inlined.
+   *
+   * # Pitfalls
+   *
+   * An empty list is a 400: the tool must not be offered when there is nothing to load.
+   */
+  public makeLoadSkillTool(
+    {skills}: {
+      /** The resolved skills of the call (`resolve`); at least one. */
+      skills: ISkill[];
+    },
+  ): IToolDef<ILoadSkillInput, ILoadSkillResult> {
+    const [first, ...rest] = skills.map(skill => skill.name);
+    if (first === undefined) {
+      throw dynaError({
+        code: 5380231947521,
+        status: 400,
+        message: `SkillRegistry: the [${LOAD_SKILL_TOOL_NAME}] tool needs at least one skill`,
+      });
+    }
+    const maxOutputChars = Math.max(...skills.map(skill => JSON.stringify(this.toResult(skill)).length));
+    return defineTool<ILoadSkillInput, ILoadSkillResult>({
+      name: LOAD_SKILL_TOOL_NAME,
+      description: LOAD_SKILL_DESCRIPTION,
+      inputSchema: z.object({name: z.enum([first, ...rest]).describe("The name of the skill, exactly as listed in the system prompt")}),
+      tags: ["skill"],
+      policy: EToolCallVerdict.ALLOW,
+      maxOutputChars,
+      execute: async ({input}): Promise<ILoadSkillResult> => {
+        const skill = skills.find(candidate => candidate.name === input.name);
+        // The schema refuses an unknown name before execute; this guards the list the closure holds
+        if (!skill) {
+          throw dynaError({
+            code: 5380231947524,
+            status: 404,
+            message: `SkillRegistry: skill [${input.name}] is not among the skills of this call`,
+            userMessage: `There is no skill named [${input.name}] in this call; use one of the names listed in the system prompt.`,
+            canRetry: false,
+            data: {name: input.name},
+          });
+        }
+        return this.toResult(skill);
+      },
+    });
+  }
+
+  /** The tool's result for a skill: `name` and `body`, nothing else (the description is already in the prompt). */
+  private toResult(skill: ISkill): ILoadSkillResult {
+    return {
+      name: skill.name,
+      body: skill.body,
+    };
   }
 }

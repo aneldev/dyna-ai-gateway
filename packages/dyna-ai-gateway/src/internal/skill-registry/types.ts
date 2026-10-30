@@ -1,4 +1,7 @@
-import {ISkill} from "../../contracts";
+import {
+  ISkill,
+  IToolDef,
+} from "../../contracts";
 
 import {IAIProfile} from "../ai-profile-store";
 
@@ -63,4 +66,51 @@ export interface ISkillRegistry {
     /** `true` writes the bodies into the prompt; `false` lists name and description for `load_skill`. */
     inline: boolean;
   }): string;
+
+  /**
+   * makeLoadSkillTool -- the built-in `load_skill` tool of one call
+   *
+   * # About
+   *
+   * > The model asks for a skill by name and gets its instructions; nothing else can be asked for.
+   *
+   * The tool's `name` input is an enum of the given skills' names, so the model cannot load a skill the call does not have.
+   * `policy` is ALLOW, it never ends the run and is visible on every step; `maxOutputChars` is sized to the longest
+   * serialised `{name, body}`, so a long body is never cut by the registry's default. `execute` returns `{name, body}`.
+   *
+   * # Who needs it
+   *
+   * The call preparation of a `run()` and of a `resume()`, with the list `resolve` returned, when that list is not empty.
+   * An `ask()` never builds it: without tools the bodies are inlined.
+   *
+   * # Pitfalls
+   *
+   * An empty list is a 400: the tool must not be offered when there is nothing to load.
+   */
+  makeLoadSkillTool(args: {
+    /** The resolved skills of the call (`resolve`); at least one. */
+    skills: ISkill[];
+  }): IToolDef<ILoadSkillInput, ILoadSkillResult>;
+}
+
+/**
+ * The input of the built-in `load_skill` tool, as the model fills it.
+ *
+ * Parsed by the `ToolRegistry` with the tool's schema, whose `name` is an enum of the call's skills.
+ */
+export interface ILoadSkillInput {
+  /** The name of the skill to load, one of the names listed in the system prompt. */
+  name: string;
+}
+
+/**
+ * The result of the built-in `load_skill` tool: the skill the model asked for.
+ *
+ * Returned to the model as the tool's result; the `body` is the instructions it then follows.
+ */
+export interface ILoadSkillResult {
+  /** The name the model asked for. */
+  name: string;
+  /** The full instructions of the skill. */
+  body: string;
 }

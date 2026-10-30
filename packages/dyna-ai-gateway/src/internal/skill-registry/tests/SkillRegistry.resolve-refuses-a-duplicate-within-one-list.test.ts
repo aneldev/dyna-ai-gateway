@@ -7,7 +7,7 @@ import {
 
 /** Uniqueness is by exact match within one list too; a name differing in case is another name. */
 test("resolve refuses a name that appears twice within the call's skills; a different case is a different name", () => {
-  const registry = new SkillRegistry({});
+  const registry = new SkillRegistry();
 
   const refused = (): unknown => registry.resolve({
     profile: makeProfileWithSkills(),

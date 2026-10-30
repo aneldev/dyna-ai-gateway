@@ -7,7 +7,7 @@ import {
 
 /** A name the model cannot call by is refused: empty, or blanks only, counted in `data.emptyNames`. */
 test("resolve refuses a skill whose name is empty after a trim with a 400 counting the empty names", () => {
-  const registry = new SkillRegistry({});
+  const registry = new SkillRegistry();
 
   const refused = (): unknown => registry.resolve({
     profile: makeProfileWithSkills([makeSkill("   ")]),
