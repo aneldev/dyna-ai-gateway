@@ -1,8 +1,8 @@
 import {dynaError} from "dyna-error";
 
 import {IToolDef} from "../contracts";
-import {LOAD_SKILL_TOOL_NAME} from "../internal";
 import {IAIGatewayDeps} from "../types";
+import {LOAD_SKILL_TOOL_NAME} from "../internal";
 
 /**
  * The tools of a stored run, for `ToolPolicy.resolve` on resume: the registry's by name, the additional ones (D66) from what the
