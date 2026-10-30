@@ -508,9 +508,11 @@ history, the question and the answer are never cached. A model caches only a pre
 tokens on the Opus 5.5 / Sonnet 5.5 / Haiku 5.5 family, 1 024–4 096 on older ones, e.g. 4 096 on `claude-haiku-4-5`), so a
 short stable block is sent with the marker and simply not cached; a long addendum and many tools make it pay.
 
-OpenAI caches a prefix of 1 024 tokens or more on its own, without a marker; the gateway sends `promptCacheKey`, a hash of
-the stable block's text, so the calls that share the block land on the same cache. The other providers get the blocks as
-one plain string.
+Claude on Amazon Bedrock gets the same split with Bedrock's cache point on the stable block; Bedrock takes no marker on the
+tool definitions. Set `costCacheReadPerMTokUsd` and `costCacheWritePerMTokUsd` on a Bedrock model entry: Bedrock serves
+several model families, so the gateway assumes no cache discount there. OpenAI caches a prefix of 1 024 tokens or more on
+its own, without a marker; the gateway sends `promptCacheKey`, a hash of the stable block's text, so the calls that share
+the block land on the same cache. The other providers get the blocks as one plain string.
 
 - **The cost follows the cache.** `IUsage` of every call reports `inputTokens` (the whole prompt), `cachedInputTokens`
   (read from the cache) and `cacheWriteInputTokens` (written by this call); the usage adapter and the trace get them. The

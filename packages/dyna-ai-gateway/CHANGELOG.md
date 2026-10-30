@@ -104,7 +104,8 @@ what breaks, the migration, and an AI prompt that performs the migration in your
   (`IModelRequest.cacheTools`). A stored template with a per-call slot before the breakpoint is sent uncached with the new
   WARNING issue `prompt_cache_off`. See the FAQ, "Is the system prompt cached, and what does it cost?".
 - Anthropic cache markers: on an Anthropic model the stable block is sent as its own system message with
-  `cache_control: ephemeral` (the 5-minute cache), and with `cacheTools` the last tool definition too. The other providers
+  `cache_control: ephemeral` (the 5-minute cache), and with `cacheTools` the last tool definition too. Claude on Amazon
+  Bedrock gets the same split with Bedrock's cache point on the stable block (no marker on the tools). The other providers
   receive the blocks joined as one string, as before.
 - OpenAI `promptCacheKey`: on an OpenAI model a request with a stable block carries the provider option `promptCacheKey`,
   a hash of the stable block's text, so the calls that share the block are routed to the same cache. Without a stable

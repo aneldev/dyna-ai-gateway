@@ -16,7 +16,7 @@ export const toSdkTools = (
     cacheLast = false,
   }: {
     tools: IToolDef[];
-    /** Anthropic only, and only when the request says the tool definitions may be cached (`IModelRequest.cacheTools`). */
+    /** Anthropic only (the Bedrock provider takes no marker on a tool), and only when the request says the tool definitions may be cached (`IModelRequest.cacheTools`). */
     cacheLast?: boolean;
   },
 ): ToolSet =>
