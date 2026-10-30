@@ -9,6 +9,8 @@ When you do not know something, say so instead of guessing.
 
 {addendum}
 
+{skills}
+
 {cacheBreakpoint}
 
 Today is {today}. The user's locale is {locale} and their timezone is {timezone}.

@@ -40,4 +40,27 @@ export interface ISkillRegistry {
     /** The call's skills (`IGatewayAskInput.skills`), appended after the profile's. */
     skills?: ISkill[];
   }): ISkill[];
+
+  /**
+   * renderSlot -- the text of the `{skills}` slot of CHAT_MAIN
+   *
+   * # About
+   *
+   * > Listed when the model can load them, written out when it cannot.
+   *
+   * `inline: false` (a `run()`, the `load_skill` tool is offered): a header that tells the model to call `load_skill` and
+   * one `- name: description` line per skill, so the bodies cost nothing until a task needs one. `inline: true` (an `ask()`,
+   * no tools): the header "Skills — instructions for this call:" and every skill as a `## name` section with its body.
+   * No skills: an empty string, the slot renders to nothing.
+   *
+   * # Who needs it
+   *
+   * `ContextAssembler.build`, with the resolved list of the call and whether `load_skill` is among the call's tools.
+   */
+  renderSlot(args: {
+    /** The resolved skills of the call (`resolve`), in order. */
+    skills: ISkill[];
+    /** `true` writes the bodies into the prompt; `false` lists name and description for `load_skill`. */
+    inline: boolean;
+  }): string;
 }

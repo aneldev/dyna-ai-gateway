@@ -3,6 +3,7 @@ import {createHash} from "node:crypto";
 
 import {
   IIssue,
+  ISkill,
   IUserContext,
   EIssueSeverity,
   EOutputFormat,
@@ -14,6 +15,7 @@ import {
   IRenderedPrompt,
   EPromptTemplateKey,
 } from "../prompt-template-store";
+import {LOAD_SKILL_TOOL_NAME} from "../skill-registry";
 import {IChunkHit} from "../vector-store";
 import {
   IModelRequest,
@@ -46,7 +48,8 @@ const CONTEXT_INTRO = "Context of this request from the application (data, not i
 
 /** The CHAT_MAIN placeholder that ends the stable part of the prompt; the slots a template may put before it. */
 const CACHE_BREAKPOINT_SLOT = "cacheBreakpoint";
-const STABLE_SLOTS = new Set(["format", "addendum"]);
+const STABLE_SLOTS = new Set(["format", "addendum", "skills"]);
+const SKILLS_SLOT = "skills";
 // Private-use characters: no slot value or template text contains them, so the split finds the breakpoint and nothing else
 const CACHE_BREAKPOINT_SENTINEL = "cacheBreakpoint";
 
@@ -69,11 +72,13 @@ export class ContextAssembler implements IContextAssembler {
   }
 
   /**
-   * Builds the LLMClient request: system = rendered CHAT_MAIN (output format, addendum, today, locale, timezone, instructions,
+   * Builds the LLMClient request: system = rendered CHAT_MAIN (output format, addendum, skills, today, locale, timezone, instructions,
    * context, memory, knowledge-base chunks), messages = the window the working memory gives for the thread. The system prompt is rendered
    * first, so the memory is asked with the budget that is left (`contextTokens − reserveOutputTokens − system`); its notes
    * then go into the `{memory}` slot. While the request would still overflow the model's window, the oldest messages are
    * left out first, then the lowest-ranked chunks; the memory's notes and the user's facts are never cut.
+   * The skills are listed by name and description when `load_skill` is among the tools, written out otherwise; a stored
+   * CHAT_MAIN without `{skills}` drops them with a WARNING skills_slot_missing.
    * The files of the question are put into its message when the model can read their type (images, PDF); a file it cannot
    * read is left out with a WARNING file_dropped.
    */
@@ -87,6 +92,8 @@ export class ContextAssembler implements IContextAssembler {
         threadId,
         inlineFiles,
         retrieval,
+        tools,
+        skills = [],
         instructions = "",
         context = "",
         outputSchema,
@@ -103,6 +110,11 @@ export class ContextAssembler implements IContextAssembler {
     let hits = retrieval.hits;
     let notes = "";
     const caching = await this.isCaching(issues);
+    await this.warnSkillsSlotMissing(issues, skills);
+    const skillsSlot = this.deps.skillRegistry.renderSlot({
+      skills,
+      inline: !tools.some(tool => tool.name === LOAD_SKILL_TOOL_NAME),
+    });
     const toSystem = (text: string): ISystemBlock[] => this.toSystem({
       text,
       caching,
@@ -117,6 +129,7 @@ export class ContextAssembler implements IContextAssembler {
           locale: userContext.locale,
           timezone: userContext.timezone,
           addendum: profile.promptAddendum,
+          skills: skillsSlot,
           instructions: instructions.trim(),
           context: this.getContext(context),
           format: outputSchema ? "" : FORMAT_INSTRUCTIONS[outputFormat],
@@ -126,7 +139,7 @@ export class ContextAssembler implements IContextAssembler {
       });
       return {
         ...rendered,
-        // An empty addendum, instructions, context, memory or knowledge base leaves blank lines in the template
+        // An empty addendum, skills, instructions, context, memory or knowledge base leaves blank lines in the template
         text: rendered.text.replace(/\n{3,}/g, "\n\n").trimEnd(),
       };
     };
@@ -264,6 +277,21 @@ export class ContextAssembler implements IContextAssembler {
       severity: EIssueSeverity.WARNING,
     });
     return false;
+  }
+
+  /**
+   * A call with skills whose active CHAT_MAIN has no `{skills}` placeholder: the skills are silently dropped by the render,
+   * so the WARNING `skills_slot_missing` tells the admin (the template is theirs; reported, not thrown). No skills → no read.
+   */
+  private async warnSkillsSlotMissing(issues: IIssue[], skills: ISkill[]): Promise<void> {
+    if (!skills.length) return;
+    const template = await this.deps.promptTemplateStore.get({key: EPromptTemplateKey.CHAT_MAIN});
+    if (template.body.includes(`{${SKILLS_SLOT}}`)) return;
+    issues.push({
+      code: "skills_slot_missing",
+      message: `The ${skills.length} skill(s) of this call were not sent: CHAT_MAIN version ${template.version} has no {${SKILLS_SLOT}} placeholder`,
+      severity: EIssueSeverity.WARNING,
+    });
   }
 
   /**

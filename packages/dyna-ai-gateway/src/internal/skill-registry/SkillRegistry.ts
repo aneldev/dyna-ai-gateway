@@ -9,6 +9,10 @@ import {
   ISkillRegistryConfig,
 } from "./types";
 
+const SKILLS_LIST_INTRO =
+  "Skills — instructions you can load when a task needs them. Call load_skill with the name to read one; do not guess its content.";
+const SKILLS_INLINE_INTRO = "Skills — instructions for this call:";
+
 /**
  * SkillRegistry -- the skills of a call, from the profile's and the call's lists to what the model gets
  *
@@ -20,6 +24,7 @@ import {
  * profile or to one call. This class owns everything the gateway does with them that is not a store's or the assembler's job:
  *
  * - `resolve` merges the two lists and refuses duplicate or empty names, so the model never sees two skills of one name.
+ * - `renderSlot` writes the `{skills}` slot of CHAT_MAIN: the list the model loads from with `load_skill`, or the bodies inline.
  *
  * It sits between the stores and the call: `AIProfileStore` asks it when a profile is saved, the call preparation asks it
  * before the system prompt is rendered and the tools are resolved. It holds no state beyond its config.
@@ -40,7 +45,7 @@ import {
  * To read a skill at run time: the model does that through the `load_skill` tool, which is built from the resolved list.
  */
 export class SkillRegistry implements ISkillRegistry {
-  constructor(protected readonly config: ISkillRegistryConfig) {
+  constructor(protected readonly config: ISkillRegistryConfig = {}) {
   }
 
   /**
@@ -93,5 +98,45 @@ export class SkillRegistry implements ISkillRegistry {
       });
     }
     return merged;
+  }
+
+  /**
+   * renderSlot -- the text of the `{skills}` slot of CHAT_MAIN
+   *
+   * # About
+   *
+   * > Listed when the model can load them, written out when it cannot.
+   *
+   * `inline: false` (a `run()`, the `load_skill` tool is offered): a header that tells the model to call `load_skill` and
+   * one `- name: description` line per skill, so the bodies cost nothing until a task needs one. `inline: true` (an `ask()`,
+   * no tools): the header "Skills — instructions for this call:" and every skill as a `## name` section with its body.
+   * No skills: an empty string, the slot renders to nothing.
+   *
+   * # Who needs it
+   *
+   * `ContextAssembler.build`, with the resolved list of the call and whether `load_skill` is among the call's tools.
+   */
+  public renderSlot(
+    {
+      skills,
+      inline,
+    }: {
+      /** The resolved skills of the call (`resolve`), in order. */
+      skills: ISkill[];
+      /** `true` writes the bodies into the prompt; `false` lists name and description for `load_skill`. */
+      inline: boolean;
+    },
+  ): string {
+    if (!skills.length) return "";
+    if (!inline) {
+      return [
+        SKILLS_LIST_INTRO,
+        ...skills.map(skill => `- ${skill.name}: ${skill.description}`),
+      ].join("\n");
+    }
+    return [
+      SKILLS_INLINE_INTRO,
+      ...skills.map(skill => `## ${skill.name}\n\n${skill.body.trim()}`),
+    ].join("\n\n");
   }
 }

@@ -498,7 +498,7 @@ The system prompt is sent as two blocks, split at the `{cacheBreakpoint}` placeh
 
 | Block    | Holds                                                                                                  | Same on                   |
 |----------|--------------------------------------------------------------------------------------------------------|---------------------------|
-| Stable   | the template text, the output format, the profile's `promptAddendum`                                   | every call of the profile |
+| Stable   | the template text, the output format, the profile's `promptAddendum`, the skills                       | every call of the profile |
 | Per-call | the date, locale and timezone, the call's `instructions` and `context`, the memory, the knowledge base | this call                 |
 
 The stable block is marked for the provider's cache; the `LLMClient` puts the provider's marker on it (Anthropic:
@@ -520,6 +520,9 @@ the block land on the same cache. The other providers get the blocks as one plai
   `costCacheWritePerMTokUsd`, the rest at `costInPerMTokUsd`. Both are optional: on an Anthropic model they default to
   0.1× and 1.25× the input price; on any other provider to the input price itself, so set `costCacheReadPerMTokUsd` on an
   OpenAI model entry if its cached rate should show in the estimate.
+- **Skills are in the stable block** ([D124](../architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)):
+  a profile's `skills` are the same on every call, so they are cached with the addendum. A call that passes its own `skills`
+  changes the block: calls with the same skill set read one entry, a different set writes another.
 - **Switch it off:** `contextAssembler: {promptCaching: false, …}`: one block, no marker.
 - **A stored template** (`PromptTemplateStore`, a new version of `CHAT_MAIN`) is cached only when it keeps
   `{cacheBreakpoint}` with nothing per-call before it. A per-call slot before it switches the cache off for the call and

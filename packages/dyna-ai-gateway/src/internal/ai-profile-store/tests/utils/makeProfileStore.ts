@@ -73,7 +73,7 @@ export const makeProfileStore = async (
     modelRegistry: new ModelRegistry({repository: new InMemoryModelRegistryRepository({models: [modelA]})}),
     toolRegistry: new ToolRegistry({tools: []}),
     runStore: new RunStore({repository: runRepository}),
-    skillRegistry: new SkillRegistry({}),
+    skillRegistry: new SkillRegistry(),
   });
   return {
     store,

@@ -95,7 +95,7 @@ const setup = async (profiles: IAIProfile[], cacheTtlMs?: number): Promise<ISetu
         modelRegistry: new ModelRegistry({repository: modelRepository}),
         toolRegistry: new ToolRegistry({tools: [refundTool]}),
         runStore: new RunStore({repository: new InMemoryRunRepository()}),
-        skillRegistry: new SkillRegistry({}),
+        skillRegistry: new SkillRegistry(),
       },
     ),
   };

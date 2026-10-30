@@ -2,6 +2,7 @@ import {ZodType} from "zod";
 
 import {
   IIssue,
+  ISkill,
   IToolDef,
   IUserContext,
   EOutputFormat,
@@ -13,6 +14,7 @@ import {
 } from "../model-registry";
 import {IAIProfile} from "../ai-profile-store";
 import {IPromptTemplateStore} from "../prompt-template-store";
+import {ISkillRegistry} from "../skill-registry";
 import {ITurnBuilder} from "../turn-builder";
 import {IWorkingMemory} from "../working-memory";
 import {IUserMemoryFact} from "../user-memory-store";
@@ -69,6 +71,8 @@ export interface IContextAssemblerConfig {
 /** Shared instances ContextAssembler needs; created once by AIGateway and passed as the second constructor argument. */
 export interface IContextAssemblerDeps {
   promptTemplateStore: IPromptTemplateStore;
+  /** Renders the `{skills}` slot from the call's skills (D124). */
+  skillRegistry: ISkillRegistry;
   turnBuilder: ITurnBuilder;
   /** Asked for the history of every request, once the system prompt is rendered and the budget is known. */
   workingMemory: IWorkingMemory;
@@ -81,11 +85,13 @@ export interface IContextAssemblerDeps {
  */
 export interface IContextAssembler {
   /**
-   * Builds the LLMClient request: system = rendered CHAT_MAIN (output format, addendum, today, locale, timezone, instructions,
+   * Builds the LLMClient request: system = rendered CHAT_MAIN (output format, addendum, skills, today, locale, timezone, instructions,
    * context, memory, knowledge-base chunks), messages = the window the working memory gives for the thread. The system prompt is rendered
    * first, so the memory is asked with the budget that is left (`contextTokens − reserveOutputTokens − system`); its notes
    * then go into the `{memory}` slot. While the request would still overflow the model's window, the oldest messages are
    * left out first, then the lowest-ranked chunks; the memory's notes and the user's facts are never cut.
+   * The skills are listed by name and description when `load_skill` is among the tools, written out otherwise; a stored
+   * CHAT_MAIN without `{skills}` drops them with a WARNING skills_slot_missing.
    * The files of the question are put into its message when the model can read their type (images, PDF); a file it cannot
    * read is left out with a WARNING file_dropped.
    */
@@ -111,6 +117,16 @@ export interface IContextInput {
   inlineFiles: IInlineFilePart[];
   retrieval: IRetrievalResult;
   tools: IToolDef[];
+  /**
+   * The skills of the call, for the `{skills}` slot (D124).
+   *
+   * > The resolved list: the profile's skills, then the call's (`SkillRegistry.resolve`).
+   *
+   * Listed by name and description when `tools` holds `load_skill`, written out in full otherwise.
+   *
+   * @default [] - no skills, the slot renders to nothing
+   */
+  skills?: ISkill[];
   /**
    * Text of the `{instructions}` slot, from `IGatewayAskInput.instructions`.
    *

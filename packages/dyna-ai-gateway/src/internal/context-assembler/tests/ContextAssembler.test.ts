@@ -16,6 +16,7 @@ import {
   PromptTemplateStore,
   EPromptTemplateKey,
 } from "../../prompt-template-store";
+import {SkillRegistry} from "../../skill-registry";
 import {IChunkHit} from "../../vector-store";
 import {TurnBuilder} from "../../turn-builder";
 import {
@@ -348,6 +349,7 @@ describe("ContextAssembler", () => {
       });
       const {request} = await new ContextAssembler(assemblerConfigBase, {
         promptTemplateStore,
+        skillRegistry: new SkillRegistry(),
         turnBuilder: new TurnBuilder(),
         workingMemory: makeMemory(undefined, notes),
       }).build({input: makeInput({userFacts})});

@@ -12,6 +12,7 @@ import {
   PromptTemplateStore,
   EPromptTemplateKey,
 } from "../../../prompt-template-store";
+import {SkillRegistry} from "../../../skill-registry";
 import {TurnBuilder} from "../../../turn-builder";
 
 import {ContextAssembler} from "../../ContextAssembler";
@@ -112,6 +113,7 @@ export const makeAssembler = (
     ...config,
   }, {
     promptTemplateStore,
+    skillRegistry: new SkillRegistry(),
     turnBuilder: new TurnBuilder(),
     workingMemory,
   });
