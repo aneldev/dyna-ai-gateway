@@ -137,8 +137,9 @@ export interface IAIGatewayConfig {
   toolRegistry?: IToolRegistryConfig;
   toolPolicy?: IToolPolicyConfig;
   /**
-   * What the gateway applies to the skills of every profile and call (D124). The skills themselves are on the profile
-   * (`IAIProfile.skills`) and on the call (`IGatewayAskInput.skills`), never here.
+   * What the gateway applies to the skills of every profile and call (D124): the caps `maxSkills` (default 50) and
+   * `maxBodyChars` (default 50 000). The skills themselves are on the profile (`IAIProfile.skills`) and on the call
+   * (`IGatewayAskInput.skills`), never here.
    *
    * @default {}
    */

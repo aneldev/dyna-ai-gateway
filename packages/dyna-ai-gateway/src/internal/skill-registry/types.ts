@@ -12,6 +12,30 @@ import {IAIProfile} from "../ai-profile-store";
  * (`IGatewayAskInput.skills`). This holds only what the gateway applies to all of them.
  */
 export interface ISkillRegistryConfig {
+  /**
+   * The most skills one call may have, the profile's and the call's together.
+   *
+   * > Keeps the `{skills}` list and the `load_skill` enum a size a model reads reliably.
+   *
+   * A profile or a call over it is a 400 (`data.maxSkills`, `data.count`), at `upsertProfile` and when the call starts.
+   *
+   * @example 10 - a product whose profiles carry a handful of procedures each
+   *
+   * @default 50
+   */
+  maxSkills?: number;
+  /**
+   * The longest `body` of one skill, in characters.
+   *
+   * > A body is loaded whole into one tool result (or inlined whole in an `ask()`); this bounds what one load costs.
+   *
+   * A skill over it is a 400 (`data.maxBodyChars`, `data.skill`, `data.length`), at `upsertProfile` and when the call starts.
+   *
+   * @example 10_000 - a few pages of procedure; split a longer one into skills the model loads separately
+   *
+   * @default 50_000
+   */
+  maxBodyChars?: number;
 }
 
 /**
@@ -29,8 +53,9 @@ export interface ISkillRegistry {
    * > The profile's skills first, then the call's; unique names or nothing.
    *
    * A name that is empty after a trim, or that appears twice among the given skills (within one list or across the two), is a
-   * 400 whose `data` names the `duplicates` and counts the `emptyNames`. Nothing else is changed: the skills come back as
-   * given, in order.
+   * 400 whose `data` names the `duplicates` and counts the `emptyNames`. More skills than `maxSkills` (default 50) is a 400
+   * with `data.maxSkills` and `data.count`; a `body` longer than `maxBodyChars` (default 50 000) is a 400 with
+   * `data.maxBodyChars`, `data.skill` and `data.length`. Nothing else is changed: the skills come back as given, in order.
    *
    * # Who needs it
    *

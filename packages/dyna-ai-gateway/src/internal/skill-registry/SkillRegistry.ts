@@ -18,6 +18,8 @@ import {
   ISkillRegistryConfig,
 } from "./types";
 
+const DEFAULT_MAX_SKILLS = 50;
+const DEFAULT_MAX_BODY_CHARS = 50_000;
 const SKILLS_LIST_INTRO =
   "Skills — instructions you can load when a task needs them. Call load_skill with the name to read one; do not guess its content.";
 const SKILLS_INLINE_INTRO = "Skills — instructions for this call:";
@@ -61,7 +63,7 @@ const LOAD_SKILL_DESCRIPTION = [
  * resolved list.
  */
 export class SkillRegistry implements ISkillRegistry {
-  constructor(protected readonly config: ISkillRegistryConfig = {}) {
+  constructor(private readonly config: ISkillRegistryConfig = {}) {
   }
 
   /**
@@ -72,8 +74,9 @@ export class SkillRegistry implements ISkillRegistry {
    * > The profile's skills first, then the call's; unique names or nothing.
    *
    * A name that is empty after a trim, or that appears twice among the given skills (within one list or across the two), is a
-   * 400 whose `data` names the `duplicates` and counts the `emptyNames`. Nothing else is changed: the skills come back as
-   * given, in order.
+   * 400 whose `data` names the `duplicates` and counts the `emptyNames`. More skills than `maxSkills` (default 50) is a 400
+   * with `data.maxSkills` and `data.count`; a `body` longer than `maxBodyChars` (default 50 000) is a 400 with
+   * `data.maxBodyChars`, `data.skill` and `data.length`. Nothing else is changed: the skills come back as given, in order.
    *
    * # Who needs it
    *
@@ -110,6 +113,32 @@ export class SkillRegistry implements ISkillRegistry {
         data: {
           duplicates,
           emptyNames,
+        },
+      });
+    }
+    const maxSkills = this.config.maxSkills ?? DEFAULT_MAX_SKILLS;
+    if (merged.length > maxSkills) {
+      throw dynaError({
+        code: 5380483215107,
+        status: 400,
+        message: `SkillRegistry: ${merged.length} skills are more than the ${maxSkills} one call may have (maxSkills)`,
+        data: {
+          maxSkills,
+          count: merged.length,
+        },
+      });
+    }
+    const maxBodyChars = this.config.maxBodyChars ?? DEFAULT_MAX_BODY_CHARS;
+    const tooLong = merged.find(skill => skill.body.length > maxBodyChars);
+    if (tooLong) {
+      throw dynaError({
+        code: 5380483215110,
+        status: 400,
+        message: `SkillRegistry: the body of skill [${tooLong.name}] has ${tooLong.body.length} characters, more than maxBodyChars ${maxBodyChars}`,
+        data: {
+          maxBodyChars,
+          skill: tooLong.name,
+          length: tooLong.body.length,
         },
       });
     }

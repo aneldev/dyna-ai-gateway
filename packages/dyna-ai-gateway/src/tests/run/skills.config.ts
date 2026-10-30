@@ -25,3 +25,9 @@ export const gatewayConfigSkills: IAIGatewayConfig = {
 
 /** The sample profile as it is, without skills: nothing may be listed and no tool offered. */
 export const gatewayConfigNoSkills: IAIGatewayConfig = {...gatewayConfigBase};
+
+/** The skills config with `maxSkills: 1`: the sample profile's two skills are one too many, so `upsertProfile` refuses it. */
+export const gatewayConfigSkillsCaps: IAIGatewayConfig = {
+  ...gatewayConfigSkills,
+  skillRegistry: {maxSkills: 1},
+};

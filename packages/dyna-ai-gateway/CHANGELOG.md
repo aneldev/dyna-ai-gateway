@@ -17,8 +17,9 @@ what breaks, the migration, and an AI prompt that performs the migration in your
   not list). A stored `CHAT_MAIN` without `{skills}` drops the skills of a call with the WARNING issue `skills_slot_missing`.
   A paused run stores the skills its call brought (`IRun.skills`, emptied by `anonymizeByUser`); `resume()` offers them
   again with the skills of the profile it resumes on, the stored system prompt keeps the list of the start.
-  `IAIGatewayConfig.skillRegistry` (optional) configures the `SkillRegistry`; `IContextAssemblerDeps.skillRegistry` is a
-  new dependency of a host's own `ContextAssembler`.
+  `IAIGatewayConfig.skillRegistry` (optional) configures the `SkillRegistry`: `maxSkills` (default 50, the profile's and
+  the call's together) and `maxBodyChars` (default 50 000), each a 400 at `upsertProfile` and at the call when exceeded;
+  `IContextAssemblerDeps.skillRegistry` is a new dependency of a host's own `ContextAssembler`.
 
 ## [0.0.1-beta.3] - 2026-10-29
 
