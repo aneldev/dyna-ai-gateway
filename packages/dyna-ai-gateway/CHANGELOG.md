@@ -10,8 +10,11 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 - **Skills** (D124): instructions the model loads on demand, `ISkill {name, description, body}`, on a profile
   (`IAIProfile.skills`) and on a call (`IGatewayAskInput.skills`). The seed `CHAT_MAIN` has a new `{skills}` slot after
-  `{addendum}`, inside the cached block: a `run()` lists the skills by name and description, an `ask()` gets the bodies.
-  A stored `CHAT_MAIN` without `{skills}` drops the skills of a call with the WARNING issue `skills_slot_missing`.
+  `{addendum}`, inside the cached block: a `run()` lists the skills by name and description and offers the built-in tool
+  `load_skill` (`{name}` in, `{name, body}` out; `ILoadSkillInput` / `ILoadSkillResult`), an `ask()` gets the bodies whole.
+  A name present in the profile and the call, or twice in one list, or empty, is a 400 before anything is stored, both
+  at `upsertProfile` and at the call. `activeTools` cannot name `load_skill` (a 400, as for any tool the profile does
+  not list). A stored `CHAT_MAIN` without `{skills}` drops the skills of a call with the WARNING issue `skills_slot_missing`.
   `IAIGatewayConfig.skillRegistry` (optional) configures the `SkillRegistry`; `IContextAssemblerDeps.skillRegistry` is a
   new dependency of a host's own `ContextAssembler`.
 

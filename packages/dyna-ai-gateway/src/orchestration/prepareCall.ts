@@ -3,6 +3,7 @@ import {dynaError} from "dyna-error";
 import {
   IChunk,
   IIssue,
+  ISkill,
 } from "../contracts";
 import {
   IAIProfile,
@@ -33,6 +34,8 @@ export interface IPreparedCall {
   thread: IThread;
   /** The tools of the call and which of them need approval; empty for ask(). */
   resolved: IResolvedTools;
+  /** The skills of the call (D124): the profile's, then the call's, validated; what a run remembers. */
+  skills: ISkill[];
   context: IAssembledContext;
   /** What the call reports before the model ran: the input rules' WARNINGs, then the assembler's (files dropped, turns trimmed). */
   issues: IIssue[];
@@ -44,8 +47,9 @@ export const isFailedResponse = (prepared: IPreparedCall | IFailedResponse): pre
   "kind" in prepared;
 
 /**
- * Steps 1–6, shared by ask() and run(): profile and model, input check, thread and the user turn, the knowledge-base search
- * inside the caller's kbFilters, the tools, the request (the ContextAssembler asks the working memory for the thread's window).
+ * Steps 1–6, shared by ask() and run(): profile and model (and the skills of the call, D124), input check, thread and the user turn,
+ * the knowledge-base search inside the caller's kbFilters, the tools (with `load_skill` when a run has skills), the request
+ * (the ContextAssembler asks the working memory for the thread's window; a run lists the skills, an ask inlines them).
  * Returns FAILED for a rejected prompt (nothing is created then) and for a call seen aborted between the steps: before the thread
  * nothing is stored, after it the user turn is (`makeAbortedResponse`); an abort inside the input check is thrown as the signal's
  * reason, as the rules do. A model call the usage adapter refuses (the query rewrite, the search's embedding) is thrown too.
@@ -84,6 +88,7 @@ export const prepareCall = async <TStructured>(
     temperature,
     activeTools,
     additionalTools,
+    skills: callSkills,
   } = input;
   const abortSignal = callSignal?.signal;
   const {
@@ -121,6 +126,12 @@ export const prepareCall = async <TStructured>(
     });
   }
 
+  // The skills of the call, before the input check and before anything is stored: a duplicate name costs no judge call and creates nothing (D124)
+  const skills = deps.skillRegistry.resolve({
+    profile,
+    skills: callSkills,
+  });
+
   // The bytes of the question's files, before anything is stored: a pointer that cannot be loaded creates nothing.
   // Before the input check: the rules' judge sends them to the model.
   const inlineFiles = await loadInlineFiles({
@@ -155,16 +166,24 @@ export const prepareCall = async <TStructured>(
     });
   }
 
-  // The tools, before anything is stored: an activeTools name the profile does not allow is a 400 that creates nothing
+  // The tools, before anything is stored: an activeTools name the profile does not allow is a 400 that creates nothing.
+  // A run with skills gets `load_skill`, a built-in of this call only: built from the call's skills, not registered (D124)
+  const loadSkillTool =
+    withTools && skills.length > 0
+      ? [deps.skillRegistry.makeLoadSkillTool({skills})]
+      : [];
   const resolved: IResolvedTools = withTools
     ? deps.toolPolicy.resolve({
-      allTools: deps.toolRegistry.list(),
+      allTools: [...deps.toolRegistry.list(), ...loadSkillTool],
       additionalTools,
       profile,
       userContext,
       caps: model.caps,
       activeTools,
-      builtInTools: getBuiltInToolNames({config}),
+      builtInTools: [
+        ...getBuiltInToolNames({config}),
+        ...loadSkillTool.map(tool => tool.name),
+      ],
     })
     : {
       tools: [],
@@ -253,6 +272,7 @@ export const prepareCall = async <TStructured>(
       inlineFiles,
       retrieval,
       tools: resolved.tools,
+      skills,
       instructions,
       context: callContext,
       outputSchema,
@@ -264,6 +284,7 @@ export const prepareCall = async <TStructured>(
     profile,
     thread,
     resolved,
+    skills,
     context,
     issues: [...inputCheck.issues, ...context.issues],
     chunks: context.chunkIds.flatMap(chunkId => retrieval.hits.filter(hit => hit.chunk.id === chunkId).map(hit => hit.chunk)),
