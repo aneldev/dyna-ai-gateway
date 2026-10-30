@@ -240,6 +240,7 @@ The guide: [Vercel chat client](docs/getting-started/Vercel%20chat%20client.md).
 | Knowledge base    | Markdown documents chunked, embedded and searched per tenant, library and book; query rewrite; citations                      |
 | Memory            | The thread's summary and facts, the user's facts across threads; both optional, both editable                                 |
 | Files             | Images and PDFs sent to a model that reads them                                                                               |
+| Skills            | Instructions the model loads only when a task needs them, on the profile or on the call; inlined in an `ask()`                |
 | Human in the loop | Approval of a tool call, the model's questions as a form, review of the answer, expiry of unanswered pauses                   |
 | Guardrails        | Built-in input and output rules, the application's own rules with evidence, a judge on the cheap model                        |
 | Usage and trace   | Your adapter asked before every model call and told what it used after it; one trace entry per model call with usage and cost |
@@ -262,14 +263,14 @@ The reasons behind each behaviour: [Decisions](docs/architecture/Decisions.md). 
 
 ## Documentation
 
-|                                                |                                                                                                                                                              |
-|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Getting started](docs/getting-started/FAQ.md) | first steps, the FAQ, the [usage adapter](docs/getting-started/Usage%20adapter.md), the [Vercel chat client](docs/getting-started/Vercel%20chat%20client.md) |
-| [Roadmap](docs/Roadmap.md)                     | what works today, what is planned, what is not                                                                                                               |
-| [Terminology](docs/Terminology.md)             | the terms of the docs and where they come from                                                                                                               |
-| [Architecture](docs/architecture/Decisions.md) | the composition, the trade-offs, one chapter of decisions per class                                                                                          |
-| [Practices](docs/dev-practices/index.md)       | how to apply the library well                                                                                                                                |
-| [Workspace](docs/Workspace.md)                 | building and testing the packages of this repository                                                                                                         |
+|                                                |                                                                                                                                                                                                        |
+|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [Getting started](docs/getting-started/FAQ.md) | first steps, the FAQ, the [usage adapter](docs/getting-started/Usage%20adapter.md), [skills](docs/getting-started/Skills.md), the [Vercel chat client](docs/getting-started/Vercel%20chat%20client.md) |
+| [Roadmap](docs/Roadmap.md)                     | what works today, what is planned, what is not                                                                                                                                                         |
+| [Terminology](docs/Terminology.md)             | the terms of the docs and where they come from                                                                                                                                                         |
+| [Architecture](docs/architecture/Decisions.md) | the composition, the trade-offs, one chapter of decisions per class                                                                                                                                    |
+| [Practices](docs/dev-practices/index.md)       | how to apply the library well                                                                                                                                                                          |
+| [Workspace](docs/Workspace.md)                 | building and testing the packages of this repository                                                                                                                                                   |
 
 ## Packages
 

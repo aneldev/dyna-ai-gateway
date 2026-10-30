@@ -603,6 +603,38 @@ export const classifyIntentTool = defineTool({
 - Visibility is not a forced call: the model may still answer without calling the tool. Say "call it first" in the tool's
   description and in the system prompt.
 
+## How do I give the model instructions it loads only when it needs them?
+
+With skills ([D124](../architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)): `ISkill {name,
+description, body}` on the profile (`IAIProfile.skills`, the procedures of the role) or on the call (`skills`, what the
+screen the user is on knows). The system prompt carries the names and descriptions; the body is read only when a task needs
+it. The page [Skills](Skills.md) has the cost model, the limits and what a skill is not.
+
+```ts
+// On a run(): the skills are listed, the model loads one with the built-in tool load_skill (one step per load)
+const {response} = gateway.run({
+  userContext,
+  profileId: "support",
+  prompt: "The customer wants a refund for an order of 800 EUR",
+  skills: [exportWizard],
+  kbFilters: {libraryIds: [], bookIds: []},
+});
+
+// On an ask(): no tools, so the bodies are inlined in the system prompt of this call
+const {response: answer} = gateway.ask({
+  userContext,
+  profileId: "support",
+  prompt: "Which step of the export am I in?",
+  skills: [exportWizard],
+  kbFilters: {libraryIds: [], bookIds: []},
+});
+```
+
+- A name must be unique across the profile's and the call's skills and not empty: a duplicate is a 400 at `upsertProfile`
+  and when the call starts, before anything is stored.
+- An application that stores its own `CHAT_MAIN` template must carry the `{skills}` placeholder; without it the skills of
+  a call are dropped and the response carries the WARNING issue `skills_slot_missing`.
+
 ## Who may read a thread, a file or a paused run?
 
 - **A thread** is its user's: `ask`, `run`, `getTurns`, `renameThread`, `getThreadMemory` and `resetThreadMemory` on another
