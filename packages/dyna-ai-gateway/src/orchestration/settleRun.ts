@@ -23,6 +23,7 @@ import {
   ERunStatus,
   EThreadStatus,
   getUnresolvedToolCalls,
+  joinSystem,
   makePauseEnvelopeDraft,
   withoutInlineBytes,
   withoutOutputSchema,
@@ -423,7 +424,7 @@ export const settleRun = async <TStructured>(
       ...outcome.endedByTool && {endedByTool: outcome.endedByTool},
       ...debug && {
         debug: {
-          system: request.system,
+          system: joinSystem({blocks: request.system}),
           messages: outcome.messages,
           steps: outcome.steps,
           ...previousRun && {

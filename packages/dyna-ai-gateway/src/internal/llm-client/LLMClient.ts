@@ -3,6 +3,7 @@ import {
   LanguageModel,
   LanguageModelUsage,
   ModelMessage,
+  SystemModelMessage,
   ToolSet,
   NoObjectGeneratedError,
   Output,
@@ -51,6 +52,11 @@ import {estimateRequestTokens} from "./estimateRequestTokens";
 import {createEmbeddingModel} from "./utils/createEmbeddingModel";
 import {createLanguageModel} from "./utils/createLanguageModel";
 import {toSdkMessages} from "./utils/toSdkMessages";
+import {
+  TSdkProviderOptions,
+  toSdkProviderOptions,
+} from "./utils/toSdkProviderOptions";
+import {toSdkSystem} from "./utils/toSdkSystem";
 import {toSdkTools} from "./utils/toSdkTools";
 import {withoutInlineBytes} from "./utils/withoutInlineBytes";
 import {withoutOutputSchema} from "./utils/withoutOutputSchema";
@@ -59,7 +65,7 @@ import {withoutRequestBody} from "./utils/withoutRequestBody";
 /** The options both SDK entry points take. */
 interface ISdkCallOptions {
   model: LanguageModel;
-  system: string;
+  system: string | SystemModelMessage[];
   messages: ModelMessage[];
   tools: ToolSet;
   maxOutputTokens: number;
@@ -68,6 +74,7 @@ interface ISdkCallOptions {
   timeout: number;
   abortSignal: AbortSignal | undefined;
   output: ReturnType<typeof Output.object<unknown>> | undefined;
+  providerOptions: TSdkProviderOptions;
 }
 
 const DEFAULT_TIMEOUT_MS = 60_000;
@@ -161,9 +168,15 @@ export class LLMClient implements ILLMClient {
         model,
         credentials: this.getCredentials(model),
       }),
-      system: request.system,
+      system: toSdkSystem({
+        blocks: request.system,
+        provider: model.provider,
+      }),
       messages: toSdkMessages(request.messages),
-      tools: toSdkTools(tools),
+      tools: toSdkTools({
+        tools,
+        cacheLast: model.provider === EModelProvider.ANTHROPIC && request.cacheTools === true,
+      }),
       maxOutputTokens: request.maxOutputTokens,
       temperature: request.temperature,
       maxRetries: this.config.maxRetries ?? DEFAULT_MAX_RETRIES,
@@ -172,6 +185,10 @@ export class LLMClient implements ILLMClient {
       output: request.outputSchema === undefined
         ? undefined
         : Output.object({schema: request.outputSchema}),
+      providerOptions: toSdkProviderOptions({
+        blocks: request.system,
+        provider: model.provider,
+      }),
     };
 
     const startedAt = Date.now();
@@ -228,6 +245,7 @@ export class LLMClient implements ILLMClient {
         inputTokens: outcome.usage?.inputTokens ?? 0,
         outputTokens: outcome.usage?.outputTokens ?? 0,
         cachedInputTokens: outcome.usage?.inputTokenDetails?.cacheReadTokens,
+        cacheWriteInputTokens: outcome.usage?.inputTokenDetails?.cacheWriteTokens,
       },
       latencyMs: Date.now() - startedAt,
       traceId,
@@ -494,6 +512,8 @@ export class LLMClient implements ILLMClient {
         modelId,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
+        cachedInputTokens: usage.cachedInputTokens,
+        cacheWriteInputTokens: usage.cacheWriteInputTokens,
       });
     }
     catch (error) {

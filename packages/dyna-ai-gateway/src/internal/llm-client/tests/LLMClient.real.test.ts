@@ -42,7 +42,7 @@ const ask = async (modelId: string): Promise<{text: string; finishReason: EFinis
   const result = await client.complete({
     request: makeRequest({
       modelId,
-      system: "Answer with the single word: pong",
+      system: [{text: "Answer with the single word: pong"}],
       messages: [{
         role: EMessageRole.USER,
         parts: [{

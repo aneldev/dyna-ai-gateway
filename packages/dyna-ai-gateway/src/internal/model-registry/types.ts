@@ -29,14 +29,20 @@ export interface IModelRegistry {
   /**
    * USD estimate for a call; the LLMClient reports it to the UsageGuard and the trace after every call.
    * Works for a disabled model too: a call that was in flight when the model got disabled is still reported.
+   * The cached tokens are priced at the model's cache rates (`costCacheReadPerMTokUsd`, `costCacheWritePerMTokUsd`, or
+   * their provider defaults), the rest of the prompt at the input price.
    */
   estimateCostUsd(args: {
     /** Our model id. */
     modelId: string;
-    /** Prompt tokens. */
+    /** Prompt tokens, the cached ones included. */
     inputTokens: number;
     /** Completion tokens. */
     outputTokens: number;
+    /** Of `inputTokens`, the ones read from the provider's cache. */
+    cachedInputTokens?: number;
+    /** Of `inputTokens`, the ones written to the provider's cache. */
+    cacheWriteInputTokens?: number;
   }): Promise<number>;
 
   /** Admin: inserts or replaces an entry. Invalidates cache. */
@@ -138,6 +144,26 @@ export interface IModelCaps {
   costInPerMTokUsd: number;
   /** USD per 1M output tokens. */
   costOutPerMTokUsd: number;
+  /**
+   * USD per 1M input tokens read from the provider's prompt cache.
+   *
+   * > Prices the `cachedInputTokens` of a call.
+   *
+   * @example 0.1 - claude-haiku-4-5 (0.1 × its 1.00 input price)
+   *
+   * @default Anthropic: 0.1 × costInPerMTokUsd; any other provider: costInPerMTokUsd (the rate differs per OpenAI model: set it)
+   */
+  costCacheReadPerMTokUsd?: number;
+  /**
+   * USD per 1M input tokens written to the provider's prompt cache.
+   *
+   * > Prices the `cacheWriteInputTokens` of a call.
+   *
+   * @example 1.25 - claude-haiku-4-5, 5-minute cache (1.25 × its 1.00 input price)
+   *
+   * @default Anthropic: 1.25 × costInPerMTokUsd; any other provider: costInPerMTokUsd (OpenAI bills no write)
+   */
+  costCacheWritePerMTokUsd?: number;
 }
 
 /** Providers the LLMClient has an adapter for. Add a value when the LLMClient supports a new one. */

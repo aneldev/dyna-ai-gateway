@@ -60,7 +60,7 @@ export class QueryRewriter implements IQueryRewriter {
       const result = await this.deps.llmClient.complete({
         request: {
           modelId: cheapModelId,
-          system: rendered.text,
+          system: [{text: rendered.text}],
           messages: [
             {
               role: EMessageRole.USER,

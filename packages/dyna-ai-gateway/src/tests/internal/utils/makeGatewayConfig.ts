@@ -46,6 +46,10 @@ export const makeGatewayConfig = (): IAIGatewayConfig => ({
   humanGate: {userQuestions: {enabled: false}},
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   llmClient: {providers: {}},
+  contextAssembler: {
+    promptCaching: true,
+    sharePromptCacheAcrossTenants: false,
+  },
   trace: {repository: new InMemoryTraceRepository()},
   defaultCheapModelId: "fake-cheap",
 });

@@ -61,7 +61,7 @@ const makeRun = (
   status: ERunStatus.PAUSED,
   request: {
     modelId: "model-a",
-    system: `The user is ${userId}`,
+    system: [{text: `The user is ${userId}`}],
     maxOutputTokens: 500,
   },
   toolNames: ["refund"],
@@ -334,7 +334,7 @@ describe("AIGateway — M6: forget this user (GDPR)", () => {
         messages: [],
         request: {
           modelId: "model-a",
-          system: "",
+          system: [],
         },
         steps: 1,
       });

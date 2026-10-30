@@ -1,16 +1,16 @@
 ---
 name: write-user-docs
-description: How to write or change any documentation meant for the users of dyna-ai-gateway — every file under `docs/` except the private `docs/internal/`, `docs/plans/` and `docs/implementation/`, the README, and JSDoc (it ships in the `.d.ts`). Use whenever a task adds or edits a user doc, when the developer says "document this", "update the docs", "write the guide", or when a code change makes a user doc stale. Not for the private working docs (Roadmap, Classes, Blueprint, plans): those follow their own conventions.
+description: How to write or change any documentation meant for the users of dyna-ai-gateway — every file under `docs/` except the private `docs/internal/`, `docs/plans/` and `docs/implementation/`, the README, each package's `CHANGELOG.md`, and JSDoc (it ships in the `.d.ts`). Use whenever a task adds or edits a user doc, when the developer says "document this", "update the docs", "write the guide", or when a code change makes a user doc stale. Not for the private working docs (Roadmap, Classes, Blueprint, plans): those follow their own conventions.
 ---
 
 # Write user docs — the final product, for the people who use the library
 
 Two kinds of documents live in this repo and they must never blend:
 
-| Kind | Where | Audience | Content |
-| --- | --- | --- | --- |
-| Private working docs | `docs/internal/`, `docs/plans/` | the developer and the AI building the library | the analysis, the decisions log (D…), the milestones, the plans — **the source of truth** |
-| User docs | everything else under `docs/`, `README.md`, JSDoc | the developer who installs and uses `dyna-ai-gateway` | what the library **is** and how to use it |
+| Kind                 | Where                                                                            | Audience                                              | Content                                                                                   |
+|----------------------|----------------------------------------------------------------------------------|-------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| Private working docs | `docs/internal/`, `docs/plans/`                                                  | the developer and the AI building the library         | the analysis, the decisions log (D…), the milestones, the plans — **the source of truth** |
+| User docs            | everything else under `docs/`, `README.md`, each package's `CHANGELOG.md`, JSDoc | the developer who installs and uses `dyna-ai-gateway` | what the library **is** and how to use it                                                 |
 
 The private docs leave the repo before the library is published. A user doc that points at them breaks that day.
 
@@ -48,6 +48,24 @@ The private docs leave the repo before the library is published. A user doc that
 - **Headings are navigable.** Numbered `##` chapters when a doc is long enough to cross-link; a chapter per class only in
   `Decisions.md`, a chapter per task elsewhere.
 
+## The changelog — `packages/<package>/CHANGELOG.md`
+
+One per published package, in the [Keep a Changelog](https://keepachangelog.com) format: `## [Unreleased]` on top, then
+`## [<version>] - <YYYY-MM-DD>` per release, newest first. Groups, in this order and only when not empty:
+`### Breaking changes`, `### Added`, `### Changed`, `### Fixed`, `### Removed`.
+
+- **Every unit that changes what a user of the package sees** (an exported symbol, a config key, a default, a behaviour)
+  adds its line under `[Unreleased]` in the same unit. The version bump renames `[Unreleased]` to the version and opens
+  a new empty one.
+- **Every breaking change carries three parts, in this order** (Dennis, 2026-10-29):
+  1. **What breaks and who is affected**: the symbol or config key, and which hosts (every host, or only one that
+     overrides a class, builds a request itself, …).
+  2. **The migration**: the steps, with a before / after code sample that compiles.
+  3. **An AI prompt that performs the migration**: a fenced `text` block the user pastes into their coding assistant. It
+     stands alone: it names the package and the version, the exact symbols, the before and after shapes, where to look
+     in their code (a search term), and how to verify (`tsc` passes, the tests pass). It never points at the private docs.
+- A line names the user-facing change, not the work behind it: no step, no plan, no ticket number.
+
 ## JSDoc is a user doc
 
 JSDoc ships in the `.d.ts` files and in editor tooltips. The `jsdoc-style` skill owns its templates; this skill adds the
@@ -60,3 +78,5 @@ audience rule: never link `docs/internal` or `docs/plans` from a JSDoc. Link a u
 - [ ] Every name in the doc exists in `src/` with that spelling.
 - [ ] Every fact appears once; the other mentions are links.
 - [ ] A reader who only has the npm package could follow the doc.
+- [ ] A user-visible change has its line under `[Unreleased]` in the package's `CHANGELOG.md`; a breaking change has its
+      three parts: what breaks, the migration, the AI prompt.

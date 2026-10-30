@@ -118,7 +118,7 @@ export class InMemoryRunRepository implements IRunRepository {
         status: isOpen ? ERunStatus.CANCELLED : run.status,
         request: {
           ...run.request,
-          system: "",
+          system: [],
         },
         messages: [],
         pending: undefined,

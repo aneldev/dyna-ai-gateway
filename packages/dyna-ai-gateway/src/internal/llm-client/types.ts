@@ -84,8 +84,26 @@ export interface IProviderCredentials {
 /** One request to a model. Built by ContextAssembler. */
 export interface IModelRequest {
   modelId: string;
-  /** System prompt (rendered CHAT_MAIN + addendum). */
-  system: string;
+  /**
+   * System prompt as blocks, in order (rendered CHAT_MAIN: the stable block, then the per-call block).
+   *
+   * > Anthropic gets one system block per entry, marked where `cache` is set; the others get the texts joined
+   * > (`joinSystem`), OpenAI with a cache key derived from the `cache` block.
+   *
+   * @example [{text: "You are the assistant…", cache: true}, {text: "Today is Thursday, 2026-10-29…"}]
+   */
+  system: ISystemBlock[];
+  /**
+   * Puts the provider's cache marker on the last tool definition too (Anthropic).
+   *
+   * > A read point for the tool definitions alone, for calls whose system blocks differ but whose tools do not.
+   *
+   * Set by the ContextAssembler only when the prompt cache may be shared across tenants: tool definitions are the same
+   * for every tenant, so a tools-only entry is always shared.
+   *
+   * @default false
+   */
+  cacheTools?: boolean;
   messages: IMessage[];
   /** Zod schema for structured output; omitted = free text. */
   outputSchema?: ZodType;
@@ -95,6 +113,19 @@ export interface IModelRequest {
    * Only on a model whose `caps.temperature` is true: the client refuses it otherwise (400, D82).
    */
   temperature?: number;
+}
+
+/** One block of the system prompt; the ContextAssembler splits CHAT_MAIN into a stable and a per-call block. */
+export interface ISystemBlock {
+  text: string;
+  /**
+   * Marks the end of the part the provider may cache: everything up to and including this block.
+   *
+   * > Set on a block that is the same on every call of the profile; a block that changes per call never carries it.
+   *
+   * @default false
+   */
+  cache?: boolean;
 }
 
 /** A message in LLMClient shape (provider-agnostic, SDK-agnostic). */

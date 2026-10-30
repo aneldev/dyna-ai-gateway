@@ -87,7 +87,7 @@ export const makeLLMClient = async (models: IModelInfo[], config: ILLMClientConf
 
 export const makeRequest = (overrides: Partial<IModelRequest> = {}): IModelRequest => ({
   modelId: "model-a",
-  system: "You are a test",
+  system: [{text: "You are a test"}],
   messages: [
     {
       role: EMessageRole.USER,

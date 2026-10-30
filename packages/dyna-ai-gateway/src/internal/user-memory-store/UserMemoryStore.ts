@@ -134,7 +134,7 @@ export class UserMemoryStore implements IUserMemoryStore {
       result = await this.deps.llmClient.complete({
         request: {
           modelId: cheapModelId,
-          system: rendered.text,
+          system: [{text: rendered.text}],
           messages: [
             {
               role: EMessageRole.USER,

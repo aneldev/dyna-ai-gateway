@@ -1,6 +1,6 @@
 ---
 name: stepwise-plan
-description: Plan-then-implement workflow for non-trivial tasks (upgrades, migrations, multi-file features, refactors), from a ticket or from the developer's prompt. Writes a living markdown plan in the closest `docs/plans/active/<TICKET> <title>.md`, then implements it ONE small, testable step at a time — verify, record what was done in the plan, stop for the developer's check, continue — and on completion updates Roadmap / Backlog / Decisions and moves the plan to `docs/plans/archived/`. Use when the developer says "make a plan", "let's do this step by step", "plan and implement", "start the ticket", gives a ticket to work on, or when a task clearly spans many steps/files. Not for one-file fixes.
+description: Plan-then-implement workflow for non-trivial tasks (upgrades, migrations, multi-file features, refactors), from a ticket or from the developer's prompt. Writes a living markdown plan in the closest `docs/plans/active/<TICKET> <title>.md`, pressure-tests it (professional approach, side problems, contradictions with the repo's markdown docs and with the goal) until it is clean, then implements it ONE small, testable step at a time — verify, record what was done in the plan, stop for the developer's check, continue — and on completion updates Roadmap / Backlog / Decisions and moves the plan to `docs/plans/archived/`. Use when the developer says "make a plan", "let's do this step by step", "plan and implement", "start the ticket", gives a ticket to work on, or when a task clearly spans many steps/files. Not for one-file fixes.
 ---
 
 Source: worked out on DDE-20289 (React 19 / Next 16 upgrade); any plan under `docs/plans/archived/` is a real example of the format.
@@ -24,6 +24,20 @@ Inside it:
 The plan comes **from a ticket** or **from the developer's prompt**. Most of the time it is written **when the ticket starts**, so it is precise against the codebase as it is then. A plan the developer asks for ahead of time is written the same way and marked `Status: planned ahead on <date> — re-verify the Targets table before Step 0.1`.
 
 1. **Ticket.** The developer gives the ticket number (`<PREFIX>-<number>`, e.g. `DDE-20324`, `DAIG-20330`). Not given → find it: the branch name (`git branch --show-current`, usually `<PREFIX>-<number>-<title>`), the ticket named in the conversation or in an analysis file, `trelloSearch` by the title the developer used. Still unknown → ask for the number (one question). Then read the card (`trelloSearch` / `trelloReadCard` / `trelloReadChecklist`): story, links, checklists — these define the goal and the acceptance criteria. **No ticket at all** (prompt only) → ask for a short title and plan without a number.
+   **A ticket whose ACs are not known yet.** Some tickets state the problem clearly but nobody knows the solution yet, so
+   nobody can write what "done" looks like. Such a ticket (the `create-trello-ticket` skill says how it is written: the
+   problem and the suggested approaches in the description, one AC `Analysis needed: the ACs are written from it`, no Dev
+   ACs) is still **one ticket with one plan**. The analysis is part of the plan, because the plan needs it before it can
+   name steps:
+   - The plan's first phase after the baseline is `## Phase 1 — Analysis`: the problem as found in the code, each suggested
+     approach with its trade-offs and, where possible, a measurement, the recommendation. It is written into the plan file
+     as a `## Analysis` chapter and reviewed by the developer like any step.
+   - The developer decides the approach. From that outcome the ACs and Dev ACs are written **on the ticket's card**
+     (`ACs - Given When Then` and `Dev ACs` checklists; approved in chat first, as the `create-trello-ticket` skill's Step 0
+     does for a new ticket), and the `Analysis needed` item is ticked.
+   - Only now are the implementation phases planned (Phase 2 onwards), pressure-tested and executed as in every plan.
+   - In Phase 3 the whole plan file, the `## Analysis` chapter included, is posted on the card as comments, so the card
+     ends up holding the problem, the analysis, the ACs and the result.
 2. **Existing plan — check before writing.** Search every `docs/plans` folder of the repo for the ticket or topic:
    ```sh
    find . -path '*/docs/plans/*' -name '*<TICKET or keyword>*' -not -path '*/node_modules/*'
@@ -112,6 +126,9 @@ export interface IFooConfig {
 
 ## Follow-up tickets (not in this ticket)
 | Topic | Why separate | Ticket |
+
+## Pressure test
+Passed <date> after <n> round(s). One line per issue found: what it was → how the plan was changed (or what the developer decided).
 ```
 
 **Rules for good steps**
@@ -128,12 +145,46 @@ export interface IFooConfig {
 
 **Follow-ups are settled before the code.** The `## Follow-up tickets` table is not a parking lot: before Step 0.1 the
 developer goes through every row and decides, per row, **in this ticket** (it becomes a step) or **a ticket of its own**
-(created now with the `create-trello-ticket` skill, its URL written into the row) or **dropped** (the row is removed). No
+(created now with the `create-trello-ticket` skill, its URL written into the row; when the problem is clear and the
+solution is not, written as a ticket whose ACs come from its analysis, see Phase 0) or **dropped** (the row is removed). No
 implementation starts while a row has no decision; a follow-up found during implementation is added to the table and
 decided the same way at the next handoff. The developer must know precisely what is left out and where it lives.
 
+### Pressure test — before the plan is presented
+
+A written plan is a draft until it survives a pressure test. Read it as a hostile senior reviewer would, not as its
+author: the goal is to find what breaks, not to confirm it works. Check it on three axes:
+
+1. **Professional approach.** Is every step the standard, mature way to do it today, or a shortcut, a workaround, an
+   invented pattern, an over-abstraction? Would a senior engineer approve it in review? Does it follow `CLAUDE.md`'s
+   coding and architecture rules?
+2. **Side problems.** What else does the change touch that the plan does not name: other callers, the public API, tests,
+   types, performance, security, data or migrations, docs that go stale, the other plans running in parallel in this
+   tree? Does every step really leave the repo green?
+3. **Contradictions.** Does the plan contradict the logic of the repo's markdown files: `CLAUDE.md`, the Roadmap (its
+   working rules), the decisions (`D…`), the class and architecture docs, the Backlog, the user docs, the other active
+   plans? And does it fix what the ticket asks: does every AC map to a step, and does any step work against the goal?
+
+**The loop:**
+
+- **Run** the three checks over the whole plan and list every issue.
+- **Fix** each issue in the plan. An issue that only the developer can settle (an unclear requirement, a choice between
+  two valid designs) → ask him (`AskUserQuestion`, the recommended option first) and write his answer into the plan.
+  Asking is not a failed round.
+- **Re-run** the full test on the changed plan, since a fix can create a new issue. Repeat until a round finds **zero
+  issues**.
+- **Stop after 3 unsuccessful rounds.** If issues are still there after the third round of fixes, stop fixing and hand
+  them to the developer. Per problem: what is wrong, in plain language and with a concrete example (no jargon, no
+  internal ids without their meaning), why it matters, and 1–3 possible solutions with the recommended one first. He
+  decides; apply his decisions and run the test once more.
+- **Record** the result in the plan's `## Pressure test` chapter: the date, the number of rounds, one line per issue and
+  how it was resolved.
+
+A change the developer makes to the plan during his review is pressure-tested again (the loop above) before Step 0.1.
+
 Present the plan, then **stop**: the developer reviews/adjusts it — the `## Interfaces (final state)` chapter, then the
-follow-ups — before step 0.1 starts.
+follow-ups — before step 0.1 starts. A plan is presented only after its pressure test passed, or with the open problems
+listed for the developer's decision.
 
 ## Phase 2 — Execute, one step at a time
 
@@ -178,7 +229,9 @@ When every step is `[x]` or `[-]` (with reasons) and the follow-ups table is com
    ticket, post the **full content of the plan file** as a new comment on the Trello card (`trelloWriteCard` `add_comment`;
    Trello caps a comment at 16 384 characters — a longer plan goes in consecutive comments, "part 1/n" first). The file is
    archived and later leaves the repo; the comment lives as long as the ticket, so a human or an agent who opens the ticket
-   in a year reads what was planned, what was done, what was found and what was left out. A plan without a ticket skips this.
+   in a year reads what was planned, what was done, what was found and what was left out; a plan with an `## Analysis`
+   chapter (Phase 0, a ticket whose ACs came from the analysis) posts it too, so the card holds the analysis. A plan without
+   a ticket skips this.
 4. **Archive the plan.** Add `Status: completed <date>` (or `Status: rejected <date> — <why>`, for a plan that is dropped) under the title, then move the file unchanged in name:
    ```sh
    mv "<docs>/plans/active/<TICKET> <title>.md" "<docs>/plans/archived/<TICKET> <title>.md"

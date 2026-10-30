@@ -41,6 +41,7 @@ export {
 } from "./internal/usage-guard/UsageDeniedError";
 export * from "./internal/guardrails/types";
 export * from "./internal/llm-client/types";
+export * from "./internal/llm-client/joinSystem";
 export * from "./internal/context-assembler/types";
 export * from "./internal/trace/types";
 export * from "./internal/kb-ingestor/types";

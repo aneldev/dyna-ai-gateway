@@ -7,6 +7,7 @@ import {
   ILLMClientCallMeta,
   EFinishReason,
   EMessageRole,
+  joinSystem,
 } from "../../llm-client";
 import {PromptTemplateStore} from "../../prompt-template-store";
 import {ETraceKind} from "../../trace";
@@ -111,7 +112,7 @@ describe("QueryRewriter", () => {
     test("the system prompt carries the thread's summary and facts", async () => {
       const context = setup();
       await rewrite(context, "query");
-      const {system} = context.llmClient.completeCalls[0].request;
+      const system = joinSystem({blocks: context.llmClient.completeCalls[0].request.system});
       expect([system.includes("The user asks about refunds of paid invoices."), system.includes("invoiceId: 4521")]).toEqual([true, true]);
     });
 

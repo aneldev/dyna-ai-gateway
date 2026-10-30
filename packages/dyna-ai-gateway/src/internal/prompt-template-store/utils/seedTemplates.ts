@@ -3,12 +3,15 @@ import {EPromptTemplateKey} from "../types";
 /** Shipped template bodies, used as version 0 while a key has no active version in the repository. */
 export const SEED_TEMPLATES: Partial<Record<EPromptTemplateKey, string>> = {
   [EPromptTemplateKey.CHAT_MAIN]: `You are the assistant of this application.
-Today is {today}. The user's locale is {locale} and their timezone is {timezone}.
 Answer in the user's language. Be precise and concise.
 When you do not know something, say so instead of guessing.
 {format}
 
 {addendum}
+
+{cacheBreakpoint}
+
+Today is {today}. The user's locale is {locale} and their timezone is {timezone}.
 
 {instructions}
 

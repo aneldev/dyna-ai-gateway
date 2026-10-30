@@ -95,6 +95,7 @@ test("a complete asks the adapter with the call's factors and reports the usage 
         inputTokens: 10,
         outputTokens: 2,
         cachedInputTokens: undefined,
+        cacheWriteInputTokens: undefined,
       },
       costUsd: (10 * 1 + 2 * 2) / 1_000_000,
     },

@@ -11,6 +11,7 @@ import {
   IModelRequest,
   TMessagePart,
 } from "./types";
+import {joinSystem} from "./joinSystem";
 
 /**
  * estimateRequestTokens -- the token count of a model request
@@ -43,7 +44,7 @@ export const estimateRequestTokens = (
   },
 ): number => {
   const system = countTokens({
-    text: request.system,
+    text: joinSystem({blocks: request.system}),
     provider,
   });
   return system + estimateMessagesTokens({

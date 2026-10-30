@@ -434,10 +434,10 @@ await gateway.resume({userContext, runId, pauseId, decisions: [{action: EResumeA
 
 The thread's history reaches the model through the working memory, with one of two strategies ([D122](../architecture/Decisions.md#d122-the-working-memory-owns-the-threads-window)):
 
-| Strategy                                | What the model gets                                                                                                    | Pick it for                                                                                                                 |
-|-----------------------------------------|------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| `EWorkingMemoryStrategy.SLIDING_WINDOW` | The newest turns that fit the model's window, word for word; nothing stored, no helper model call.                     | Exact wording (code, documents, quoting the user), short-lived threads, large windows, no "what do you remember" UI.         |
-| `EWorkingMemoryStrategy.SUMMARY_BUFFER` | A rolling summary and facts written by the cheap model, then the last `recentTurns` turns verbatim. The default.       | Long-lived threads at a flat cost per call, a visible and resettable memory, a thread context for the knowledge-base search. |
+| Strategy                                | What the model gets                                                                                              | Pick it for                                                                                                                  |
+|-----------------------------------------|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `EWorkingMemoryStrategy.SLIDING_WINDOW` | The newest turns that fit the model's window, word for word; nothing stored, no helper model call.               | Exact wording (code, documents, quoting the user), short-lived threads, large windows, no "what do you remember" UI.         |
+| `EWorkingMemoryStrategy.SUMMARY_BUFFER` | A rolling summary and facts written by the cheap model, then the last `recentTurns` turns verbatim. The default. | Long-lived threads at a flat cost per call, a visible and resettable memory, a thread context for the knowledge-base search. |
 
 The gateway's default strategy is `workingMemory.strategy`; a profile overrides it with `workingMemory`, so one tenant runs a precise chat bot and a cheap long-thread agent side by side:
 
@@ -490,6 +490,48 @@ const gateway = new AIGateway(config, {workingMemory: (memoryConfig, deps) => ne
 In your own code: the gateway asks your usage adapter before every model call and tells it what the call used after it, and
 holds no budget, plan or quota itself. The contract, an example adapter and what a refused call does are in
 [Usage adapter](Usage%20adapter.md).
+
+## Is the system prompt cached, and what does it cost?
+
+Yes, when `contextAssembler.promptCaching` is `true` ([D123](../architecture/Decisions.md#d123-the-system-prompt-travels-as-blocks)).
+The system prompt is sent as two blocks, split at the `{cacheBreakpoint}` placeholder of `CHAT_MAIN`:
+
+| Block    | Holds                                                                                                  | Same on                   |
+|----------|--------------------------------------------------------------------------------------------------------|---------------------------|
+| Stable   | the template text, the output format, the profile's `promptAddendum`                                   | every call of the profile |
+| Per-call | the date, locale and timezone, the call's `instructions` and `context`, the memory, the knowledge base | this call                 |
+
+The stable block is marked for the provider's cache; the `LLMClient` puts the provider's marker on it (Anthropic:
+`cache_control`). The first call of a profile writes the entry, the next ones within the cache's lifetime (5 minutes) read
+it at the cache-read rate (Anthropic: 0.1× the input price; the write costs 1.25×) and their answer starts sooner. The
+history, the question and the answer are never cached. A model caches only a prefix above its minimum (Anthropic: 512
+tokens on the Opus 5.5 / Sonnet 5.5 / Haiku 5.5 family, 1 024–4 096 on older ones, e.g. 4 096 on `claude-haiku-4-5`), so a
+short stable block is sent with the marker and simply not cached; a long addendum and many tools make it pay.
+
+Claude on Amazon Bedrock gets the same split with Bedrock's cache point on the stable block; Bedrock takes no marker on the
+tool definitions. Set `costCacheReadPerMTokUsd` and `costCacheWritePerMTokUsd` on a Bedrock model entry: Bedrock serves
+several model families, so the gateway assumes no cache discount there. OpenAI caches a prefix of 1 024 tokens or more on
+its own, without a marker; the gateway sends `promptCacheKey`, a hash of the stable block's text, so the calls that share
+the block land on the same cache. The other providers get the blocks as one plain string.
+
+- **The cost follows the cache.** `IUsage` of every call reports `inputTokens` (the whole prompt), `cachedInputTokens`
+  (read from the cache) and `cacheWriteInputTokens` (written by this call); the usage adapter and the trace get them. The
+  cost estimate prices the read tokens at `IModelCaps.costCacheReadPerMTokUsd` and the written ones at
+  `costCacheWritePerMTokUsd`, the rest at `costInPerMTokUsd`. Both are optional: on an Anthropic model they default to
+  0.1× and 1.25× the input price; on any other provider to the input price itself, so set `costCacheReadPerMTokUsd` on an
+  OpenAI model entry if its cached rate should show in the estimate.
+- **Switch it off:** `contextAssembler: {promptCaching: false, …}`: one block, no marker.
+- **A stored template** (`PromptTemplateStore`, a new version of `CHAT_MAIN`) is cached only when it keeps
+  `{cacheBreakpoint}` with nothing per-call before it. A per-call slot before it switches the cache off for the call and
+  reports the WARNING issue `prompt_cache_off` on the response; a template without the placeholder is sent as one block,
+  with no issue. See [System prompt layers](../architecture/System%20prompt%20production%20layers.md).
+- **Across tenants:** `sharePromptCacheAcrossTenants` is required. `false`: the stable block opens with
+  `[cache scope <hash of the tenant id>]`, so each tenant writes and reads its own entries and the tool definitions get no
+  marker. `true`: two tenants whose stable block is identical to the byte (same template, same addendum) read one entry,
+  and the tool definitions are marked too. Only that block is shared; the per-call block, the history and the answers
+  never are. The tenant that wrote the entry paid the write price; a tenant that reads it pays the read price and gets a
+  faster start. Keep `false` when a faster or cheaper call must not reveal that another tenant sent the same profile text
+  in the last minutes.
 
 ## How does a run end, and can a tool end it?
 

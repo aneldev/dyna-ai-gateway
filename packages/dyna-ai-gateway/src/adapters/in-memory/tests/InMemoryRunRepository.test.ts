@@ -19,7 +19,7 @@ const makeRun = (tenantId: string, runId: string, overrides: Partial<IRun> = {})
   status: ERunStatus.PAUSED,
   request: {
     modelId: "model-a",
-    system: "You are a test",
+    system: [{text: "You are a test"}],
     maxOutputTokens: 500,
   },
   toolNames: ["refund"],
@@ -117,7 +117,7 @@ describe("InMemoryRunRepository", () => {
           }],
           request: {
             modelId: "model-a",
-            system: "The user is Dennis",
+            system: [{text: "The user is Dennis"}],
             maxOutputTokens: 500,
           },
           answer: {
@@ -175,7 +175,7 @@ describe("InMemoryRunRepository", () => {
         messages: [],
         request: {
           modelId: "model-a",
-          system: "",
+          system: [],
           maxOutputTokens: 500,
         },
         steps: 1,

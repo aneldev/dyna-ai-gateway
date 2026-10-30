@@ -29,7 +29,7 @@ export const makeRun = (id = ids.runId): IRun => ({
   status: ERunStatus.RUNNING,
   request: {
     modelId: "model-a",
-    system: "You are a test",
+    system: [{text: "You are a test"}],
     maxOutputTokens: 500,
   },
   toolNames: ["refund", "ask_user_question"],

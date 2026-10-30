@@ -20,7 +20,7 @@ const makeEntry = (id: string, overrides: Partial<ITraceEntry> = {}): ITraceEntr
   modelId: "model-a",
   request: {
     modelId: "model-a",
-    system: "You are a test",
+    system: [{text: "You are a test"}],
     messages: [],
     maxOutputTokens: 500,
   },

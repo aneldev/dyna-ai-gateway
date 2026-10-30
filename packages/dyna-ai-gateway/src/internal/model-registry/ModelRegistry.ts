@@ -10,6 +10,10 @@ import {
 
 const DEFAULT_CACHE_TTL_MS = 60_000;
 const TOKENS_PER_MILLION = 1_000_000;
+/** Anthropic's list price of a cache read, as a share of the input price. */
+const ANTHROPIC_CACHE_READ_FACTOR = 0.1;
+/** Anthropic's list price of a cache write (5-minute cache), as a share of the input price. */
+const ANTHROPIC_CACHE_WRITE_FACTOR = 1.25;
 
 interface ICatalogCache {
   models: Map<string, IModelInfo>;
@@ -73,17 +77,36 @@ export class ModelRegistry implements IModelRegistry {
       modelId,
       inputTokens,
       outputTokens,
+      cachedInputTokens = 0,
+      cacheWriteInputTokens = 0,
     }: {
       /** Our model id. */
       modelId: string;
-      /** Prompt tokens. */
+      /** Prompt tokens, the cached ones included. */
       inputTokens: number;
       /** Completion tokens. */
       outputTokens: number;
+      /** Of `inputTokens`, the ones read from the provider's cache. */
+      cachedInputTokens?: number;
+      /** Of `inputTokens`, the ones written to the provider's cache. */
+      cacheWriteInputTokens?: number;
     },
   ): Promise<number> {
-    const {caps} = await this.findModel(modelId);
-    return (inputTokens * caps.costInPerMTokUsd + outputTokens * caps.costOutPerMTokUsd) / TOKENS_PER_MILLION;
+    const {
+      provider,
+      caps,
+    } = await this.findModel(modelId);
+    const isAnthropic = provider === EModelProvider.ANTHROPIC;
+    const costCacheRead = caps.costCacheReadPerMTokUsd ?? (isAnthropic ? caps.costInPerMTokUsd * ANTHROPIC_CACHE_READ_FACTOR : caps.costInPerMTokUsd);
+    const costCacheWrite = caps.costCacheWritePerMTokUsd ?? (isAnthropic ? caps.costInPerMTokUsd * ANTHROPIC_CACHE_WRITE_FACTOR : caps.costInPerMTokUsd);
+    // A provider that reports more cached tokens than the total never yields a negative uncached count.
+    const uncachedInputTokens = Math.max(0, inputTokens - cachedInputTokens - cacheWriteInputTokens);
+    return (
+      uncachedInputTokens * caps.costInPerMTokUsd
+      + cachedInputTokens * costCacheRead
+      + cacheWriteInputTokens * costCacheWrite
+      + outputTokens * caps.costOutPerMTokUsd
+    ) / TOKENS_PER_MILLION;
   }
 
   /** Admin: inserts or replaces an entry. Invalidates cache. */

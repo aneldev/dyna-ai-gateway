@@ -93,6 +93,7 @@ describe("LLMClient", () => {
         inputTokens: 10,
         outputTokens: 2,
         cachedInputTokens: 3,
+        cacheWriteInputTokens: undefined,
       });
     });
 
