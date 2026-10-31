@@ -120,6 +120,16 @@ I am the learner here. Wrong assumptions and wrong terminology are expected from
 - Unsure whether it's an error or shorthand → **ask**, don't assert a correction.
 - Keep the block **last** in the answer. Never bury corrections mid-answer.
 
+## Terminology — one name per concept
+
+The glossary of this repo is `docs/Terminology.md`, a user doc (`write-user-docs` skill). These rules apply in every
+conversation, not only while planning:
+
+- When I use a term that conflicts with the glossary, say so at once: "the glossary defines X as …, you seem to mean Y. Which is it?"
+- When I use a fuzzy or overloaded term, propose the canonical one (the field's term, never an invented one) and name the synonyms to avoid.
+- When I state how something works, check the code. A contradiction is surfaced, never smoothed over.
+- A term resolved in the conversation goes into the glossary right then — one row, table re-aligned — not at the end of the plan. The glossary says what a term IS; no implementation detail.
+
 ## Prompt shorthand
 
 

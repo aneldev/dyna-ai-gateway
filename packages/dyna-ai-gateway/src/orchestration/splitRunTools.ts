@@ -2,10 +2,12 @@ import {dynaError} from "dyna-error";
 
 import {IToolDef} from "../contracts";
 import {IAIGatewayDeps} from "../types";
+import {LOAD_SKILL_TOOL_NAME} from "../internal";
 
 /**
  * The tools of a stored run, for `ToolPolicy.resolve` on resume: the registry's by name, the additional ones (D66) from what the
  * resume passes again. A name found in neither is a 400: the caller must pass the `additionalTools` the run started with.
+ * `load_skill` is neither: the resume rebuilds it from the run's and the profile's skills (D124), so it is left out here.
  */
 export const splitRunTools = (
   {
@@ -26,7 +28,7 @@ export const splitRunTools = (
   additionalTools: IToolDef[];
 } => {
   const registryNames = new Set(deps.toolRegistry.list().map(tool => tool.name));
-  const missing = toolNames.filter(name => !registryNames.has(name) && !additionalTools.some(tool => tool.name === name));
+  const missing = toolNames.filter(name => name !== LOAD_SKILL_TOOL_NAME && !registryNames.has(name) && !additionalTools.some(tool => tool.name === name));
   if (missing.length > 0) {
     throw dynaError({
       code: 5374506419225,

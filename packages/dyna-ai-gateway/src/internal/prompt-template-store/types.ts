@@ -19,9 +19,10 @@ export interface IPromptTemplateStoreConfig {
    * A body may use any subset of the placeholders of its key; a placeholder outside the list throws at render.
    *
    * Placeholders per key:
-   * - `CHAT_MAIN`: `{format}`, `{addendum}`, `{cacheBreakpoint}`, `{today}`, `{locale}`, `{timezone}`, `{instructions}`, `{context}`, `{memory}`, `{kb}`
+   * - `CHAT_MAIN`: `{format}`, `{addendum}`, `{skills}`, `{cacheBreakpoint}`, `{today}`, `{locale}`, `{timezone}`, `{instructions}`, `{context}`, `{memory}`, `{kb}`
    *   `{cacheBreakpoint}` ends the part that is the same on every call of a profile; the provider may cache everything before it.
-   *   Only `{format}` and `{addendum}` may come before it; a template without it is sent as one block, not cached.
+   *   Only `{format}`, `{addendum}` and `{skills}` may come before it; a template without it is sent as one block, not cached.
+   *   A body without `{skills}` drops the skills of a call that has some, with the WARNING issue `skills_slot_missing`.
    * - `MEMORY_WORKING`: `{maxSummaryChars}`, `{maxFacts}`, `{summary}`, `{facts}`
    * - `MEMORY_USER`: `{maxFacts}`, `{facts}`
    * - `KB_QUERY_REWRITE`: `{summary}`, `{facts}`

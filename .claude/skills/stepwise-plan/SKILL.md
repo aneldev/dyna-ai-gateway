@@ -54,6 +54,11 @@ The plan comes **from a ticket** or **from the developer's prompt**. Most of the
 
 **The ticket points here.** When the card exists (created by `create-trello-ticket`, or earlier), its `Dev` checklist carries the single item ``Plan has been prepared in the codebase: `<path>` `` and `### Background & Context` ends with `Plan: <path>`; set or correct both once the file exists (the developer may prefer to do this himself — ask once per ticket). The card gets no step list, ever.
 
+**Interview first when the design is open.** When the input leaves design branches open (two valid shapes, an unclear
+boundary, a term used two ways), offer the developer the `grilling` skill before writing the plan: one question at a time
+until the branches are closed. The answers land in `## Targets / decisions`; a term settled on the way lands in the glossary
+at once (`CLAUDE.md`, Terminology). Skip the offer when the input already fixes the design.
+
 **Structure (keep this order):**
 
 ```markdown
@@ -164,6 +169,10 @@ author: the goal is to find what breaks, not to confirm it works. Check it on th
 3. **Contradictions.** Does the plan contradict the logic of the repo's markdown files: `CLAUDE.md`, the Roadmap (its
    working rules), the decisions (`D…`), the class and architecture docs, the Backlog, the user docs, the other active
    plans? And does it fix what the ticket asks: does every AC map to a step, and does any step work against the goal?
+4. **Concept boundaries.** Invent concrete edge-case scenarios that probe where one concept ends and the next begins
+   (the thread with no turns, the tool call that outlives its step, the entity shared by two tenants) and check the plan
+   answers each one. Every term the plan uses matches the glossary (`CLAUDE.md`, Terminology); a term used two ways is an
+   issue.
 
 **The loop:**
 
@@ -222,7 +231,8 @@ When every step is `[x]` or `[-]` (with reasons) and the follow-ups table is com
 1. **Update the docs of the closest `docs` folder** (the one that holds the plan; the root `docs/` too when the change is repo-wide). Each file only if it exists; add the ticket number and link wherever a line refers to this work:
    - **`Roadmap.md`** — tick the checkboxes of what this plan completed (or move the item from the planned to the done section when the file has no checkboxes), with a brief line of what shipped and the ticket.
    - **`Backlog.md`** — mark the entries this plan solved `[x]` with the plan step or commit (the file's Lifecycle), add the issues found and not fixed as new entries (`#### Found in` names the plan), and one brief line per closed entry of what was done.
-   - **`Decisions.md`** — the critical logical decisions this change introduced or amended (what, why, consequence), derived from `docs/internal` when the repo keeps the truth there (this repo: `write-user-docs` skill, decision ids `D…`).
+   - **`Decisions.md`** — the critical logical decisions this change introduced or amended (what, why, consequence), derived from `docs/internal` when the repo keeps the truth there (this repo: `write-user-docs` skill, decision ids `D…`). A decision earns an entry here only when all three hold: **hard to reverse** (changing it later costs real work), **surprising without context** (a reader of the code would ask "why this way?"), **a real trade-off** (there were genuine alternatives). A decision that fails one test stays in the plan and in the internal docs only.
+   - **The glossary** (`CLAUDE.md`, Terminology) — verify every term this plan introduced or sharpened has its row; the rows were meant to be written as the terms were resolved, this is the check, not the moment to write them.
 2. **Update `CLAUDE.md` and the other docs** the change made stale (tech-stack versions, commands, rules).
 3. **Confirm, then post the plan on the ticket.** Ask the developer once whether the ticket is really completed (every step
    `[x]` or `[-]` is necessary, not sufficient — he may know of a check still open). On yes, and only when the plan has a

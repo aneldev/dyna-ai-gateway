@@ -470,6 +470,8 @@ export class AIGateway {
         chunks,
         // The thread as prepareCall loaded it: its turnCount is the count before this run's question (D36)
         startTurnCount: thread.turnCount,
+        // The call's skills stay with the run (D124): a resume offers them again
+        skills: input.skills,
         debug: input.debug,
         onEvent,
         callSignal,
@@ -509,7 +511,9 @@ export class AIGateway {
    * The run continues on its profile as it is now, or on `profileId` (D65): the model, the output cap, the tools and the
    * limits come from that profile; the system prompt and the messages so far stay. The review of the answer and the
    * approvals are those of both profiles (D113): a switch never skips a guard the run started under. A pending tool the profile does not
-   * allow is a 400 and the run stays paused. A run that started with `additionalTools` (D66) needs them again.
+   * allow is a 400 and the run stays paused. A run that started with `additionalTools` (D66) needs them again. Its skills it kept
+   * (D124): `load_skill` is rebuilt from them and the skills of the profile it continues on, while the system prompt keeps the list
+   * of the start; a name in both is a 400 and the run stays paused.
    * The free text of an ANSWER goes through the input rules like a prompt (D71): an ERROR returns FAILED and the run stays
    * paused, so the user can answer again; WARNINGs travel on the response.
    * `abortSignal` / `timeoutMs` stop the resume as they stop a call (D90): FAILED with the reason. An abort during the step closes
@@ -721,17 +725,29 @@ export class AIGateway {
         });
       }
       const model = await this.deps.modelRegistry.getModel({modelId: profile.modelId});
+      // The skills follow this resume's profile like its tools (D65), the run's own come with it (D124); a duplicate between the two is a 400 and the run stays paused.
+      // `load_skill` is rebuilt from them: the stored prompt still lists the skills of the start, the enum offers these
+      const skills = this.deps.skillRegistry.resolve({
+        profile,
+        skills: paused.skills,
+      });
+      const loadSkillTool = skills.length > 0 ? [this.deps.skillRegistry.makeLoadSkillTool({skills})] : [];
+      const runTools = splitRunTools({
+        deps: this.deps,
+        runId,
+        toolNames: paused.toolNames,
+        additionalTools,
+      });
       const resolved = this.deps.toolPolicy.resolve({
-        ...splitRunTools({
-          deps: this.deps,
-          runId,
-          toolNames: paused.toolNames,
-          additionalTools,
-        }),
+        allTools: [...runTools.allTools, ...loadSkillTool],
+        additionalTools: runTools.additionalTools,
         profile,
         userContext,
         caps: model.caps,
-        builtInTools: getBuiltInToolNames({config: this.config}),
+        builtInTools: [
+          ...getBuiltInToolNames({config: this.config}),
+          ...loadSkillTool.map(tool => tool.name),
+        ],
       });
       // Every pending tool of the pause must be offered by the profile the run continues on (D65)
       const pendingToolName = (paused.pending ?? [])

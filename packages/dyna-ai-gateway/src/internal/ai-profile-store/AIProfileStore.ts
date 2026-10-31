@@ -64,7 +64,8 @@ export class AIProfileStore implements IAIProfileStore {
 
   /**
    * Admin: creates or replaces; validates modelId (and cheapModelId, when set) against ModelRegistry,
-   * and allowedTools / approvals against ToolRegistry. The registry's own error surfaces for an unknown or disabled model.
+   * allowedTools / approvals against ToolRegistry, and the names of `skills` with the SkillRegistry (unique, non-empty).
+   * The registry's own error surfaces for an unknown or disabled model.
    */
   public async upsertProfile(
     {
@@ -93,6 +94,7 @@ export class AIProfileStore implements IAIProfileStore {
         },
       });
     }
+    this.deps.skillRegistry.resolve({profile});
 
     await this.config.repository.save({
       tenantId,

@@ -17,6 +17,7 @@ import {
 } from "../../model-registry";
 import {RunStore} from "../../run-store";
 import {ToolRegistry} from "../../tool-registry";
+import {SkillRegistry} from "../../skill-registry";
 
 import {AIProfileStore} from "../AIProfileStore";
 import {IAIProfile} from "../types";
@@ -94,6 +95,7 @@ const setup = async (profiles: IAIProfile[], cacheTtlMs?: number): Promise<ISetu
         modelRegistry: new ModelRegistry({repository: modelRepository}),
         toolRegistry: new ToolRegistry({tools: [refundTool]}),
         runStore: new RunStore({repository: new InMemoryRunRepository()}),
+        skillRegistry: new SkillRegistry(),
       },
     ),
   };

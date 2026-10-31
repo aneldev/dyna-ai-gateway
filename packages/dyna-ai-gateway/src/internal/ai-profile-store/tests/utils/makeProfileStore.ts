@@ -14,6 +14,7 @@ import {
   RunStore,
 } from "../../../run-store";
 import {ToolRegistry} from "../../../tool-registry";
+import {SkillRegistry} from "../../../skill-registry";
 
 import {AIProfileStore} from "../../AIProfileStore";
 import {IAIProfile} from "../../types";
@@ -72,6 +73,7 @@ export const makeProfileStore = async (
     modelRegistry: new ModelRegistry({repository: new InMemoryModelRegistryRepository({models: [modelA]})}),
     toolRegistry: new ToolRegistry({tools: []}),
     runStore: new RunStore({repository: runRepository}),
+    skillRegistry: new SkillRegistry(),
   });
   return {
     store,

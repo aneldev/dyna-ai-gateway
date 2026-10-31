@@ -36,6 +36,7 @@ const chatMainSlots = {
   locale: "de-AT",
   timezone: "Europe/Vienna",
   addendum: "Tenant text",
+  skills: "",
   cacheBreakpoint: "",
   instructions: "",
   context: "",

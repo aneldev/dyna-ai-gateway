@@ -14,6 +14,7 @@ import {
   KbRetriever,
   ToolRegistry,
   ToolPolicy,
+  SkillRegistry,
   RunStore,
   HumanGate,
   UsageGuard,
@@ -51,6 +52,7 @@ export const createGatewayDeps = (
   const mdChunker = make(overrides.mdChunker, config.mdChunker ?? {}, undefined, config => new MdChunker(config));
   const vectorStore = make(overrides.vectorStore, config.vectorStore, undefined, config => new VectorStore(config));
   const toolPolicy = make(overrides.toolPolicy, config.toolPolicy ?? {}, undefined, config => new ToolPolicy(config));
+  const skillRegistry = make(overrides.skillRegistry, config.skillRegistry ?? {}, undefined, config => new SkillRegistry(config));
   const runStore = make(overrides.runStore, config.runStore, undefined, config => new RunStore(config));
   const trace = make(overrides.trace, config.trace, undefined, config => new Trace(config));
 
@@ -86,6 +88,7 @@ export const createGatewayDeps = (
     modelRegistry,
     toolRegistry,
     runStore,
+    skillRegistry,
   }, (config, deps) => new AIProfileStore(config, deps));
   const workingMemory = make(overrides.workingMemory, config.workingMemory, {
     llmClient,
@@ -95,6 +98,7 @@ export const createGatewayDeps = (
   }, (config, deps) => new WorkingMemory(config, deps));
   const contextAssembler = make(overrides.contextAssembler, config.contextAssembler, {
     promptTemplateStore,
+    skillRegistry,
     turnBuilder,
     workingMemory,
   }, (config, deps) => new ContextAssembler(config, deps));
@@ -133,6 +137,7 @@ export const createGatewayDeps = (
     kbIngestor,
     toolRegistry,
     toolPolicy,
+    skillRegistry,
     runStore,
     humanGate,
     usageGuard,

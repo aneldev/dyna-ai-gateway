@@ -120,6 +120,11 @@ describe("InMemoryRunRepository", () => {
             system: [{text: "The user is Dennis"}],
             maxOutputTokens: 500,
           },
+          skills: [{
+            name: "refund_policy",
+            description: "The refund rules",
+            body: "Refunds within 14 days.",
+          }],
           answer: {
             result: {
               modelId: "model-a",
@@ -180,7 +185,7 @@ describe("InMemoryRunRepository", () => {
         },
         steps: 1,
       });
-      expect([run?.pending, run?.answer]).toEqual([undefined, undefined]);
+      expect([run?.skills, run?.pending, run?.answer]).toEqual([undefined, undefined, undefined]);
     });
 
     test("anonymizeByUser keeps the status of a finished run and touches no other user", async () => {

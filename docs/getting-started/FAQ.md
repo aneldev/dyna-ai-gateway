@@ -52,7 +52,8 @@ profile it is given.
 - A paused run resumes on the profile it started with, unless `resume({profileId})` names [another one](../architecture/Decisions.md#d65-resume-continues-a-paused-run-on-another-profile): the
   continuation then runs on that profile's model, tools and limits; the system prompt and the messages so far stay. The
   review of the answer and the approvals stay those of both profiles together, so a switch cannot skip a reviewer or an
-  approval the run started under.
+  approval the run started under. The [skills](../architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)
+  the model can load are the new profile's and the ones the call brought; the list in the system prompt stays the one of the start.
 - `profileId` is required on every call, also on an existing thread. The gateway has no default profile: when the user has
   not picked a model, the application passes the profile it chose as its fallback ([D103](../architecture/Decisions.md#d103-a-call-always-names-its-profile)).
 
@@ -498,7 +499,7 @@ The system prompt is sent as two blocks, split at the `{cacheBreakpoint}` placeh
 
 | Block    | Holds                                                                                                  | Same on                   |
 |----------|--------------------------------------------------------------------------------------------------------|---------------------------|
-| Stable   | the template text, the output format, the profile's `promptAddendum`                                   | every call of the profile |
+| Stable   | the template text, the output format, the profile's `promptAddendum`, the skills                       | every call of the profile |
 | Per-call | the date, locale and timezone, the call's `instructions` and `context`, the memory, the knowledge base | this call                 |
 
 The stable block is marked for the provider's cache; the `LLMClient` puts the provider's marker on it (Anthropic:
@@ -520,6 +521,9 @@ the block land on the same cache. The other providers get the blocks as one plai
   `costCacheWritePerMTokUsd`, the rest at `costInPerMTokUsd`. Both are optional: on an Anthropic model they default to
   0.1× and 1.25× the input price; on any other provider to the input price itself, so set `costCacheReadPerMTokUsd` on an
   OpenAI model entry if its cached rate should show in the estimate.
+- **Skills are in the stable block** ([D124](../architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)):
+  a profile's `skills` are the same on every call, so they are cached with the addendum. A call that passes its own `skills`
+  changes the block: calls with the same skill set read one entry, a different set writes another.
 - **Switch it off:** `contextAssembler: {promptCaching: false, …}`: one block, no marker.
 - **A stored template** (`PromptTemplateStore`, a new version of `CHAT_MAIN`) is cached only when it keeps
   `{cacheBreakpoint}` with nothing per-call before it. A per-call slot before it switches the cache off for the call and
@@ -598,6 +602,38 @@ export const classifyIntentTool = defineTool({
   that says so, and names the required tools when `requires` hid it.
 - Visibility is not a forced call: the model may still answer without calling the tool. Say "call it first" in the tool's
   description and in the system prompt.
+
+## How do I give the model instructions it loads only when it needs them?
+
+With skills ([D124](../architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)): `ISkill {name,
+description, body}` on the profile (`IAIProfile.skills`, the procedures of the role) or on the call (`skills`, what the
+screen the user is on knows). The system prompt carries the names and descriptions; the body is read only when a task needs
+it. The page [Skills](Skills.md) has the cost model, the limits and what a skill is not.
+
+```ts
+// On a run(): the skills are listed, the model loads one with the built-in tool load_skill (one step per load)
+const {response} = gateway.run({
+  userContext,
+  profileId: "support",
+  prompt: "The customer wants a refund for an order of 800 EUR",
+  skills: [exportWizard],
+  kbFilters: {libraryIds: [], bookIds: []},
+});
+
+// On an ask(): no tools, so the bodies are inlined in the system prompt of this call
+const {response: answer} = gateway.ask({
+  userContext,
+  profileId: "support",
+  prompt: "Which step of the export am I in?",
+  skills: [exportWizard],
+  kbFilters: {libraryIds: [], bookIds: []},
+});
+```
+
+- A name must be unique across the profile's and the call's skills and not empty: a duplicate is a 400 at `upsertProfile`
+  and when the call starts, before anything is stored.
+- An application that stores its own `CHAT_MAIN` template must carry the `{skills}` placeholder; without it the skills of
+  a call are dropped and the response carries the WARNING issue `skills_slot_missing`.
 
 ## Who may read a thread, a file or a paused run?
 
