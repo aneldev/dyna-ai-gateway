@@ -1,6 +1,6 @@
 {
   "name": "dyna-ai-gateway",
-  "version": "0.0.1-beta.3",
+  "version": "0.0.1-beta.4",
   "description": "AI Gateway (beta): provider-agnostic LLM orchestration (ask/run, tools, human gate, KB/RAG, memory, usage control, traces) behind repository/adapter contracts",
   "repository": {
     "type": "git",

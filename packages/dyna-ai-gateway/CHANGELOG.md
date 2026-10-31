@@ -6,6 +6,8 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+## [0.0.1-beta.4] - 2026-10-31
+
 ### Added
 
 - **Skills** (D124): instructions the model loads on demand, `ISkill {name, description, body}`, on a profile
