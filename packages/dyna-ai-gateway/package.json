@@ -49,8 +49,7 @@
     "test-debug": "node --inspect-brk ../../node_modules/.bin/jest --runInBand",
     "test-watch": "jest --watch --verbose --runInBand",
     "test-no-coverage": "jest --collectCoverage=false --no-cache --runInBand",
-    "test-update-snapshots": "jest --updateSnapshot --runInBand",
-    "publish-push": "pnpm version patch && pnpm publish --no-git-checks && git push && git push --tags"
+    "test-update-snapshots": "jest --updateSnapshot --runInBand"
   },
   "keywords": [
     "ai",
