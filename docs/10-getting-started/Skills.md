@@ -3,7 +3,7 @@
 A skill is a named block of instructions the model reads only when the task at hand calls for it: a refund policy, an
 escalation procedure, the steps of the wizard the user is in. The system prompt carries every skill's name and a one-line
 description; the body stays out of the prompt until the model asks for it
-([D124](../architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)).
+([D124](../30-architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)).
 
 ```ts
 import {ISkill} from "dyna-ai-gateway";
@@ -99,7 +99,7 @@ goes on from, not an error of the call.
 ## 6. The prompt template
 
 The seed `CHAT_MAIN` template renders the skills in its `{skills}` slot, right after the addendum and inside the cached block
-([the layers of the system prompt](../architecture/System%20prompt%20production%20layers.md)). An application that stores
+([the layers of the system prompt](../30-architecture/System%20prompt%20production%20layers.md)). An application that stores
 its own `CHAT_MAIN` version must carry the placeholder: a version without it drops the skills of every call that has some,
 and the response carries the WARNING issue `skills_slot_missing` naming the template version.
 

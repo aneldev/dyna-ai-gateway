@@ -3,7 +3,7 @@
 The gateway holds no token logic: no budget, no plan, no quota, no remaining amount. Before **every** model call it asks the
 application's usage adapter "may this call run?", and after the call it reports what the call used. Who may spend what, how
 much is left, per day, per user, per model, in tokens, credits or money: all of that is the application's, inside its adapter
-([D121](../architecture/Decisions.md#d121-the-application-decides-every-model-call)).
+([D121](../30-architecture/Decisions.md#d121-the-application-decides-every-model-call)).
 
 ## 1. The contract
 

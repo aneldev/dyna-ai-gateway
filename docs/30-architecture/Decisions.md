@@ -26,7 +26,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** A profile stored on the thread was written at creation and never read. The application knows which model the user picked, and it may change between two messages of one conversation. Stored turns and memory are in the gateway's own provider-neutral shape, so any profile continues any thread.
 
-**Consequence.** There is no `switchModel`: switching is passing another `profileId` on the next call, and the application passes the user's choice on every call. A paused run keeps the profile it started with unless [resume names another one](#d65-resume-continues-a-paused-run-on-another-profile). The step by step is in the [FAQ](../getting-started/FAQ.md#how-can-the-user-change-the-model).
+**Consequence.** There is no `switchModel`: switching is passing another `profileId` on the next call, and the application passes the user's choice on every call. A paused run keeps the profile it started with unless [resume names another one](#d65-resume-continues-a-paused-run-on-another-profile). The step by step is in the [FAQ](../10-getting-started/FAQ.md#how-can-the-user-change-the-model).
 
 ### D103: A call always names its profile
 
@@ -144,7 +144,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** A stored failed answer would be sent back to the model on the next call. Streaming cannot be undone, so the client needs a signal.
 
-**Consequence.** A client that renders deltas drops or greys the text of the call on `ANSWER_WITHDRAWN` and shows the issues; a client that reads only `response` is unaffected. The choice between live deltas and showing only the final response is in the [FAQ](../getting-started/FAQ.md#how-do-i-add-moderation-or-other-safety-checks).
+**Consequence.** A client that renders deltas drops or greys the text of the call on `ANSWER_WITHDRAWN` and shows the issues; a client that reads only `response` is unaffected. The choice between live deltas and showing only the final response is in the [FAQ](../10-getting-started/FAQ.md#how-do-i-add-moderation-or-other-safety-checks).
 
 ### D54: Forgetting a user is two methods
 
@@ -191,7 +191,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** A server stopped in the middle of a call leaves the thread leased until the lease expires, the run running with nobody to close it, and the user turn stored without an answer. `whenIdle()` waits for the memory updates only, not for the calls. Stopping is the standard order of a Node server: stop taking work, drain within a grace period, abort the rest.
 
-**Consequence.** The refusal is a 503, not a 4xx: the client did nothing wrong and may retry on another instance. An aborted call answers `FAILED` with `call_aborted` and the reason "The call was aborted: the gateway is shutting down"; its run is closed, its thread lease released and its turns kept. A paused run is stored, so it is untouched and resumes on the next instance. A crash skips all of it. A gateway that was shut down takes no call again. The SIGTERM handler is in the [FAQ](../getting-started/FAQ.md#how-do-i-stop-the-server-cleanly).
+**Consequence.** The refusal is a 503, not a 4xx: the client did nothing wrong and may retry on another instance. An aborted call answers `FAILED` with `call_aborted` and the reason "The call was aborted: the gateway is shutting down"; its run is closed, its thread lease released and its turns kept. A paused run is stored, so it is untouched and resumes on the next instance. A crash skips all of it. A gateway that was shut down takes no call again. The SIGTERM handler is in the [FAQ](../10-getting-started/FAQ.md#how-do-i-stop-the-server-cleanly).
 
 ### D40: The gateway knows no UI
 
@@ -303,7 +303,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** A chat assistant and a long-running support agent need different memories, and a tenant often runs both. One raw interface (the idiom of LangChain's `saveContext` / `loadMemoryVariables`) lets each strategy, built-in or the host's, decide for itself, with the one number it needs: the budget. A ratio instead of a priority between history and knowledge base is what LlamaIndex does (`chat_history_token_ratio`); it is one knob and it reads as what it does.
 
-**Consequence.** `IContextAssemblerConfig.maxTurns` is gone; the window is sized in tokens, by the strategy. A stored summary survives a switch to `SLIDING_WINDOW` unused and is resumed after the switch back; `getThreadMemory` shows it meanwhile and returns the empty state for a thread that never ran `SUMMARY_BUFFER`. Every window opens on a user turn, so a tool result never arrives without its call. The token count is a real tokenizer (exact for OpenAI, a safety factor for the other providers; images and PDFs by size), the same count the usage adapter is asked with ([D121](#d121-the-application-decides-every-model-call)). How to choose and configure a strategy is in the [FAQ](../getting-started/FAQ.md#how-much-of-the-conversation-does-the-model-see-and-how-do-i-choose).
+**Consequence.** `IContextAssemblerConfig.maxTurns` is gone; the window is sized in tokens, by the strategy. A stored summary survives a switch to `SLIDING_WINDOW` unused and is resumed after the switch back; `getThreadMemory` shows it meanwhile and returns the empty state for a thread that never ran `SUMMARY_BUFFER`. Every window opens on a user turn, so a tool result never arrives without its call. The token count is a real tokenizer (exact for OpenAI, a safety factor for the other providers; images and PDFs by size), the same count the usage adapter is asked with ([D121](#d121-the-application-decides-every-model-call)). How to choose and configure a strategy is in the [FAQ](../10-getting-started/FAQ.md#how-much-of-the-conversation-does-the-model-see-and-how-do-i-choose).
 
 ### D56: The user-facts extractor returns operations
 
@@ -633,7 +633,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Why.** The libraries of the field (OpenAI Agents SDK, Mastra, NeMo) call every check a guardrail, built-in or custom. One vocabulary, one place.
 
-**Consequence.** The application's rules run only when the built-in ones passed, so a rejected prompt pays no moderation call. How to write a rule, what it receives and what happens on each severity is in the [FAQ](../getting-started/FAQ.md#how-do-i-add-moderation-or-other-safety-checks).
+**Consequence.** The application's rules run only when the built-in ones passed, so a rejected prompt pays no moderation call. How to write a rule, what it receives and what happens on each severity is in the [FAQ](../10-getting-started/FAQ.md#how-do-i-add-moderation-or-other-safety-checks).
 
 ### D57, D59: A rule gets a judge
 
@@ -729,7 +729,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Why.** The whole gateway runs and is tested without infrastructure. Where a tenant's data lives is what tenant isolation rests on, so the developer who wires the gateway decides it: one set of names with a tenant column, a set per tenant, or a schema per tenant.
 
-**Consequence.** The real adapters are planned, see the [Roadmap](../Roadmap.md#planned).
+**Consequence.** The real adapters are planned, see the [Roadmap](../80-roadmap.md#planned).
 
 ### D120: The real adapters are packages of their own
 
@@ -751,7 +751,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ## 17. AIGatewayVercelUi
 
-The server-only module `dyna-ai-gateway/vercel-ui` that speaks the Vercel UI message protocol for a chat client on `useChat` (D40). How to use it: [Vercel chat client](../getting-started/Vercel%20chat%20client.md).
+The server-only module `dyna-ai-gateway/vercel-ui` that speaks the Vercel UI message protocol for a chat client on `useChat` (D40). How to use it: [Vercel chat client](../10-getting-started/Vercel%20chat%20client.md).
 
 ### D34: One answer is one message
 
@@ -768,4 +768,3 @@ The server-only module `dyna-ai-gateway/vercel-ui` that speaks the Vercel UI mes
 **Why.** `useChat` ships the approval flow (`addToolApprovalResponse`, `sendAutomaticallyWhen`); the module speaks it instead of inventing a second one. The pause id, not the run id, because a run can pause twice under the same run id and the same approval must not decide both.
 
 **Consequence.** The module finds the pause among the calling user's own paused runs: an approval id of nobody's pause, or of another user's, is a 404. Everything the SDK's card cannot show (the allowed actions, the question form, the expiry) is in the message's `metadata.pause`.
-

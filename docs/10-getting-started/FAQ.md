@@ -49,13 +49,13 @@ profile it is given.
 - Switch between calls, not during one. A call that is still answering keeps its model.
 - A model with a smaller context window gets fewer of the older turns; the thread's memory still carries their gist.
 - A model without tool support simply gets no tools (`run` behaves like `ask`).
-- A paused run resumes on the profile it started with, unless `resume({profileId})` names [another one](../architecture/Decisions.md#d65-resume-continues-a-paused-run-on-another-profile): the
+- A paused run resumes on the profile it started with, unless `resume({profileId})` names [another one](../30-architecture/Decisions.md#d65-resume-continues-a-paused-run-on-another-profile): the
   continuation then runs on that profile's model, tools and limits; the system prompt and the messages so far stay. The
   review of the answer and the approvals stay those of both profiles together, so a switch cannot skip a reviewer or an
-  approval the run started under. The [skills](../architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)
+  approval the run started under. The [skills](../30-architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)
   the model can load are the new profile's and the ones the call brought; the list in the system prompt stays the one of the start.
 - `profileId` is required on every call, also on an existing thread. The gateway has no default profile: when the user has
-  not picked a model, the application passes the profile it chose as its fallback ([D103](../architecture/Decisions.md#d103-a-call-always-names-its-profile)).
+  not picked a model, the application passes the profile it chose as its fallback ([D103](../30-architecture/Decisions.md#d103-a-call-always-names-its-profile)).
 
 ## How do I add moderation or other safety checks?
 
@@ -413,7 +413,7 @@ await gateway.resume({userContext, runId, pauseId, decisions: [{action: EResumeA
   the reason and the issue code `ANSWER_REJECTED_ISSUE_CODE`.
 - The reviewer's text is not screened by the output rules: the reviewer is your own person, like `instructions`. A run
   started with an `outputSchema` parses the edited text through the schema again, so hand the schema to `resume()` again
-  as `outputSchema` (a stored run keeps none, [D36](../architecture/Decisions.md#d36-a-stored-run-carries-what-a-resumed-run-needs));
+  as `outputSchema` (a stored run keeps none, [D36](../30-architecture/Decisions.md#d36-a-stored-run-carries-what-a-resumed-run-needs));
   a text that does not match is a 400, and so is an edit without the schema, and the run stays paused for another decision.
 - The edited text may be as long as the model's answer may be, `maxOutputTokens` × 4 characters; a longer one is a 400
   and the run stays paused. The edit becomes the assistant's turn, so the model reads it as history on the next call.
@@ -433,7 +433,7 @@ await gateway.resume({userContext, runId, pauseId, decisions: [{action: EResumeA
 
 ## How much of the conversation does the model see, and how do I choose?
 
-The thread's history reaches the model through the working memory, with one of two strategies ([D122](../architecture/Decisions.md#d122-the-working-memory-owns-the-threads-window)):
+The thread's history reaches the model through the working memory, with one of two strategies ([D122](../30-architecture/Decisions.md#d122-the-working-memory-owns-the-threads-window)):
 
 | Strategy                                | What the model gets                                                                                              | Pick it for                                                                                                                  |
 |-----------------------------------------|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
@@ -473,7 +473,7 @@ The window is sized in tokens, from what the rendered system prompt leaves of th
 
 - `workingMemory: {enabled: false}` sends the last 20 turns and remembers nothing; no helper model is ever called.
 - `getThreadMemory` shows the stored summary and facts; under `SLIDING_WINDOW` it is the empty state, or the summary an earlier `SUMMARY_BUFFER` period left: a switch never wipes it, a switch back resumes from it. `resetThreadMemory` clears it.
-- Your own memory model: implement `IWorkingMemory` (`load`, `saveContext`, `getState`, `reset`) and pass it in the constructor's `overrides`; it receives the gateway's `workingMemory` config and the shared children (`threadStore`, `turnBuilder`, `llmClient`, `promptTemplateStore`). See [Dependency injection](../architecture/Live%20adjustment%20and%20dependency%20injection.md#23-what-can-be-injected).
+- Your own memory model: implement `IWorkingMemory` (`load`, `saveContext`, `getState`, `reset`) and pass it in the constructor's `overrides`; it receives the gateway's `workingMemory` config and the shared children (`threadStore`, `turnBuilder`, `llmClient`, `promptTemplateStore`). See [Dependency injection](../30-architecture/Live%20adjustment%20and%20dependency%20injection.md#23-what-can-be-injected).
 
 ```ts
 import {IWorkingMemory, IWorkingMemoryConfig, IWorkingMemoryDeps, AIGateway} from "dyna-ai-gateway";
@@ -494,7 +494,7 @@ holds no budget, plan or quota itself. The contract, an example adapter and what
 
 ## Is the system prompt cached, and what does it cost?
 
-Yes, when `contextAssembler.promptCaching` is `true` ([D123](../architecture/Decisions.md#d123-the-system-prompt-travels-as-blocks)).
+Yes, when `contextAssembler.promptCaching` is `true` ([D123](../30-architecture/Decisions.md#d123-the-system-prompt-travels-as-blocks)).
 The system prompt is sent as two blocks, split at the `{cacheBreakpoint}` placeholder of `CHAT_MAIN`:
 
 | Block    | Holds                                                                                                  | Same on                   |
@@ -521,14 +521,14 @@ the block land on the same cache. The other providers get the blocks as one plai
   `costCacheWritePerMTokUsd`, the rest at `costInPerMTokUsd`. Both are optional: on an Anthropic model they default to
   0.1× and 1.25× the input price; on any other provider to the input price itself, so set `costCacheReadPerMTokUsd` on an
   OpenAI model entry if its cached rate should show in the estimate.
-- **Skills are in the stable block** ([D124](../architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)):
+- **Skills are in the stable block** ([D124](../30-architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)):
   a profile's `skills` are the same on every call, so they are cached with the addendum. A call that passes its own `skills`
   changes the block: calls with the same skill set read one entry, a different set writes another.
 - **Switch it off:** `contextAssembler: {promptCaching: false, …}`: one block, no marker.
 - **A stored template** (`PromptTemplateStore`, a new version of `CHAT_MAIN`) is cached only when it keeps
   `{cacheBreakpoint}` with nothing per-call before it. A per-call slot before it switches the cache off for the call and
   reports the WARNING issue `prompt_cache_off` on the response; a template without the placeholder is sent as one block,
-  with no issue. See [System prompt layers](../architecture/System%20prompt%20production%20layers.md).
+  with no issue. See [System prompt layers](../30-architecture/System%20prompt%20production%20layers.md).
 - **Across tenants:** `sharePromptCacheAcrossTenants` is required. `false`: the stable block opens with
   `[cache scope <hash of the tenant id>]`, so each tenant writes and reads its own entries and the tool definitions get no
   marker. `true`: two tenants whose stable block is identical to the byte (same template, same addendum) read one entry,
@@ -605,7 +605,7 @@ export const classifyIntentTool = defineTool({
 
 ## How do I give the model instructions it loads only when it needs them?
 
-With skills ([D124](../architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)): `ISkill {name,
+With skills ([D124](../30-architecture/Decisions.md#d124-skills-instructions-the-model-loads-on-demand)): `ISkill {name,
 description, body}` on the profile (`IAIProfile.skills`, the procedures of the role) or on the call (`skills`, what the
 screen the user is on knows). The system prompt carries the names and descriptions; the body is read only when a task needs
 it. The page [Skills](Skills.md) has the cost model, the limits and what a skill is not.
@@ -647,13 +647,13 @@ const {response: answer} = gateway.ask({
   the reviewer reads the draft with `getPausedRun`, which takes raw ids like the other admin methods.
 
 The full list of what the gateway checks and what it leaves to your application is in
-[What the gateway checks and what it trusts](../architecture/Architecture%20and%20trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts).
+[What the gateway checks and what it trusts](../30-architecture/Architecture%20and%20trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts).
 
 ## How do I show the user's conversations and open one?
 
 `listThreads` returns the calling user's threads, newest first, in pages; `getTurns` returns the whole history of one thread,
 oldest first; `renameThread` sets the title the user typed. The paging is the one of the Vercel chat client: a `limit` of
-1–200 and one cursor, which is a thread id ([D37](../architecture/Decisions.md#d37-lists-page-by-cursor)).
+1–200 and one cursor, which is a thread id ([D37](../30-architecture/Decisions.md#d37-lists-page-by-cursor)).
 
 ```ts
 // The sidebar: the newest 20 threads
@@ -676,7 +676,7 @@ keeps its place; a title the working memory wrote is replaced by `renameThread`.
 
 ## How do I delete conversations?
 
-`delete` removes threads with everything they left in the stores: turns, working memory, files, runs and trace entries ([D119](../architecture/Decisions.md#d119-threads-are-deleted-in-bulk-with-everything-they-left)). It takes raw ids and checks no user, so the host passes the `userId` of the user whose request it serves:
+`delete` removes threads with everything they left in the stores: turns, working memory, files, runs and trace entries ([D119](../30-architecture/Decisions.md#d119-threads-are-deleted-in-bulk-with-everything-they-left)). It takes raw ids and checks no user, so the host passes the `userId` of the user whose request it serves:
 
 ```ts
 // The user's "delete selected": only that user's threads among the ids go
@@ -707,7 +707,7 @@ In layers — no single check stops it:
 
 ## Can I cancel a call, or limit how long it takes?
 
-Yes, with two optional fields of the call ([decision](../architecture/Decisions.md#d90-a-call-can-be-stopped-abortsignal-and-timeoutms)):
+Yes, with two optional fields of the call ([decision](../30-architecture/Decisions.md#d90-a-call-can-be-stopped-abortsignal-and-timeoutms)):
 
 ```ts
 const controller = new AbortController();
@@ -747,7 +747,7 @@ if (response.kind === EGatewayResponseKind.FAILED) {
 
 ## How do I stop the server cleanly?
 
-Call `shutdown({timeoutMs})` from the signal handler, before the HTTP server and the database connections close ([decision](../architecture/Decisions.md#d96-graceful-shutdown)):
+Call `shutdown({timeoutMs})` from the signal handler, before the HTTP server and the database connections close ([decision](../30-architecture/Decisions.md#d96-graceful-shutdown)):
 
 ```ts
 process.on("SIGTERM", async () => {
@@ -766,7 +766,7 @@ process.on("SIGTERM", async () => {
 
 ## What happens to the runs a crashed server left behind?
 
-A server that dies inside a call leaves its run marked running and, after a `resume`, its thread waiting for a human: no call on that thread is accepted any more. Schedule `recoverStuckRuns({tenantId})` next to `expirePausedRuns` ([decision](../architecture/Decisions.md#d97-stuck-runs-are-recovered-by-a-job)):
+A server that dies inside a call leaves its run marked running and, after a `resume`, its thread waiting for a human: no call on that thread is accepted any more. Schedule `recoverStuckRuns({tenantId})` next to `expirePausedRuns` ([decision](../30-architecture/Decisions.md#d97-stuck-runs-are-recovered-by-a-job)):
 
 ```ts
 setInterval(async () => {
@@ -786,5 +786,4 @@ setInterval(async () => {
 Through the module `dyna-ai-gateway/vercel-ui`: one `AIGatewayVercelUi` per chat use case, built on your gateway instance,
 and three methods the endpoints call, `chat`, `history` and `resume`. The request body never names the tenant or the user; your
 `userContext` hook does. The whole recipe is in [Vercel chat client](Vercel%20chat%20client.md); the decisions behind it in
-[Decisions, chapter 17](../architecture/Decisions.md#17-aigatewayvercelui).
-
+[Decisions, chapter 17](../30-architecture/Decisions.md#17-aigatewayvercelui).

@@ -5,7 +5,7 @@ page lists the terms that appear in the docs, what each one means in this librar
 origin is known. Where the library uses a plain word for a standard concept, the row says so.
 
 Names in backticks are the code's names. A `(D…)` points to the entry of the same id in
-[Decisions](architecture/Decisions.md).
+[Decisions](30-architecture/Decisions.md).
 
 
 ## 1. Models and calls

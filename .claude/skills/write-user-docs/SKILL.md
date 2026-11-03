@@ -20,7 +20,7 @@ The private docs leave the repo before the library is published. A user doc that
    the Blueprint. Nothing is documented for users before it is settled there.
 2. **Then the user docs the change touched**: the architecture docs, the getting-started docs, the practices, the README,
    the JSDoc of the changed symbols.
-3. **`docs/architecture/Decisions.md`** is derived from `docs/internal` **and** the codebase: the decision as it stands
+3. **`../../../docs/30-architecture`** is derived from `docs/internal` **and** the codebase: the decision as it stands
    in the code, grouped by the class it concerns, in the user's words.
 4. **Consistency is part of "done".** All docs agree with each other and with the code. When the code and a doc
    disagree, the code is the reality; fix `docs/internal` first, then the user doc.
@@ -30,7 +30,7 @@ The private docs leave the repo before the library is published. A user doc that
 - **Describe the final product.** What the library does today and how to use it. No brainstorming, no alternatives
   that were considered, no history of how it got here, no "to review", no "(Claude, 2026-…)", no milestone or step.
 - **Never reference the private docs.** No path, no file name, no "see the Roadmap". A decision worth the user's
-  attention is an entry of `docs/architecture/Decisions.md`, headed by its id (`### D46: …`): the id is public. A user doc
+  attention is an entry of `../../../docs/30-architecture`, headed by its id (`### D46: …`): the id is public. A user doc
   or a JSDoc cites it as `(D46)` or links the entry; a D-number without an entry in `Decisions.md` is a private reference
   and must not appear.
 - **Target the user's task.** Open with what the reader gets; then how to do it; then the limits. The reader has

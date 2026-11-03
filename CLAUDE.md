@@ -32,7 +32,7 @@ ESLint 8, webpack 5 (from `dyna-ts-module-boilerplate`), pnpm workspace.
 - **No `Co-Authored-By` or any AI-attribution trailer** in commit messages, the commit files or PR descriptions.
 - **Commit only the files you changed in this unit**, by path; the other sessions' files in the tree are not yours.
 - An issue found during development that the current unit does not fix → propose it to Dennis as an entry of
-  `docs/implementation/Backlog.md` (`[(security)] (<severity>) #INT<n> <bug|impr> <title>`); add it only after he agrees.
+  `docs/87-backlog.md` (`[(security)] (<severity>) #INT<n> <bug|impr> <title>`); add it only after he agrees.
 - The implement → "Ready for review" → review → commit cycle of every task is the `implement-task` skill (`.claude/skills/implement-task/SKILL.md`); `stepwise-plan` runs each step through it. "commit and proceed" / "CAP" = commit this unit, then start the next one.
 
 ## Documentation — two audiences, one flow
@@ -42,8 +42,8 @@ ESLint 8, webpack 5 (from `dyna-ts-module-boilerplate`), pnpm workspace.
 - Everything else under `docs/` is **for the users of the library**, written per the `write-user-docs` skill
   (`.claude/skills/write-user-docs/SKILL.md`): the final product only, no process, no fluff, no reference to the private docs.
 - Flow of every change: 1. update `docs/internal` (the truth) → 2. update the user docs it affects →
-  3. `docs/architecture/Decisions.md` is derived from `docs/internal` **and** the codebase → 4. all docs agree with each
-  other and with the code. JSDoc counts as user documentation (it ships in the `.d.ts`).
+  3. `docs/30-architecture` is derived from `docs/internal` **and** the codebase → 4. all docs agree with each
+     other and with the code. JSDoc counts as user documentation (it ships in the `.d.ts`).
 
 ## Commands
 
@@ -122,7 +122,7 @@ I am the learner here. Wrong assumptions and wrong terminology are expected from
 
 ## Terminology — one name per concept
 
-The glossary of this repo is `docs/Terminology.md`, a user doc (`write-user-docs` skill). These rules apply in every
+The glossary of this repo is `docs/85-terminology.md`, a user doc (`write-user-docs` skill). These rules apply in every
 conversation, not only while planning:
 
 - When I use a term that conflicts with the glossary, say so at once: "the glossary defines X as …, you seem to mean Y. Which is it?"

@@ -17,7 +17,7 @@ Inside it:
 
 - `docs/plans/active/` — new, ongoing and planned-ahead plans.
 - `docs/plans/archived/` — completed or rejected plans (with a status line saying which, and why).
-- `Roadmap.md`, `Backlog.md`, `Decisions.md` — updated when a plan completes (Phase 3). They may sit in a subfolder (this repo: `docs/Roadmap.md`, `docs/implementation/Backlog.md`, `docs/architecture/Decisions.md`); find them by name: `find docs -name Roadmap.md -o -name Backlog.md -o -name Decisions.md`. A file that does not exist is skipped, never created by this skill.
+- `80-roadmap.md`, `87-backlog.md`, `Decisions.md` — updated when a plan completes (Phase 3). They may sit in a subfolder (this repo: `../../../docs/80-roadmap.md`, `../../../docs/87-backlog.md`, `../../../docs/30-architecture`); find them by name: `find docs -name Roadmap.md -o -name Backlog.md -o -name Decisions.md`. A file that does not exist is skipped, never created by this skill.
 
 ## Phase 0 — Gather the input
 
@@ -229,8 +229,8 @@ Each step runs through the `implement-task` skill — it owns the implement → 
 When every step is `[x]` or `[-]` (with reasons) and the follow-ups table is complete:
 
 1. **Update the docs of the closest `docs` folder** (the one that holds the plan; the root `docs/` too when the change is repo-wide). Each file only if it exists; add the ticket number and link wherever a line refers to this work:
-   - **`Roadmap.md`** — tick the checkboxes of what this plan completed (or move the item from the planned to the done section when the file has no checkboxes), with a brief line of what shipped and the ticket.
-   - **`Backlog.md`** — mark the entries this plan solved `[x]` with the plan step or commit (the file's Lifecycle), add the issues found and not fixed as new entries (`#### Found in` names the plan), and one brief line per closed entry of what was done.
+   - **`80-roadmap.md`** — tick the checkboxes of what this plan completed (or move the item from the planned to the done section when the file has no checkboxes), with a brief line of what shipped and the ticket.
+   - **`87-backlog.md`** — mark the entries this plan solved `[x]` with the plan step or commit (the file's Lifecycle), add the issues found and not fixed as new entries (`#### Found in` names the plan), and one brief line per closed entry of what was done.
    - **`Decisions.md`** — the critical logical decisions this change introduced or amended (what, why, consequence), derived from `docs/internal` when the repo keeps the truth there (this repo: `write-user-docs` skill, decision ids `D…`). A decision earns an entry here only when all three hold: **hard to reverse** (changing it later costs real work), **surprising without context** (a reader of the code would ask "why this way?"), **a real trade-off** (there were genuine alternatives). A decision that fails one test stays in the plan and in the internal docs only.
    - **The glossary** (`CLAUDE.md`, Terminology) — verify every term this plan introduced or sharpened has its row; the rows were meant to be written as the terms were resolved, this is the check, not the moment to write them.
 2. **Update `CLAUDE.md` and the other docs** the change made stale (tech-stack versions, commands, rules).

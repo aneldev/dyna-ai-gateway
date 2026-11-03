@@ -1,6 +1,6 @@
 # AI Gateway — Roadmap
 
-Status: 2026-10-29. What the library does today, what is planned, and what is deliberately not planned. The reasons behind the behaviours are in [Decisions](architecture/Decisions.md).
+Status: 2026-10-29. What the library does today, what is planned, and what is deliberately not planned. The reasons behind the behaviours are in [Decisions](30-architecture/Decisions.md).
 
 ## Available today
 

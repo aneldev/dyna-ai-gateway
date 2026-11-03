@@ -47,7 +47,7 @@ symbol carries its JSDoc, so the editor shows the contract of each option.
 | Where does my data live?          | In your database. Every store is an interface (`IAIGatewayConfig.<store>.repository`); in-memory implementations are included.                                                                                                                                                    |
 | How does the model reach my code? | `defineTool`: a function with a zod schema and a policy that allows, denies or holds each call on its parsed input.                                                                                                                                                               |
 | Can a human step in?              | Yes. A run pauses on a tool call or on the final answer; `resume()` takes approve, edit or reject.                                                                                                                                                                                |
-| How do I control the spend?       | In your code. The gateway asks your [usage adapter](docs/getting-started/Usage%20adapter.md) before every model call, with the tenant, user, profile, model, purpose and a token estimate, and reports what the call used after it. It holds no budget, plan or quota of its own. |
+| How do I control the spend?       | In your code. The gateway asks your [usage adapter](docs/10-getting-started/Usage%20adapter.md) before every model call, with the tenant, user, profile, model, purpose and a token estimate, and reports what the call used after it. It holds no budget, plan or quota of its own. |
 | Can I test without a real model?  | Yes. The agent loop runs on a scripted model; 1,086 of the tests do exactly that.                                                                                                                                                                                                 |
 | Does it fit my auth and tenants?  | The call carries the `userContext` your host authenticated; every store is keyed by its `tenantId`.                                                                                                                                                                               |
 
@@ -59,7 +59,7 @@ observability stack, a scripted model in a test. The rest of the gateway does no
 const gateway = new AIGateway(config, {kbRetriever: new MyKbRetriever()});
 ```
 
-The seams: [Live adjustment and dependency injection](docs/architecture/Live%20adjustment%20and%20dependency%20injection.md).
+The seams: [Live adjustment and dependency injection](docs/30-architecture/Live%20adjustment%20and%20dependency%20injection.md).
 
 ## Install
 
@@ -230,7 +230,7 @@ const supportChat = new AIGatewayVercelUi({
 export const POST = (request: Request): Promise<Response> => supportChat.chat({request});
 ```
 
-The guide: [Vercel chat client](docs/getting-started/Vercel%20chat%20client.md).
+The guide: [Vercel chat client](docs/10-getting-started/Vercel%20chat%20client.md).
 
 ## What is inside
 
@@ -258,19 +258,19 @@ The guide: [Vercel chat client](docs/getting-started/Vercel%20chat%20client.md).
 - **Persistence is a contract.** Every store is an interface; in-memory for tests and small deployments, MongoDB,
   PostgreSQL and S3 adapters as separate packages.
 
-The reasons behind each behaviour: [Decisions](docs/architecture/Decisions.md). The composition of the classes:
-[Architecture and trade-offs](docs/architecture/Architecture%20and%20trade-offs.md).
+The reasons behind each behaviour: [Decisions](docs/30-architecture/Decisions.md). The composition of the classes:
+[Architecture and trade-offs](docs/30-architecture/Architecture%20and%20trade-offs.md).
 
 ## Documentation
 
 |                                                |                                                                                                                                                                                                        |
 |------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Getting started](docs/getting-started/FAQ.md) | first steps, the FAQ, the [usage adapter](docs/getting-started/Usage%20adapter.md), [skills](docs/getting-started/Skills.md), the [Vercel chat client](docs/getting-started/Vercel%20chat%20client.md) |
-| [Roadmap](docs/Roadmap.md)                     | what works today, what is planned, what is not                                                                                                                                                         |
-| [Terminology](docs/Terminology.md)             | the terms of the docs and where they come from                                                                                                                                                         |
-| [Architecture](docs/architecture/Decisions.md) | the composition, the trade-offs, one chapter of decisions per class                                                                                                                                    |
-| [Practices](docs/dev-practices/index.md)       | how to apply the library well                                                                                                                                                                          |
-| [Workspace](docs/Workspace.md)                 | building and testing the packages of this repository                                                                                                                                                   |
+| [Getting started](docs/10-getting-started/FAQ.md) | first steps, the FAQ, the [usage adapter](docs/10-getting-started/Usage%20adapter.md), [skills](docs/10-getting-started/Skills.md), the [Vercel chat client](docs/10-getting-started/Vercel%20chat%20client.md) |
+| [Roadmap](docs/80-roadmap.md)                     | what works today, what is planned, what is not                                                                                                                                                         |
+| [Terminology](docs/85-terminology.md)             | the terms of the docs and where they come from                                                                                                                                                         |
+| [Architecture](docs/30-architecture/Decisions.md) | the composition, the trade-offs, one chapter of decisions per class                                                                                                                                    |
+| [Practices](docs/70-ai-best-practices/index.md)       | how to apply the library well                                                                                                                                                                          |
+| [Workspace](docs/90-workspace.md)                 | building and testing the packages of this repository                                                                                                                                                   |
 
 ## Packages
 
