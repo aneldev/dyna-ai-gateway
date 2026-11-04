@@ -1,6 +1,8 @@
 /** A piece of text that is never cut, with what joins it to the next piece. */
 export interface IMdUnit {
+  /** The piece, as written. */
   text: string;
+  /** What stood between this piece and the next: a blank line, a line break or a space. */
   separator: string;
 }
 
@@ -10,8 +12,24 @@ const LINE_SEPARATOR = "\n";
 const SENTENCE_SEPARATOR = " ";
 
 /**
- * Cuts a text into the pieces a chunk is packed from: paragraphs; a paragraph over maxTokens becomes its lines, a line over
- * maxTokens its sentences, a sentence over maxTokens groups of words. A fenced code block is one piece, however long it is.
+ * toUnits -- the pieces a long section is packed from
+ *
+ * # About
+ *
+ * > Cut at the softest border that fits: paragraph, line, sentence, words.
+ *
+ * Paragraphs (text between blank lines) are the units; a paragraph over `maxTokens` becomes its lines (a list keeps its
+ * items), a line over `maxTokens` its sentences (cut after `.`, `!`, `?`, `…`), a sentence over `maxTokens` groups of
+ * words. Each unit remembers the separator that followed it, so `MdChunker` joins the pieces back as they were written.
+ * A fenced code block is one unit, however long it is.
+ *
+ * # Who needs it
+ *
+ * `MdChunker.split`, for a section over `maxTokens`.
+ *
+ * # Pitfalls
+ *
+ * A single word over `maxTokens` (a long URL, a hash) is one unit and gives a piece over the cap.
  */
 export const toUnits = (
   {
@@ -71,6 +89,7 @@ const toBlocks = (text: string): string[] => {
   return blocks;
 };
 
+/** Words packed into groups of up to maxTokens; a single word over it is a group of its own. */
 const groupWords = (sentence: string, maxTokens: number, countTokens: (text: string) => number): string[] => {
   const groups: string[] = [];
   let group = "";

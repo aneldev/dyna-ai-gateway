@@ -2,9 +2,15 @@ import {IChunk} from "../../contracts";
 
 /** Configuration of the VectorStore. Lands in IAIGatewayConfig.vectorStore. */
 export interface IVectorStoreConfig {
-  /** Index backend; Atlas Vector Search in v1. */
+  /** The index backend: the host's adapter; `InMemoryVectorIndexAdapter` ships with the gateway. */
   adapter: IVectorIndexAdapter;
-  /** Index name. Default "kb_chunks". */
+  /**
+   * The name of the index, for an adapter that hosts several.
+   *
+   * Not read by the gateway today: the adapter is constructed by the host and knows its index.
+   *
+   * @default "kb_chunks"
+   */
   indexName?: string;
 }
 
@@ -15,9 +21,23 @@ export interface IVectorStoreConfig {
  */
 export interface IVectorStore {
   /**
-   * Inserts or replaces records by chunkId.
-   * Refuses the whole call (400) when a record belongs to another tenant, or when its vector was made by another embedding
-   * model or has another length than the index: such a vector cannot be compared with the ones that are stored.
+   * upsertChunks -- stores the chunks of a document with their vectors
+   *
+   * # About
+   *
+   * > Nothing enters the index that cannot be compared with what is there.
+   *
+   * Inserts or replaces the records by chunk id. Refuses the whole call before any write when a record belongs to
+   * another tenant (error 5372772694716) or when its vector was made by another embedding model or has another length
+   * than the index (error 5372772694902), both 400. An empty list is a no-op without a call to the adapter.
+   *
+   * # Who needs it
+   *
+   * `KbIngestor.ingestDocument`, after `deleteByDoc` removed the document's old chunks.
+   *
+   * # Pitfalls
+   *
+   * The check is per call, not per record: one bad record and nothing of the batch is written.
    */
   upsertChunks(
     {
@@ -29,7 +49,19 @@ export interface IVectorStore {
     },
   ): Promise<void>;
 
-  /** Removes all chunks of a document; returns the count. */
+  /**
+   * deleteByDoc -- removes every chunk of one document
+   *
+   * # About
+   *
+   * > The document is gone or about to be replaced; its chunks go first.
+   *
+   * Passes through to the adapter and returns the number of chunks removed; 0 for an unknown document.
+   *
+   * # Who needs it
+   *
+   * `KbIngestor.ingestDocument` (before the new chunks are written) and `KbIngestor.removeDocument`.
+   */
   deleteByDoc(
     {
       tenantId,
@@ -40,7 +72,19 @@ export interface IVectorStore {
     },
   ): Promise<number>;
 
-  /** Moves a book to another library: the chunks keep their vectors, only their libraryId changes. Returns the number of chunks changed. */
+  /**
+   * moveBook -- moves a book to another library
+   *
+   * # About
+   *
+   * > Metadata only: the vectors stay, no re-embedding (D22).
+   *
+   * Sets `libraryId` on every chunk of the book through the adapter and returns the number of chunks changed.
+   *
+   * # Who needs it
+   *
+   * `KbIngestor.moveBook`.
+   */
   moveBook(
     {
       tenantId,
@@ -53,12 +97,39 @@ export interface IVectorStore {
     },
   ): Promise<number>;
 
-  /** Model and dimensions of the index; KbIngestor and Embedder compare against it at startup. */
+  /**
+   * describeIndex -- the embedding model and vector length the index was created with
+   *
+   * # About
+   *
+   * > The ruler of the index, to compare with the Embedder's.
+   *
+   * Passes through to the adapter's `describe`.
+   *
+   * # Who needs it
+   *
+   * `KbIngestor.checkIndex`, before every ingest; `upsertChunks` and `search`, for their own checks.
+   */
   describeIndex(): Promise<IVectorIndexInfo>;
 
   /**
-   * Nearest chunks for a vector, filtered by tenant and metadata, best first.
-   * An empty filters.libraryIds finds nothing, without asking the index. A vector of another length than the index is a 400.
+   * search -- the nearest chunks of a tenant for a query vector
+   *
+   * # About
+   *
+   * > The k closest chunks inside the scope the caller named, best first.
+   *
+   * Filters by tenant and by `filters` (libraries, books, tags, language), returns at most `k` hits with their score.
+   * An empty `filters.libraryIds` finds nothing, without asking the index: a scope that came out empty by accident never
+   * opens every library. A vector of another length than the index is a 400 (error 5372772695100).
+   *
+   * # Who needs it
+   *
+   * `KbRetriever.retrieve`, once per call with a knowledge base, with the vector of the rewritten query.
+   *
+   * # Pitfalls
+   *
+   * `k` is the adapter's cut; the retriever drops hits under `minScore` afterwards, so fewer than `k` may reach the prompt.
    */
   search(
     {
@@ -75,16 +146,19 @@ export interface IVectorStore {
   ): Promise<IChunkHit[]>;
 }
 
-/** Index backend seam. */
+/** The index backend seam: what a host implements over its vector database; the `VectorStore` checks, the adapter stores. */
 export interface IVectorIndexAdapter {
+  /** Inserts or replaces the records by chunk id; the store has checked tenant, model and dimensions already. */
   upsert(args: {
     tenantId: string;
     records: IChunkRecord[];
   }): Promise<void>;
+  /** Removes every chunk of a document; returns the count. */
   deleteByDoc(args: {
     tenantId: string;
     docId: string;
   }): Promise<number>;
+  /** The k nearest chunks of the tenant that match the filters, best first; the score as `IChunkHit.score` says. */
   search(args: {
     tenantId: string;
     vector: number[];
@@ -103,14 +177,19 @@ export interface IVectorIndexAdapter {
 
 /** Facts about the index; used to detect an embedding-model mismatch. */
 export interface IVectorIndexInfo {
+  /** The model whose vectors the index holds. */
   embeddingModelId: string;
+  /** The length of every vector in the index. */
   dimensions: number;
 }
 
 /** A stored chunk: content plus vector plus tenant. */
 export interface IChunkRecord {
+  /** The owner; every search is filtered by it. */
   tenantId: string;
+  /** The chunk as the `MdChunker` cut it; what a search returns. */
   chunk: IChunk;
+  /** The embedding of the chunk's heading path and text, `dimensions` long. */
   vector: number[];
   /** Model that produced the vector. */
   embeddingModelId: string;
@@ -129,6 +208,7 @@ export interface IChunkFilters {
   libraryIds: string[] | "all";
   /** Narrows to single books inside those libraries. Empty array = all their books. */
   bookIds: string[];
+  /** Narrows to chunks whose document carries one of these tags. Absent = any. */
   tags?: string[];
   /** BCP-47. */
   language?: string;
@@ -136,7 +216,8 @@ export interface IChunkFilters {
 
 /** One search result. */
 export interface IChunkHit {
+  /** The stored chunk. */
   chunk: IChunk;
-  /** Cosine similarity 0..1. */
+  /** Similarity 0..1, best 1: the cosine mapped to (1 + cosine) / 2, as Atlas Vector Search scores it; `minScore` compares with it. */
   score: number;
 }
