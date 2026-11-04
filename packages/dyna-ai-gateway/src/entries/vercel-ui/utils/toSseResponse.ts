@@ -10,9 +10,19 @@ const UI_MESSAGE_STREAM_HEADERS: Record<string, string> = {
 };
 
 /**
- * The SSE `Response` of a chunk stream: one `data: <json>` event per chunk, `data: [DONE]` at the end — the framing of the
- * SDK's `createUIMessageStreamResponse`, written here so the module imports no runtime from `ai`.
- * A closed connection (`cancel`) stops reading the chunks, which ends the call through the request's signal.
+ * toSseResponse -- the SSE `Response` of a chunk stream
+ *
+ * # About
+ *
+ * > One `data: <json>` event per chunk, `data: [DONE]` at the end.
+ *
+ * The framing of the SDK's UI message stream protocol (v1) and its five headers, written here so the module imports
+ * no runtime from `ai`. The chunks are pulled as the client reads: a closed connection (`cancel`) stops the iteration,
+ * which ends the call through the request's signal (D90).
+ *
+ * # Who needs it
+ *
+ * `AIGatewayVercelUi`, for the response of `chat` and `resume`.
  */
 export const toSseResponse = ({chunks}: {chunks: AsyncIterable<TGatewayUiChunk>}): Response => {
   const encoder = new TextEncoder();

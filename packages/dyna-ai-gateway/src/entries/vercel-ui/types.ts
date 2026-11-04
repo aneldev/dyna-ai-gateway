@@ -55,11 +55,15 @@ export interface IUiMessageMetadata {
  * Set as `IUiMessageMetadata.pause` by `history` and by the stream of a call that paused.
  */
 export interface IUiPause {
+  /** The paused run; `resume` takes it. */
   runId: string;
+  /** The pause the decisions are for (D110); the SDK's approval card carries it as `approval.id`. */
   pauseId: string;
+  /** TOOL_APPROVAL, USER_QUESTION or RESULT_REVIEW: what the client renders for the pause. */
   kind: EPauseKind;
   /** ISO date. */
   expiresAt: string;
+  /** The cards of the pause, one decision each (D102), exactly as `IPausedResponse.envelopes`. */
   envelopes: TPauseEnvelopes;
 }
 
@@ -77,8 +81,11 @@ export type TGatewayUiChunk = UIMessageChunk<IUiMessageMetadata>;
 export interface IUiChatRequestBody {
   /** The client's own chat id; not the thread id. */
   id: string;
+  /** The client's messages; the module reads the last one only. */
   messages: TGatewayUiMessage[];
+  /** The SDK's trigger; a regenerate is refused with a 400, so a parsed body always says `"submit-message"`. */
   trigger: "submit-message" | "regenerate-message";
+  /** The message a regenerate would target; carried as the SDK sends it, not read. */
   messageId?: string;
   /** The thread of the chat; absent on its first message (the stream's metadata then names the created thread). */
   threadId?: string;
@@ -147,6 +154,7 @@ export interface IAIGatewayVercelUiConfig {
  * The second constructor argument of `AIGatewayVercelUi`.
  */
 export interface IAIGatewayVercelUiDeps {
+  /** The application's gateway: every read and write of the module goes through it. */
   gateway: AIGateway;
 }
 
@@ -157,18 +165,77 @@ export interface IAIGatewayVercelUiDeps {
  * Created by `UiMapper.createChunkWriter`, one per call; driven by `AIGatewayVercelUi` or by an application on its own transport.
  */
 export interface IUiChunkWriter {
-  /** The chunks that open the stream. */
+  /**
+   * start -- the chunks that open the stream
+   *
+   * # About
+   *
+   * > One `start` chunk: the message id, the date, the thread when it exists.
+   *
+   * Called once, before the first event. A new thread's id is not known yet: it reaches the client with the response's
+   * metadata.
+   *
+   * # Who needs it
+   *
+   * `streamChunks` of `AIGatewayVercelUi`, first thing; an application streaming on its own transport.
+   */
   start(): TGatewayUiChunk[];
-  /** The chunks of one event of the running call. */
+  /**
+   * onEvent -- the chunks of one event of the running call
+   *
+   * # About
+   *
+   * > Zero or more chunks, in the order the client's reducer expects.
+   *
+   * A text delta opens its step and its text when they are not open; a tool request closes the text first; a step end
+   * closes both. `RUN_ENDED_BY_TOOL` and `ANSWER_WITHDRAWN` land as `message-metadata`; the other events add nothing,
+   * the response carries the result.
+   *
+   * # Who needs it
+   *
+   * `streamChunks` of `AIGatewayVercelUi`, once per event of `IGatewayCall.events` (D38).
+   *
+   * # Pitfalls
+   *
+   * Events in order, one writer per call: the writer keeps the open text and the open step between the calls.
+   */
   onEvent(args: {event: ILLMClientEvent}): TGatewayUiChunk[];
-  /** The chunks that close the stream with the call's response (ANSWER, PAUSED, FAILED). */
+  /**
+   * onResponse -- the chunks that close the stream with the call's response
+   *
+   * # About
+   *
+   * > ANSWER, PAUSED or FAILED: the results as metadata, then `finish`.
+   *
+   * ANSWER: `message-metadata` with the thread, usage, citations, issues, `structured` and `endedByTool`, then `finish`.
+   * PAUSED: a `tool-approval-request` per TOOL_APPROVAL envelope, the pause as metadata, `finish`. FAILED: an `error`
+   * chunk with the reason and a `finish` whose metadata carries the thread and the issues. The open text and step are
+   * closed first.
+   *
+   * # Who needs it
+   *
+   * `streamChunks` of `AIGatewayVercelUi`, after the last event, with the awaited `IGatewayCall.response`.
+   */
   onResponse(args: {response: TGatewayResponse}): TGatewayUiChunk[];
-  /** The chunks that close the stream after a thrown error. */
+  /**
+   * onError -- the chunks that close the stream after a thrown error
+   *
+   * # About
+   *
+   * > `error` with the public reason, then `finish`; the open text and step closed first.
+   *
+   * # Who needs it
+   *
+   * `streamChunks` of `AIGatewayVercelUi`, when the events or the response throw once the stream runs
+   * (`toPublicError` gives the reason: a 5xx never carries its message).
+   */
   onError(args: {reason: string}): TGatewayUiChunk[];
 }
 
 /** The SDK's own Approve / Reject as the client sent it back (D35): the pause it answers and one decision per card. */
 export interface IUiApprovalResponses {
+  /** The pause every card of the message answers: the cards' `approval.id` (D110). */
   pauseId: string;
+  /** One APPROVE or REJECT per responded card, named by its `callId`. */
   decisions: IResumeDecision[];
 }

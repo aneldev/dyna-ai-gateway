@@ -2,14 +2,28 @@ import {IDynaError} from "dyna-error";
 
 /** What a client may read of an error: its status, its code, and its message only when the caller caused it (a 4xx). */
 export interface IPublicError {
+  /** The HTTP status the client gets; 500 for anything outside 400–599. */
   status: number;
+  /** The dynaError code, when the error has one. */
   code?: number;
+  /** The error's message for a 4xx; the fixed `"Internal error"` otherwise. */
   message: string;
 }
 
 /**
- * The error as the client gets it: the gateway's 4xx messages are about the caller's input and pass; anything else (a
- * provider failure, a bug) is hidden behind a 500 and a fixed text, so no internal detail reaches the browser.
+ * toPublicError -- the error as the client may see it
+ *
+ * # About
+ *
+ * > A 4xx is about the caller's input and passes; anything else is a 500 with a fixed text.
+ *
+ * Reads `status`, `code` and `message` of a dynaError; a status outside 400–599, or no status, is a 500. The message
+ * of a 5xx (a provider failure, a bug) never reaches the browser.
+ *
+ * # Who needs it
+ *
+ * `toErrorResponse` for the JSON response before the stream, `streamChunks` of `AIGatewayVercelUi` for the `error`
+ * chunk once it runs.
  */
 export const toPublicError = ({error}: {error: unknown}): IPublicError => {
   const {
@@ -25,7 +39,18 @@ export const toPublicError = ({error}: {error: unknown}): IPublicError => {
   };
 };
 
-/** A JSON `Response` of the error, with its status, for an error thrown before the stream started. */
+/**
+ * toErrorResponse -- the JSON `Response` of an error thrown before the stream started
+ *
+ * # About
+ *
+ * > `{code, message}` with the public error's status.
+ *
+ * # Who needs it
+ *
+ * `AIGatewayVercelUi.chat` and `resume`, for the 400 of the input, the 404 of a foreign thread or pause, the 409 of a
+ * paused thread, the 401 of `userContext`.
+ */
 export const toErrorResponse = ({error}: {error: unknown}): Response => {
   const publicError = toPublicError({error});
   return new Response(

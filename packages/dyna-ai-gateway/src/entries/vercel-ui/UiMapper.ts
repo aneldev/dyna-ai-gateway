@@ -23,6 +23,7 @@ import {
 } from "./types";
 import {UiChunkWriter} from "./utils/UiChunkWriter";
 
+/** One part of a `TGatewayUiMessage`: text, file, `step-start` or `dynamic-tool`. */
 type TUiPart = TGatewayUiMessage["parts"][number];
 
 /**
@@ -241,6 +242,10 @@ export class UiMapper {
     });
   }
 
+  /**
+   * The UI parts of one turn: TEXT, FILE (with `resolveFileUrl` only) and TOOL_CALL with its result or its pause.
+   * Only the part kinds a stored turn carries and a chat UI draws; the rest adds nothing.
+   */
   private async toUiParts(
     {
       parts,
@@ -292,7 +297,11 @@ export class UiMapper {
   }
 }
 
-/** The `dynamic-tool` part of a call: its state from the result it got, or from the pause it waits in. */
+/**
+ * The `dynamic-tool` part of a call, its state from what the call got:
+ * `approval-requested` in a TOOL_APPROVAL pause, `input-available` without a result (a USER_QUESTION pause, a broken run),
+ * `output-denied` for a human's rejection, `output-error` for a failed or policy-denied tool, `output-available` else.
+ */
 const toToolPart = (
   {
     call,
@@ -353,4 +362,5 @@ const toToolPart = (
   };
 };
 
+/** A tool output as text: a string as is, anything else as JSON. */
 const outputText = (output: unknown): string => typeof output === "string" ? output : JSON.stringify(output);
