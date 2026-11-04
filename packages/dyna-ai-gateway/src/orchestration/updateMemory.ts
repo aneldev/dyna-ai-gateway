@@ -14,9 +14,23 @@ import {
 const DEFAULT_EXTRACT_EVERY_TURNS = 10;
 
 /**
- * Step 11, after an answer: hands the answered call to the thread's working memory (`saveContext`, which decides itself
- * whether its strategy has anything to update) and extracts user facts when they are due.
- * Runs in the background. A helper call the usage adapter refuses is skipped by the memory classes themselves.
+ * updateMemory -- the memory work after an answer: the thread's working memory, then the user's facts
+ *
+ * # About
+ *
+ * > Step 11, in the background: nobody waits for it.
+ *
+ * Hands the answered call to the thread's working memory (`WorkingMemory.saveContext`, which decides itself whether its
+ * strategy has anything to update, D122), then extracts user facts when they are due (`UserMemoryStore.isExtractDue`: the
+ * turns since the last multiple of `extractEveryTurns`). The cheap model is the profile's, or the config's default.
+ * A helper call the usage adapter refuses is skipped by the memory classes themselves.
+ *
+ * Queued by `scheduleMemory` after an ANSWER only (not FAILED, not PAUSED), in the thread's background line; a failure
+ * is logged by the queue, never thrown to the caller.
+ *
+ * # Who needs it
+ *
+ * `AIGateway.scheduleMemory`.
  */
 export const updateMemory = async (
   {

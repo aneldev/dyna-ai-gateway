@@ -5,9 +5,22 @@ import {IAIGatewayDeps} from "../types";
 import {LOAD_SKILL_TOOL_NAME} from "../internal";
 
 /**
- * The tools of a stored run, for `ToolPolicy.resolve` on resume: the registry's by name, the additional ones (D66) from what the
- * resume passes again. A name found in neither is a 400: the caller must pass the `additionalTools` the run started with.
- * `load_skill` is neither: the resume rebuilds it from the run's and the profile's skills (D124), so it is left out here.
+ * splitRunTools -- the tools of a stored run, found again for its resume
+ *
+ * # About
+ *
+ * > A run stores tool names; the resume needs the tools.
+ *
+ * Splits `IRun.toolNames` for `ToolPolicy.resolve`: the registry's tools by name (`allTools`), the additional ones (D66) from
+ * what the resume passes again (`additionalTools`, narrowed to the run's names). A name found in neither is a 400: the
+ * caller must pass the `additionalTools` the run started with. `load_skill` is neither and is left out: the resume
+ * rebuilds it from the run's and the profile's skills (D124).
+ *
+ * Runs in `continueRun` after the profile of the resume is known and before `ToolPolicy.resolve`.
+ *
+ * # Who needs it
+ *
+ * `AIGateway.continueRun`.
  */
 export const splitRunTools = (
   {

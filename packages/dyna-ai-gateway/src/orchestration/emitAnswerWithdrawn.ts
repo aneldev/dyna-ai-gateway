@@ -3,7 +3,20 @@ import {ELLMClientEventKind} from "../internal";
 
 import {TOnCallEventHandler} from "./startCall";
 
-/** Sends ANSWER_WITHDRAWN on the call's stream (D74): after DONE, with the issues of the failed output check. */
+/**
+ * emitAnswerWithdrawn -- tells the stream that the answer it rendered is not the answer (D74)
+ *
+ * # About
+ *
+ * > The text was streamed before the checks; the client must take it back.
+ *
+ * Sends one ANSWER_WITHDRAWN event on the call's stream, after DONE, with the issues that withdrew the answer: a failed
+ * output check, a refused judge call, an abort that landed after the text was streamed, a reviewer's REJECT.
+ *
+ * # Who needs it
+ *
+ * `AIGateway.executeAsk`, `settleRun`, `settleReview`.
+ */
 export const emitAnswerWithdrawn = (
   {
     onEvent,

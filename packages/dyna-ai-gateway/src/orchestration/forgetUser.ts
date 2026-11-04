@@ -23,14 +23,34 @@ export enum EForgetUserMode {
 export const ANONYMIZED_USER_ID_PREFIX = "@anon-";
 
 /**
- * "Forget this user" (GDPR): goes through every place the gateway holds something about a person, in the same tenant only.
- * Files and remembered facts are deleted in both modes, like the content of threads and runs: pseudonymising the id while
- * keeping the prompts is not erasure. Waits for the user's background work first, so that a queued memory update cannot bring
- * a fact back after the wipe; the caller keeps the user's calls out while it runs (`IUserCalls.whileErasing`).
- * A thread of the user with a live lease is a call in flight on another instance (this one's are awaited): the erasure is
- * refused whole with a 409 that names the busy threads, before anything is written -- a partial erasure would leave the
- * user's rows under two pseudonyms once retried. The caller retries when the lease has ended.
- * A second call finds nothing: the kept rows carry the pseudonym, not the user id.
+ * forgetUser -- "forget this user" (GDPR), in one tenant
+ *
+ * # About
+ *
+ * > Every place the gateway holds something about a person, wiped or pseudonymised in one call.
+ *
+ * Goes through the stores in a fixed order: the user's files, the remembered facts, then the threads with their turns,
+ * the runs and the trace entries. Files and facts are deleted in both modes, like the content of threads and runs:
+ * pseudonymising the id while keeping the prompts is not erasure. DELETE removes the rows; ANONYMIZE keeps threads, runs
+ * and trace entries as skeletons under a random pseudonym (`@anon-<uuid>`), returned once, with no way back without it.
+ *
+ * - Waits for the user's own background work first (`IBackgroundTasks.whenIdle(owner)`), so a queued memory update cannot
+ *   bring a fact back after the wipe.
+ * - A thread of the user with a live lease is a call in flight on another instance (this one's are awaited): the erasure is
+ *   refused whole with a 409 that names the busy threads, before anything is written. A partial erasure retried would leave
+ *   the user's rows under two pseudonyms.
+ * - A second call finds nothing: the kept rows carry the pseudonym, not the user id.
+ *
+ * Runs inside `IUserCalls.whileErasing`: the caller keeps the user's calls out while it runs.
+ *
+ * # Who needs it
+ *
+ * `AIGateway.deleteUserData` (DELETE) and `AIGateway.anonymizeUserData` (ANONYMIZE).
+ *
+ * # Pitfalls
+ *
+ * One tenant only: the same person in another tenant is another erasure. The host's usage adapter keeps its own rows;
+ * nothing here touches them.
  */
 export const forgetUser = async (
   {
@@ -116,7 +136,10 @@ export const forgetUser = async (
   };
 };
 
-/** 409 when a thread of the user holds a live lease: a call runs on another instance and would write after the erasure. */
+/**
+ * 409 when a thread of the user holds a live lease.
+ * A call runs on another instance and would write after the erasure.
+ */
 const refuseWhenBusy = async (deps: IAIGatewayDeps, tenantId: string, userId: string): Promise<void> => {
   const now = Date.now();
   const busyThreadIds: string[] = [];

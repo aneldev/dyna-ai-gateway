@@ -15,14 +15,39 @@ import {
 
 /** What the output checks found. */
 export interface ICheckedOutput<TStructured> {
+  /** The parsed value of the answer when the call had an `outputSchema` and the text matched it. */
   structured: TStructured | undefined;
+  /** The issues collected before the model call, followed by the output check's own. */
   issues: IIssue[];
+  /** False when a built-in check or an output rule blocked the answer: it is withdrawn, not delivered. */
   ok: boolean;
   /** The trace entries of the judge calls of the check, annotated with the issues by the caller (D73). */
   traceIds: string[];
 }
 
-/** Step 8: Guardrails on the output — the built-in checks, then the app's output rules. */
+/**
+ * checkOutput -- the output check of an answer, with the issues of the call so far
+ *
+ * # About
+ *
+ * > Step 8: the built-in checks, then the app's output rules, on what the model answered.
+ *
+ * Hands the model's result to `Guardrails.checkOutput` with its evidence (the question, the knowledge-base chunks of the
+ * request, the tool results of the run) and returns the verdict with the call's earlier issues in front of the check's own.
+ * The judge calls of the rules run under the call's signal; their trace ids come back for `annotateJudgeTraces`.
+ *
+ * Runs right after `LLMClient.complete` or `LLMClient.run` returned a result and before any turn is stored: a blocked answer
+ * is never stored as the assistant's text (D70).
+ *
+ * # Who needs it
+ *
+ * `AIGateway.executeAsk` and `settleRun`.
+ *
+ * # Pitfalls
+ *
+ * Throws the signal's reason when the call is aborted during a judge call, and the usage-denied error when the usage
+ * adapter refuses a judge call: the callers settle both as a withdrawn answer.
+ */
 export const checkOutput = async <TStructured>(
   {
     deps,

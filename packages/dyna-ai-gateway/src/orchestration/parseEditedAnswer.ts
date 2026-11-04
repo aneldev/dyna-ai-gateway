@@ -12,6 +12,7 @@ const CHARS_PER_TOKEN = 4;
 
 /** The reviewer's text, parsed through the run's schema when it had one. */
 export interface IEditedAnswer {
+  /** The reviewer's text, stored as the assistant turn and delivered as the answer. */
   text: string;
   /** The parsed, schema-checked value of the edited text; present when the run had an `outputSchema`. */
   structured?: unknown;
