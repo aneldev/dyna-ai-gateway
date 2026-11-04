@@ -7,7 +7,7 @@
  *
  * # Who needs it
  *
- * `printToolErrorReport` and `printRuleErrorReport`, for the error of the report.
+ * `printToolErrorReport` and `printRuleErrorReport`, for the error of the report; `runChatSession`, for a thrown error.
  */
 export const toPrintableError = (error: unknown): unknown => (
   hasToJson(error)

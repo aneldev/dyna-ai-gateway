@@ -18,6 +18,7 @@ import {
   createLineReader,
 } from "./createLineReader";
 import {formatResponse} from "./formatResponse";
+import {toPrintableError} from "./toPrintableError";
 import {
   devConsole,
   EDevConsole,
@@ -104,7 +105,7 @@ export const runChatSession = async (
       threadId = response.threadId ?? threadId;
     }
     catch (error) {
-      devConsole.log(EDevConsole.RUN_CHAT_SESSION, "error", styleText("red", "thrown"), colorizeJson({value: toPlainError(error)}));
+      devConsole.log(EDevConsole.RUN_CHAT_SESSION, "error", styleText("red", "thrown"), colorizeJson({value: toPrintableError(error)}));
     }
   }
 
@@ -242,18 +243,3 @@ const withNow = (userContext: Omit<IUserContext, "now">): IUserContext => ({
   ...userContext,
   now: new Date(),
 });
-
-/** A thrown dynaError (or anything else) as a JSON-printable object. */
-const toPlainError = (error: unknown): unknown => {
-  if (!(error instanceof Error)) return {error};
-  const {
-    name,
-    message,
-    ...rest
-  } = error as Error & Record<string, unknown>;
-  return {
-    name,
-    message,
-    ...rest,
-  };
-};
