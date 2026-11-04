@@ -87,7 +87,7 @@ export class RunStore implements IRunStore {
    *
    * # Who needs it
    *
-   * `HumanGate.resume`, `getPending` and `cancel`; `AIGateway.getPausedRun`, `cancelRun` and the resume path; `closeRun`.
+   * `HumanGate.resume` and `cancel`; `AIGateway.getPausedRun`, `cancelRun` and the resume path; `closeRun`.
    */
   public async load(
     {

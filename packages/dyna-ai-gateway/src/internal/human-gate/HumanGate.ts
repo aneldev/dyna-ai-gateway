@@ -381,35 +381,6 @@ export class HumanGate implements IHumanGate {
   }
 
   /**
-   * getPending -- the cards of a paused run
-   *
-   * # About
-   *
-   * > For a UI that reloads: the envelopes as `pause` returned them.
-   *
-   * Loads the run (a 404 when missing) and returns its `pending`; null when the run is not paused or carries no envelope
-   * (D80).
-   *
-   * # Who needs it
-   *
-   * A host that shows a pause again; the gateway's own `getPausedRun` reads the run whole from the `RunStore`.
-   */
-  public async getPending(
-    {
-      tenantId,
-      runId,
-    }: {
-      tenantId: string;
-      runId: string;
-    },
-  ): Promise<TPauseEnvelope[] | null> {
-    return this.getPendingOf(await this.deps.runStore.load({
-      tenantId,
-      runId,
-    }));
-  }
-
-  /**
    * listPaused -- the paused runs of a tenant
    *
    * # About
