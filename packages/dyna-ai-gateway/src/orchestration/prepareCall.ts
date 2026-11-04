@@ -299,6 +299,8 @@ export const prepareCall = async <TStructured>(
       threadId: thread.id,
     },
     filters: input.kbFilters,
+    ...input.kbRetrieval?.k === undefined ? {} : {k: input.kbRetrieval.k},
+    ...input.kbRetrieval?.minScore === undefined ? {} : {minScore: input.kbRetrieval.minScore},
   });
   // 6. The request
   const context = await deps.contextAssembler.build({

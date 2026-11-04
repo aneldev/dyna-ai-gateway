@@ -383,6 +383,18 @@ export interface IForgetUserResult {
 }
 
 /**
+ * The per-call overrides of the knowledge-base retrieval: how many chunks, and from which similarity on.
+ *
+ * `IGatewayAskInput.kbRetrieval`; `prepareCall` hands the values to `KbRetriever.retrieve`, whose config holds the defaults.
+ */
+export interface IKbRetrievalOptions {
+  /** How many chunks at most, best first; the retriever's `k` (default 5) when omitted. */
+  k?: number;
+  /** The similarity below which a hit is dropped; the retriever's `minScore` (default 0.6) when omitted. */
+  minScore?: number;
+}
+
+/**
  * Input of `ask()`: one grounded answer, no tools. `TStructured` is inferred from `outputSchema` and types the answer's
  * `structured`.
  *
@@ -481,6 +493,18 @@ export interface IGatewayAskInput<TStructured = unknown> {
    * No KB for this call: `{libraryIds: [], bookIds: []}`. Every library of the tenant: `{libraryIds: "all", bookIds: []}`.
    */
   kbFilters: IChunkFilters;
+  /**
+   * Per-call overrides of the retriever's `k` and `minScore` (`IKbRetrieverConfig`), for a question that needs more or fewer
+   * chunks than the gateway's default.
+   *
+   * > `kbFilters` says where to search; this says how much of what is found reaches the prompt.
+   *
+   * Omit it for the config's values. Not read on a resume: a resumed run keeps the chunks of its first step (D36).
+   *
+   * @example {k: 10} - a question that spans several documents
+   * @example {minScore: 0.7} - a sensitive use case: a wrong chunk in the prompt is worse than "not in the knowledge base"
+   */
+  kbRetrieval?: IKbRetrievalOptions;
   /**
    * Stops the call when it is aborted: the user pressed "stop", the HTTP request closed, the app gave up.
    *

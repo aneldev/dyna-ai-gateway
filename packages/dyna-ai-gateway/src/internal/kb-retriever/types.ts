@@ -61,7 +61,7 @@ export interface IKbRetriever {
    * Rewrites the prompt into a query (when switched on), embeds it, searches the libraries and books of `filters` for
    * the tenant and keeps the hits of at least `minScore`, best first, at most `k`. With an empty `filters.libraryIds`
    * the knowledge base is not used: no model call, `searched` is false, `noMatch` is true. `k` and `minScore` override
-   * the config for this call.
+   * the config for this call (the caller's `IGatewayAskInput.kbRetrieval`).
    *
    * # Who needs it
    *
