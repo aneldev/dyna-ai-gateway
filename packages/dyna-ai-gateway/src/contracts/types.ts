@@ -1,6 +1,12 @@
 import {ZodType} from "zod";
 
-/** Who is asking. Supplied by the business service on every gateway call; never stored by the gateway. */
+/**
+ * Who is asking: the tenant, the user, the permissions, the locale, the time zone and the clock of one call.
+ *
+ * Supplied by the host application on every gateway call and never stored by the gateway. `AIGateway` hands it to every
+ * child: the `ToolPolicy` filters tools by `permissions`, the `ContextAssembler` renders `locale`, `timezone` and `now`
+ * into the system prompt, a tool's `execute` and `policy` receive it, every store scopes its reads by `tenantId`.
+ */
 export interface IUserContext {
   /** Tenant scope of this call. */
   tenantId: string;
@@ -16,7 +22,12 @@ export interface IUserContext {
   now: Date;
 }
 
-/** One message of a thread, from one side, made of typed parts. Stored by ThreadStore. */
+/**
+ * One message of a thread, from one side, made of typed parts: the gateway's storage shape of a message.
+ *
+ * Built by the `TurnBuilder` from a prompt or a model result, stored by the `ThreadStore`, read back by
+ * `AIGateway.getTurns` and by the working memory; the `TurnBuilder` turns it into the `IMessage` the model reads.
+ */
 export interface ITurn {
   /** Unique within the thread. */
   id: string;
@@ -28,12 +39,15 @@ export interface ITurn {
   usage?: IUsage;
   /** Model that produced it; assistant turns only. */
   modelId?: string;
+  /** When the turn was stored; the order of the thread's history. */
   createdAt: Date;
 }
 
-/** Sides of a conversation. */
+/** Sides of a conversation: who produced a turn. */
 export enum ETurnRole {
+  /** The end user: the prompt and its files. */
   USER = "USER",
+  /** The model: the answer and the tool calls it asked for. */
   ASSISTANT = "ASSISTANT",
   /** Tool results are stored as their own turn so the timeline is complete. */
   TOOL = "TOOL",
@@ -46,43 +60,78 @@ export type TTurnPart =
   | IToolCallPart
   | IToolResultPart;
 
-/** Kinds of turn parts. */
+/** Kinds of turn parts: the discriminant of `TTurnPart`. */
 export enum EPartKind {
+  /** Plain text (`ITextPart`). */
   TEXT = "TEXT",
+  /** A pointer to a stored file (`IFilePart`). */
   FILE = "FILE",
+  /** The model's request for one tool call (`IToolCallPart`). */
   TOOL_CALL = "TOOL_CALL",
+  /** What came back for one tool call (`IToolResultPart`). */
   TOOL_RESULT = "TOOL_RESULT",
   /** Only in LLMClient messages: bytes inlined for the model. */
   INLINE_FILE = "INLINE_FILE",
 }
 
-/** Plain text. */
+/**
+ * Plain text: a user's prompt or a model's answer.
+ *
+ * The part of every user and assistant turn. The `TurnBuilder` writes it; the `ContextAssembler` and the working memory
+ * read it.
+ */
 export interface ITextPart {
+  /** The discriminant of `TTurnPart`. */
   kind: EPartKind.TEXT;
+  /** The text, as the user typed it or the model wrote it. */
   text: string;
 }
 
-/** Reference to a stored file (image, PDF). Bytes live in FileStore. */
+/**
+ * Reference to a stored file (image, PDF) in a user turn. The bytes live in the `FileStore`.
+ *
+ * The `TurnBuilder` writes one per entry of `IGatewayAskInput.files`; the `LLMClient` loads the bytes and inlines them for
+ * the model (`EPartKind.INLINE_FILE`, never stored).
+ */
 export interface IFilePart {
+  /** The discriminant of `TTurnPart`. */
   kind: EPartKind.FILE;
+  /** The file pointer; the bytes are read from the `FileStore` when the model needs them. */
   file: IFileRef;
 }
 
-/** The model asked for a tool. */
+/**
+ * The model asked for a tool: one call of one tool, in an assistant turn.
+ *
+ * Written by the `TurnBuilder` from a step of the agent loop. Its outcome is the `IToolResultPart` with the same `callId`,
+ * in the TOOL turn that follows.
+ */
 export interface IToolCallPart {
+  /** The discriminant of `TTurnPart`. */
   kind: EPartKind.TOOL_CALL;
-  /** Correlates with the result part. */
+  /** The model's id of the call; the `IToolResultPart` that answers it carries the same. */
   callId: string;
+  /** The tool, as the model named it. */
   toolName: string;
   /** Validated input. */
   input: unknown;
 }
 
-/** What the tool returned (or the rejection of the human). */
+/**
+ * What came back for one tool call: the tool's output, or the text the model reads when the call was rejected by the human,
+ * denied by the policy or failed.
+ *
+ * Stored in a TOOL turn by the `TurnBuilder`, one per `IToolCallPart`. The agent loop reads it to know which tools were
+ * executed (`rejected`, `denied` and `failed` results do not count, D76), the UI reads it to render the timeline.
+ */
 export interface IToolResultPart {
+  /** The discriminant of `TTurnPart`. */
   kind: EPartKind.TOOL_RESULT;
+  /** The `callId` of the `IToolCallPart` this result answers. */
   callId: string;
+  /** The tool that was called. */
   toolName: string;
+  /** What `execute` returned; on a rejected, denied or failed call the text the model read instead. */
   output: unknown;
   /** True when the human rejected the call; output holds the reason. */
   rejected?: boolean;
@@ -107,9 +156,16 @@ export interface IToolResultPart {
   endedRun?: boolean;
 }
 
-/** Pointer to a stored blob. Produced by FileStore. */
+/**
+ * Pointer to a stored blob: the file pointer the application holds instead of the bytes.
+ *
+ * Returned by `AIGateway.uploadFile` (the `FileStore` produces it), passed back in `IGatewayAskInput.files`, stored in an
+ * `IFilePart` of the user turn.
+ */
 export interface IFileRef {
+  /** The file's id, unique in the tenant. */
   id: string;
+  /** The tenant that owns the file. */
   tenantId: string;
   /**
    * Who uploaded the file. Part of where the file is stored, so that all files of a user can be deleted at once.
@@ -124,10 +180,16 @@ export interface IFileRef {
   name: string;
 }
 
-/** Token accounting of one model call. */
+/**
+ * Token accounting of one model call.
+ *
+ * Reported by the `LLMClient` after every call: to the trace, to the usage adapter (`addUsage`), on the assistant `ITurn`,
+ * and summed over the steps of a run into `IAnswerResponse.usage`.
+ */
 export interface IUsage {
   /** All prompt tokens, the cached ones included. */
   inputTokens: number;
+  /** Tokens the model generated: the answer and its tool calls. */
   outputTokens: number;
   /** Of `inputTokens`, the ones read from the provider's prompt cache, when reported. */
   cachedInputTokens?: number;
@@ -139,10 +201,6 @@ export interface IUsage {
   cacheWriteInputTokens?: number;
 }
 
-/**
- * One tool as registered. Also what the LLMClient hands to the SDK.
- * TInput is inferred from inputSchema (use `defineTool`), so `execute` receives a typed input.
- */
 /** Sent to the model as a tool's output when the human rejects the call and the tool's policy gave no `rejectionText` for it (D87); the human's reason is appended. */
 export const DEFAULT_TOOL_REJECTION_TEXT = "The user declined this tool call. It was not executed and nothing happened. Do not call it again unless the user asks; tell the user it was not done and ask how to proceed.";
 
@@ -290,6 +348,14 @@ export interface ISkill {
   body: string;
 }
 
+/**
+ * One tool as the application defines it: the name and description the model reads, the Zod schema of the input, the
+ * policy, when it ends the run, when it is offered, its limits, and the `execute` that does the work.
+ *
+ * Written by the application with `defineTool`, so `TInput` and `TOutput` are inferred from `inputSchema` and `execute`;
+ * passed in `IToolRegistryConfig.tools` or, for one call, in `IGatewayRunInput.additionalTools`. The `ToolRegistry`
+ * parses the input and executes it, the `ToolPolicy` decides and narrows it, the `LLMClient` hands it to the model.
+ */
 export interface IToolDef<TInput = unknown, TOutput = unknown> {
   /** Unique, snake_case; the model refers to it by this name. */
   name: string;
@@ -436,19 +502,30 @@ export interface IToolErrorReport {
   at: Date;
 }
 
-/** One retrievable KB unit. Produced by MdChunker, stored by VectorStore. */
+/**
+ * One retrievable unit of the knowledge base: a piece of a document with its heading path, embedded and searched as one.
+ *
+ * Produced by the `MdChunker`, embedded by the `Embedder`, stored by the `VectorStore`, returned by the `KbRetriever` to
+ * the `ContextAssembler`; its `id` is what `IAnswerResponse.citations` lists.
+ */
 export interface IChunk {
+  /** The chunk's id; `IAnswerResponse.citations` lists these. */
   id: string;
+  /** The document the chunk was cut from. */
   docId: string;
+  /** The book the document belongs to; a search filter (`IChunkFilters.bookIds`). */
   bookId: string;
   /** The library the book belongs to (a tenant has libraries, a library has books); copied from the document. The usual search filter. */
   libraryId: string;
   /** "Refunds > Paid invoices > Time limits" — prefixed into the text at embed time. */
   headingPath: string;
+  /** The chunk's text: what is embedded (with `headingPath` in front) and what the model reads. */
   text: string;
   /** Position inside the document. */
   order: number;
+  /** Token count of `text`, for the context budget. */
   tokens: number;
+  /** Free tags of the document, copied to every chunk. */
   tags: string[];
   /** BCP-47. */
   language: string;
@@ -462,7 +539,13 @@ export enum EOutputFormat {
   PLAIN = "PLAIN",
 }
 
-/** Common result of any check (guardrails, usage, assembler). */
+/**
+ * Common result of any check: a guardrail rule, the usage adapter's denial, the context assembler's warnings.
+ *
+ * Produced by the `Guardrails`, by `makeUsageDeniedIssue` and by the `ContextAssembler`; delivered in
+ * `IAnswerResponse.issues` (the warnings of a delivered answer) and `IFailedResponse.issues` (what failed the call), and
+ * recorded on the trace entry of the call.
+ */
 export interface IIssue {
   /** The Guardrails rule that reported it; stamped by the Guardrails, also on `rule_error`. Absent on other issues (usage, assembler). */
   ruleName?: string;
@@ -474,6 +557,7 @@ export interface IIssue {
    * > Never shown to the end user; `userMessage` is the text for them.
    */
   message: string;
+  /** How bad it is: an ERROR fails the call or blocks the answer, a WARNING is delivered with the answer. */
   severity: EIssueSeverity;
   /** Field path when the issue concerns one field. */
   field?: string;
@@ -493,10 +577,13 @@ export interface IIssue {
   data?: Record<string, unknown>;
 }
 
-/** How bad an issue is. */
+/** How bad an issue is: what the gateway does with the call that has it. */
 export enum EIssueSeverity {
+  /** Nothing to act on. An application's own rule may report it; the gateway's checks never do. */
   INFO = "INFO",
+  /** The call goes on; the issue is delivered in the answer's `issues` for the UI to flag. */
   WARNING = "WARNING",
+  /** The call fails or the answer is blocked; the FAILED response carries it. */
   ERROR = "ERROR",
 }
 
@@ -533,6 +620,7 @@ export interface IPageArgs<TCursor = string> {
  * Returned by every list method that takes `IPageArgs`.
  */
 export interface IPage<TItem> {
+  /** The items of the page, newest first. */
   items: TItem[];
   /** True when there are more items in the direction of the read. */
   hasMore: boolean;
