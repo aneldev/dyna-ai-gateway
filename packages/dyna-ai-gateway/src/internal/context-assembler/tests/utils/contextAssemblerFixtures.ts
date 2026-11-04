@@ -114,7 +114,6 @@ export const makeAssembler = (
   }, {
     promptTemplateStore,
     skillRegistry: new SkillRegistry(),
-    turnBuilder: new TurnBuilder(),
     workingMemory,
   });
 

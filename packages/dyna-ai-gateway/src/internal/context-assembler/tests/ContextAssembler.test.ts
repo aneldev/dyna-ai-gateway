@@ -350,7 +350,6 @@ describe("ContextAssembler", () => {
       const {request} = await new ContextAssembler(assemblerConfigBase, {
         promptTemplateStore,
         skillRegistry: new SkillRegistry(),
-        turnBuilder: new TurnBuilder(),
         workingMemory: makeMemory(undefined, notes),
       }).build({input: makeInput({userFacts})});
       expect(joinSystem({blocks: request.system})).toBe("Today is Thursday, 2026-10-01. Always mention the invoice number.");

@@ -129,7 +129,6 @@ export const createGatewayDeps = (
   const contextAssembler = make(overrides.contextAssembler, config.contextAssembler, {
     promptTemplateStore,
     skillRegistry,
-    turnBuilder,
     workingMemory,
   }, (config, deps) => new ContextAssembler(config, deps));
   const embedder = make(overrides.embedder, config.embedder, {llmClient}, (config, deps) => new Embedder(config, deps));

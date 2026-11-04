@@ -15,7 +15,6 @@ import {
 import {IAIProfile} from "../ai-profile-store";
 import {IPromptTemplateStore} from "../prompt-template-store";
 import {ISkillRegistry} from "../skill-registry";
-import {ITurnBuilder} from "../turn-builder";
 import {IWorkingMemory} from "../working-memory";
 import {IUserMemoryFact} from "../user-memory-store";
 import {IRetrievalResult} from "../kb-retriever";
@@ -74,8 +73,6 @@ export interface IContextAssemblerDeps {
   promptTemplateStore: IPromptTemplateStore;
   /** Renders the `{skills}` slot from the call's skills (D124). */
   skillRegistry: ISkillRegistry;
-  /** Not read by the assembler today: the messages come from the working memory (D122). */
-  turnBuilder: ITurnBuilder;
   /** Asked for the history of every request, once the system prompt is rendered and the budget is known. */
   workingMemory: IWorkingMemory;
 }
