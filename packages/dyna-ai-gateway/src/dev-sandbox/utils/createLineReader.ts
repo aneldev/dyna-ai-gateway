@@ -1,14 +1,31 @@
 import {createInterface} from "node:readline";
 
+/**
+ * Line input of the sandbox: a prompt in, the next line out, null at the end of the input.
+ *
+ * Returned by `createLineReader`; taken by `runChatSession` and `askPauseDecision`, and by the debugger session to wait for Enter.
+ */
 export interface ILineReader {
   /** Prints the prompt and resolves with the next line; null once the input has ended (Ctrl+D, end of a pipe). */
   question(prompt: string): Promise<string | null>;
+  /** Closes the readline interface; stdin is released. */
   close(): void;
 }
 
 /**
- * Line input that also works when stdin is a pipe: readline emits lines as they arrive, even while no question
- * is pending, so they are queued here and handed out one per question instead of being lost.
+ * createLineReader -- stdin lines, one per question, TTY or pipe
+ *
+ * # About
+ *
+ * > A pipe's lines arrive before anyone asks; they are queued and handed out one per question.
+ *
+ * `node:readline` emits every line as it arrives, pending question or not; a line read while nothing waits would be lost.
+ * The queue keeps it, and a queued line is echoed after the prompt so a scripted session reads like a typed one.
+ * `question` resolves null once the input ended (Ctrl+D, the end of the pipe).
+ *
+ * # Who needs it
+ *
+ * `runChatSession` for the chat, `sandbox.debug.ts` to wait for Enter.
  */
 export const createLineReader = (): ILineReader => {
   const rl = createInterface({

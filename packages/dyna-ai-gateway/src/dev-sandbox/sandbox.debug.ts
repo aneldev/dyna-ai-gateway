@@ -31,6 +31,7 @@ const USAGE = "Usage: ./sandbox.debug.sh";
 interface IDynaEnv {
   /** The `IAIGatewayConfig` of the session (sandbox.config.ts with the sandbox's trace and vector adapter); edit it in the console, then `newAIGateway()`. */
   config: IAIGatewayConfig;
+  /** The gateway of `config`; replaced by `newAIGateway()`. */
   aiGateway: AIGateway;
   /** Replaces `aiGateway` with a new `AIGateway` built from the current `config` and returns it. */
   newAIGateway: () => AIGateway;
@@ -46,9 +47,14 @@ interface IDynaEnv {
   readonly traces: ITraceEntry[];
   /** The sandbox's console switches: `devConsole.setActive(EDevConsole.TRACE, true)`. */
   devConsole: typeof devConsole;
+  /** The keys of `devConsole`, for the console: `dynaEnv.EDevConsole.TRACE`. */
   EDevConsole: typeof EDevConsole;
 }
 
+/**
+ * Builds the gateway of `sandbox.config.ts`, publishes `dynaEnv` on `globalThis`, waits for Enter, then for the gateway's
+ * background work. No arguments: any is an error. Any throw lands in the `catch` below: the message in red, exit code 1.
+ */
 const main = async (): Promise<void> => {
   const extra = process.argv.slice(2);
   if (extra.length) throw new Error(`Unexpected argument(s): ${extra.join(" ")}\n${USAGE}`);

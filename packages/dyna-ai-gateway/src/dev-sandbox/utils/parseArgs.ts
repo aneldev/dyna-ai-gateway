@@ -2,10 +2,23 @@ import {ECLIChatbotMode} from "./runChatSession";
 
 const USAGE = "Usage: ./sandbox.cli.sh <ask|run>";
 
+/** True when `value` is one of the enum's string values; narrows it to the enum type. */
 const isEnumValue = <TEnum extends Record<string, string>>(enumObject: TEnum, value: string): value is TEnum[keyof TEnum] =>
   Object.values(enumObject).includes(value);
 
-/** `<ask|run>` of the sandbox chat, in any case; throws a message that says what is wrong and what to type instead. */
+/**
+ * parseArgs -- `<ask|run>` of the sandbox chat
+ *
+ * # About
+ *
+ * > One argument, in any case; anything else throws a message that says what to type instead.
+ *
+ * A missing mode, an unknown one and extra arguments each throw their own message with the usage line and the modes.
+ *
+ * # Who needs it
+ *
+ * `sandbox.cli.ts`, first thing.
+ */
 export const parseArgs = (
   {argv}: {
     /** `process.argv.slice(2)`. */

@@ -1,4 +1,14 @@
-/** An error as JSON can show it: through its `toJSON` when it has one (a `dynaError`), else its message, else as it is. */
+/**
+ * toPrintableError -- an error as JSON can show it
+ *
+ * # About
+ *
+ * > Its `toJSON` when it has one (a `dynaError`), else its message, else the value as it is.
+ *
+ * # Who needs it
+ *
+ * `printToolErrorReport` and `printRuleErrorReport`, for the error of the report.
+ */
 export const toPrintableError = (error: unknown): unknown => (
   hasToJson(error)
     ? error.toJSON()
@@ -7,6 +17,7 @@ export const toPrintableError = (error: unknown): unknown => (
       : error
 );
 
+/** An object with a `toJSON` method, as `dynaError` instances have. */
 const hasToJson = (value: unknown): value is {toJSON(): unknown} => (
   typeof value === "object" && value !== null && typeof (value as {toJSON?: unknown}).toJSON === "function"
 );

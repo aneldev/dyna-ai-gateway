@@ -11,7 +11,21 @@ import {
 import {colorizeJson} from "./colorizeJson";
 import {renderMarkdown} from "./renderMarkdown";
 
-/** The response as a chat UI would show it: the text (Markdown rendered), the structured answer, the pause card, or the failure. */
+/**
+ * formatResponse -- the response as a chat UI would show it
+ *
+ * # About
+ *
+ * > The user's view of a `TGatewayResponse`, for the terminal.
+ *
+ * ANSWER: the text (Markdown rendered, or plain as asked), the structured value as JSON, the sources, the issues, the
+ * token usage. PAUSED: one card per envelope: the tool call to approve, the user question with its options, the review
+ * (the draft when the response carries it), the allowed actions and the expiry. FAILED: the reason and the issues.
+ *
+ * # Who needs it
+ *
+ * `printResponse` of `runChatSession`, after the response's JSON.
+ */
 export const formatResponse = (
   {
     response,
@@ -64,5 +78,6 @@ export const formatResponse = (
   }
 };
 
+/** Markdown rendered for the terminal; PLAIN as it is. */
 const renderText = (text: string, outputFormat: EOutputFormat): string =>
   outputFormat === EOutputFormat.MARKDOWN ? renderMarkdown({markdown: text}) : text;

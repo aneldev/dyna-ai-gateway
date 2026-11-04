@@ -4,8 +4,18 @@ import {styleText} from "node:util";
 const TOKEN = /("(?:\\.|[^"\\])*")(\s*:)?|\b(?:true|false)\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g;
 
 /**
- * `JSON.stringify` with ANSI colours: keys cyan, strings green, numbers yellow, booleans magenta, null grey.
- * `styleText` drops the colours when stdout is not a TTY or NO_COLOR is set.
+ * colorizeJson -- `JSON.stringify` with ANSI colours
+ *
+ * # About
+ *
+ * > Keys cyan, strings green, numbers yellow, booleans magenta, null grey.
+ *
+ * `styleText` drops the colours when stdout is not a TTY or `NO_COLOR` is set, so the same call prints plain text in a
+ * pipe and in the debugger session.
+ *
+ * # Who needs it
+ *
+ * The chat (`runChatSession`, `formatResponse`) and the CLI mode of the printing trace and error reports.
  */
 export const colorizeJson = (
   {

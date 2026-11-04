@@ -10,10 +10,20 @@ import {
 import {ILineReader} from "./createLineReader";
 
 /**
- * Asks the developer what to do with a paused run: `approve`, `edit <json>` (the whole new tool input, e.g. `edit {"amount": 200}`;
- * on a reviewed answer `edit <text>` is the new answer text), `reject [reason]`, or `answer <text> | <text> | …` for a user
- * question (one text per question, in order, separated by `|`; a text equal to an option is a pick, anything else is free text).
- * Repeats until the input is one of the envelope's allowed actions. Returns null when the input closed.
+ * askPauseDecision -- one decision for one card of a paused run, typed by the developer
+ *
+ * # About
+ *
+ * > The envelope's allowed actions as lowercase words; repeats until one of them is typed.
+ *
+ * `approve`; `edit <json>`, the whole new tool input (`edit {"amount": 200}`), or on a reviewed answer `edit <text>`, the new
+ * answer; `reject [reason]`; `answer <text> | <text> | …` for a user question, one text per question in order, a text
+ * equal to an option is a pick, anything else is free text. Returns null when the input closed (Ctrl+D, end of a pipe).
+ * The `callId` is not set here: the caller adds it from the envelope.
+ *
+ * # Who needs it
+ *
+ * `settlePauses` of `runChatSession`, once per envelope of a PAUSED response.
  */
 export const askPauseDecision = async (
   {
@@ -86,7 +96,10 @@ const parseEditedInput = (text: string): unknown => {
   }
 };
 
-/** One answer per question: the texts split on `|`; a text that equals an option is selected, any other text is free text. */
+/**
+ * One answer per question: the texts split on `|`, in the questions' order; a missing text is an empty answer.
+ * A text that equals an option (several, comma-separated) is selected; any other text is free text.
+ */
 const parseAnswers = ({
   userQuestions,
   text,
