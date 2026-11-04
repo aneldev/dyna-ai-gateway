@@ -17,6 +17,7 @@ import {
   EMessageRole,
 } from "../types";
 
+/** A USER message: text and inline files; the other kinds are dropped. */
 const toUserMessage = (message: IMessage): UserModelMessage => ({
   role: "user",
   content: message.parts.flatMap((part): UserModelMessage["content"] extends string | infer TParts ? TParts : never => {
@@ -39,6 +40,7 @@ const toUserMessage = (message: IMessage): UserModelMessage => ({
   }),
 });
 
+/** An ASSISTANT message: text and tool calls; the other kinds are dropped. */
 const toAssistantMessage = (message: IMessage): AssistantModelMessage => ({
   role: "assistant",
   content: message.parts.flatMap((part): AssistantModelMessage["content"] extends string | infer TParts ? TParts : never => {
@@ -81,6 +83,7 @@ const toToolOutput = (part: IToolResultPart): ToolModelMessage["content"][number
     },
 });
 
+/** A TOOL message: its tool results, through `toToolOutput`. */
 const toToolMessage = (message: IMessage): ToolModelMessage => ({
   role: "tool",
   content: message.parts.flatMap(part => part.kind === EPartKind.TOOL_RESULT ? [toToolOutput(part)] : []),
@@ -92,6 +95,20 @@ const CONVERTERS: Record<EMessageRole, (message: IMessage) => ModelMessage> = {
   [EMessageRole.TOOL]: toToolMessage,
 };
 
-/** Our provider-agnostic messages → the SDK's messages. Parts a role cannot carry are dropped. */
+/**
+ * toSdkMessages -- our messages in the SDK's shape
+ *
+ * # About
+ *
+ * > One converter per role; a part the role cannot carry is dropped.
+ *
+ * USER keeps text and inline files (bytes, media type, name), ASSISTANT text and tool calls, TOOL the results: a human's
+ * rejection and a policy's denial travel as the SDK's `execution-denied` output with the text the model reads, everything
+ * else as JSON (D87).
+ *
+ * # Who needs it
+ *
+ * `LLMClient.complete`, for the `messages` of every call.
+ */
 export const toSdkMessages = (messages: IMessage[]): ModelMessage[] =>
   messages.map(message => CONVERTERS[message.role](message));

@@ -12,7 +12,20 @@ import {
 
 import {IProviderCredentials} from "../types";
 
-/** The SDK embedding model of a registry entry. Throws a 400 for a provider whose SDK adapter has no embedding model (Anthropic). */
+/**
+ * createEmbeddingModel -- the SDK embedding model of a registry entry
+ *
+ * # About
+ *
+ * > One `case` per provider that embeds; the credentials from the config.
+ *
+ * Builds the provider's SDK client (OpenAI, Google, Mistral, Amazon Bedrock) with the key, the base URL and, for Bedrock, the
+ * region, and returns its embedding model for the entry's `providerModelId`. Anthropic has no embedding models: a 400.
+ *
+ * # Who needs it
+ *
+ * `LLMClient.embed`, on every call.
+ */
 export const createEmbeddingModel = (
   {
     model,

@@ -43,19 +43,27 @@ import {makeRejectionOutput} from "./utils/makeRejectionOutput";
 
 /** What one tool call left behind: the call as it ran, its result part, and whether it ended the run (D86; false for a call that did not run). */
 interface IToolOutcome {
+  /** The call as it ran (an EDIT: with the edited input). */
   call: IToolCallPart;
+  /** The result part for the transcript: executed, denied, rejected or failed. */
   part: IToolResultPart;
+  /** True when the tool's `endsRun` said so; false for a call that did not run. */
   endsRun: boolean;
 }
 
+/** The state of one run invocation; mutated step by step, read by the finishers. */
 interface ILoopState {
+  /** The transcript so far: the request's or the resumed messages, plus every step's assistant and tool messages. */
   messages: IMessage[];
+  /** Sum over the steps of this invocation. */
   usage: IUsage;
+  /** One trace id per step of this invocation. */
   traceIds: string[];
   /** Tool names executed so far in this run; on a resume, rebuilt from the stored tool results (D72). */
   executed: string[];
   /** Model calls done in this invocation. */
   steps: number;
+  /** The result of the last step; what a run stopped by the limits returns as its text. */
   lastResult: IModelResult | null;
   /** The first tool call of the run that ended it (D86); the run closes after its step. */
   endedBy: IToolCallPart | null;
@@ -66,9 +74,15 @@ interface ILoopState {
 }
 
 /**
- * The agent loop, without a model in it: `callModel` makes one model call per step and never runs a tool.
- * Every decision is a hook — run a tool, pause for a human, narrow the tools, stop.
- * Both the LLMClient (the SDK behind `callModel`) and the test FakeLLMClient (a script behind it) run this same loop.
+ * runAgentLoop -- the agent loop, without a model in it
+ *
+ * # About
+ *
+ * > `callModel` makes one model call per step and never runs a tool; every decision is a hook.
+ *
+ * The loop is ours, not the SDK's: a run must pause mid-loop, be stored and continue in another process, so the SDK sees one
+ * call per step and the loop owns the transcript. Both the `LLMClient` (the SDK behind `callModel`) and the tests'
+ * `FakeLLMClient` (a script behind it) run this same code, so the pause and resume logic is tested without a model.
  *
  * - A step with tool requests: each is executed through `hooks.executeTool` (an error it throws goes back to the model
  *   as the tool's result: its `code`, `status` and `userMessage`, never its message — `formatToolError`), unless `hooks.decideToolCall` says to pause → PAUSED with that call pending, or to deny → a denied
@@ -88,6 +102,10 @@ interface ILoopState {
  * - `abortSignal`: checked before every model call and every tool, and handed to both; once aborted the loop stops where it is and
  *   returns ABORTED with the steps that completed (D90): the tools that ran stay on record, an abort thrown by a tool or a model
  *   call is never a tool result, and a pause decided after the abort is not taken.
+ *
+ * # Who needs it
+ *
+ * `LLMClient.run`; the `FakeLLMClient` of the tests.
  */
 export const runAgentLoop = async (
   {
@@ -269,12 +287,19 @@ const finishStopped = (state: ILoopState, request: IModelRequest, hooks: ILLMCli
   });
 };
 
-/** A step after the first that the usage adapter refused: DONE with finishReason LENGTH, the refusal on the outcome. */
+/**
+ * A step after the first the usage adapter refused.
+ * DONE with finishReason LENGTH, the refusal on the outcome.
+ */
 const finishDenied = (state: ILoopState, request: IModelRequest, hooks: ILLMClientHooks, usageDenied: IUsageDeniedErrorData): IRunOutcome => ({
   ...finishStopped(state, request, hooks),
   usageDenied,
 });
 
+/**
+ * The DONE outcome.
+ * The result, the transcript, the totals, the tool that ended the run when one did.
+ */
 const finish = (state: ILoopState, result: IModelResult): IRunOutcome => ({
   status: ERunOutcomeStatus.DONE,
   result,
@@ -294,7 +319,10 @@ const abort = (state: ILoopState): IRunOutcome => ({
   traceIds: state.traceIds,
 });
 
-/** A pause decided after the signal fired is not taken: the caller stopped the run, nobody waits for the human. */
+/**
+ * The PAUSED outcome with the pending calls.
+ * After the signal fired it is an abort instead: the caller stopped the run, nobody waits.
+ */
 const pause = (state: ILoopState, pending: IPendingCall[], hooks: ILLMClientHooks): IRunOutcome => {
   if (state.abortSignal?.aborted) return abort(state);
   emit(hooks, ELLMClientEventKind.RUN_PAUSED, Math.max(0, state.steps - 1), {toolCalls: pending.map(pendingCall => pendingCall.call)});
@@ -319,6 +347,10 @@ const runToolCalls = (state: ILoopState, calls: IToolCallPart[], tools: IToolDef
     ? runToolCallsInParallel(state, calls, tools, hooks, stepIndex)
     : runToolCallsInSequence(state, calls, tools, hooks, stepIndex);
 
+/**
+ * The tool phase, one call after the other: decide → run → next.
+ * Stops at the first call that needs approval; the calls after it stay undecided and without a result.
+ */
 const runToolCallsInSequence = async (state: ILoopState, calls: IToolCallPart[], tools: IToolDef[], hooks: ILLMClientHooks, stepIndex: number): Promise<IPendingCall[]> => {
   for (const call of calls) {
     const decision = await decideToolCall(call, tools, hooks, stepIndex);
@@ -377,7 +409,7 @@ const runToolCallsInParallel = async (state: ILoopState, calls: IToolCallPart[],
   });
 };
 
-/** The outcome of a decided call: the denied result, the executed result, or none for a call that waits for a human. */
+/** The outcome of a decided call: denied, executed, or none for a call that waits for a human. */
 const runDecidedCall = async (
   state: ILoopState,
   call: IToolCallPart,
@@ -391,7 +423,10 @@ const runDecidedCall = async (
   return executeTool(state, call, tools, hooks, stepIndex);
 };
 
-/** True for a call of a tool of this step whose `policy` is a predicate: it decides per call and may read changing state. */
+/**
+ * True when the called tool's `policy` is a predicate.
+ * Decided per call; it may read state the step changes.
+ */
 const hasPredicatePolicy = (call: IToolCallPart, tools: IToolDef[]): boolean =>
   typeof tools.find(tool => tool.name === call.toolName)?.policy === "function";
 
@@ -413,13 +448,20 @@ const runBatch = async (state: ILoopState, tasks: Array<() => Promise<IToolOutco
   if (cut) throw cut.reason;
 };
 
-/** Announces the call and asks the policy. Only a tool of this step is decided on: a hidden one goes straight to the refusal of `executeTool` (D79). */
+/**
+ * Announces the call (TOOL_REQUEST) and asks the policy.
+ * Only a tool of this step is decided on: a hidden one goes straight to the refusal of `executeTool` (D79).
+ */
 const decideToolCall = async (call: IToolCallPart, tools: IToolDef[], hooks: ILLMClientHooks, stepIndex: number): Promise<TToolCallPolicyResult> => {
   emit(hooks, ELLMClientEventKind.TOOL_REQUEST, stepIndex, {toolCall: call});
   const offered = tools.some(tool => tool.name === call.toolName);
   return offered ? hooks.decideToolCall({call}) : {verdict: EToolCallVerdict.ALLOW};
 };
 
+/**
+ * The pending call of a NEEDS_APPROVAL decision.
+ * The call plus the policy's rejection text and reason code, when given.
+ */
 const toPendingCall = (call: IToolCallPart, decision: Extract<TToolCallPolicyResult, {verdict: EToolCallVerdict.NEEDS_APPROVAL}>): IPendingCall => ({
   call,
   ...decision.rejectionText === undefined ? {} : {rejectionText: decision.rejectionText},
@@ -450,7 +492,10 @@ const recordToolOutcome = (
   if (endsThisRun) state.endedBy = call;
 };
 
-/** The denied result of a call the policy refused: the fixed lead plus the reason, so the model reads it did not run (D87). */
+/**
+ * The denied result of a call the policy refused (D87).
+ * The fixed lead plus the reason, so the model reads it did not run.
+ */
 const denyTool = (call: IToolCallPart, reason: string, hooks: ILLMClientHooks, stepIndex: number): IToolOutcome => {
   const output = `${DEFAULT_TOOL_DENIAL_TEXT} Reason: ${reason}`;
   emit(hooks, ELLMClientEventKind.TOOL_RESULT, stepIndex, {
@@ -535,7 +580,7 @@ const askEndsRun = async (state: ILoopState, call: IToolCallPart, output: unknow
   }
 };
 
-/** The call whose result ended the run (`endedRun`), from a paused run's messages; null when none did. */
+/** The call whose result is marked `endedRun`, from a paused run's messages; null when none is. */
 const findEndedBy = (messages: IMessage[]): IToolCallPart | null => {
   const parts = messages.flatMap(message => message.parts);
   const ended = parts.find((part): part is IToolResultPart => part.kind === EPartKind.TOOL_RESULT && part.endedRun === true);
@@ -550,7 +595,21 @@ const isExecutedResult = (part: IToolResultPart): boolean => !part.rejected && !
 const getExecutedToolNames = (messages: IMessage[]): string[] =>
   messages.flatMap(message => message.parts.flatMap(part => part.kind === EPartKind.TOOL_RESULT && isExecutedResult(part) ? [part.toolName] : []));
 
-/** The tool calls that have no result yet, in order; on the loop's messages and on the thread's stored turns alike. */
+/**
+ * getUnresolvedToolCalls -- the tool calls that have no result yet
+ *
+ * # About
+ *
+ * > What a paused run still owes: the calls a human has to decide on, in request order.
+ *
+ * Every TOOL_CALL part whose `callId` has no TOOL_RESULT part, over the whole list; works on the loop's messages and on the
+ * thread's stored turns alike, so the loop and the orchestration count the same calls.
+ *
+ * # Who needs it
+ *
+ * `applyDecisions` on a resume; `settleRun` when it stores a pause; `closeRun` when a cancelled or expired pause closes its
+ * pending calls as rejected.
+ */
 export const getUnresolvedToolCalls = (messages: Array<{parts: Array<TMessagePart | TTurnPart>}>): IToolCallPart[] => {
   const resolved = new Set(
     messages.flatMap(message => message.parts.flatMap(part => part.kind === EPartKind.TOOL_RESULT ? [part.callId] : [])),
@@ -682,6 +741,7 @@ const matchDecisions = (unresolved: IToolCallPart[], decisions: IResumeDecision[
   return matched;
 };
 
+/** One event to `hooks.onEvent`, with the step and the optional tool details. */
 const emit = (
   hooks: ILLMClientHooks,
   kind: ELLMClientEventKind,
