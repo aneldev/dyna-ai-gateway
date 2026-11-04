@@ -16,7 +16,9 @@ export const USAGE_DENIED_ERROR_CODE = 5378215504021;
 export interface IUsageDeniedErrorData {
   /** The trace id the refused call would have had; the adapter saw it in `check`. */
   traceId: string;
+  /** The app's `denyCode`, as `IUsageCheckResult` returned it; the gateway does not read it. */
   denyCode?: string;
+  /** The app's `denyUserMessage`, in the user's language; it becomes the error's `userMessage`. */
   denyUserMessage?: string;
 }
 
@@ -104,15 +106,19 @@ export interface IUsageAdapter {
 export interface IUsageCall {
   /** The id of the call's trace entry: links a report to the trace and pairs a `check` with its `addUsage`. */
   traceId: string;
+  /** The tenant that pays: every limit of the app is at least per tenant. */
   tenantId: string;
   /** Absent for system jobs (e.g. KB ingestion). */
   userId?: string;
   /** The profile the call runs on. Absent for system jobs (e.g. KB ingestion). */
   profileId?: string;
+  /** The model that answers: the profile's main or cheap model, or the embedding model. */
   modelId: string;
   /** What the call is for: the answer, a run step, a guardrail judge, a query rewrite, an embedding, a memory update. */
   kind: ETraceKind;
+  /** The thread of the call; absent for a call outside a thread (an embedding, a KB ingestion). */
   threadId?: string;
+  /** The run the call is a step of; absent outside a run. */
   runId?: string;
 }
 
@@ -125,7 +131,8 @@ export interface IUsageCheckArgs extends IUsageCall {
   /**
    * A rough size of the call, for an adapter that wants to compare before it answers.
    *
-   * > `input` is the estimate of the request (about one token per four characters); `output` is the call's `maxOutputTokens`, the worst case.
+   * > `input` is `estimateRequestTokens` of the request (a real tokenizer for OpenAI, a safe factor for the other providers);
+   * > `output` is the call's `maxOutputTokens`, the worst case.
    */
   neededTokens: {
     input: number;
@@ -140,6 +147,7 @@ export interface IUsageCheckArgs extends IUsageCall {
  * code and message through unchanged.
  */
 export interface IUsageCheckResult {
+  /** True runs the call; false refuses it with the issue `usage_denied` and the two fields below. */
   approved: boolean;
   /**
    * The app's own code of the denial, for its UI to branch on.

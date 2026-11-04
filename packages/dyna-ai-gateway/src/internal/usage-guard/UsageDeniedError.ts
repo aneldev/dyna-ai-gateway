@@ -51,6 +51,20 @@ export const makeUsageDeniedError = (
   });
 };
 
-/** True for the error `makeUsageDeniedError` built: a `dynaError` whose code is `USAGE_DENIED_ERROR_CODE`. */
+/**
+ * isUsageDeniedError -- recognises the app's no on its way up
+ *
+ * # About
+ *
+ * > A `dynaError` whose code is `USAGE_DENIED_ERROR_CODE`, and nothing else.
+ *
+ * Narrows `unknown` to the error `makeUsageDeniedError` built, so a layer that catches everything can let this one through
+ * untouched: the app decided, the gateway only passes the decision on.
+ *
+ * # Who needs it
+ *
+ * `Guardrails.runRule`, to rethrow a refused judge call instead of turning it into a `rule_error`; the orchestration, to answer
+ * `FAILED` with the issue `usage_denied`; a host around `KbIngestor.ingestDocument`, which throws the error itself (root barrel).
+ */
 export const isUsageDeniedError = (error: unknown): error is IDynaError & {data: IUsageDeniedErrorData} =>
   typeof error === "object" && error !== null && (error as IDynaError).code === USAGE_DENIED_ERROR_CODE;

@@ -41,10 +41,27 @@ const verdictSchema = z.object({
 });
 
 /**
- * Builds the `judge` of one rule run: one completion per call on the profile's main or cheap model, the evidence of
- * the check in the message (what of it, the call's own arguments say), structured output in the issue shape, temperature 0
- * when the model takes one (`caps.temperature`, D82), checked, reported and traced by the LLMClient under the call's meta
- * (kind GUARDRAIL_JUDGE), aborted with the rule's signal.
+ * createJudge -- the `judge` of one rule run
+ *
+ * # About
+ *
+ * > One classification call: the instruction from the rule, the evidence from the check.
+ *
+ * Returns the function a rule receives as `judge`. Every call is one completion on the profile's cheap or main model
+ * (`EJudgeModel`): a fixed system prompt, the rule's instruction, the evidence as message parts (`toEvidenceParts` decides
+ * what of it, from the call's own arguments), structured output in the issue shape, temperature 0 when the model takes one
+ * (`caps.temperature`, D82). It goes through the `LLMClient` under the check's meta (kind GUARDRAIL_JUDGE), so it is checked
+ * with the usage adapter, reported and traced like every other call, and it is aborted with the rule's signal. The trace id
+ * is handed to `onTraceId` before the verdict is parsed, so an answer out of shape still has its entry.
+ *
+ * # Who needs it
+ *
+ * `Guardrails.checkInput` and `checkOutput`, once per rule run.
+ *
+ * # Pitfalls
+ *
+ * A model that does not answer in the verdict shape throws (`5375893012411`): the rule then fails as `rule_error`, never
+ * passes. A call the usage adapter refused throws `makeUsageDeniedError`, which the Guardrails pass through unchanged.
  */
 export const createJudge = <TArgs extends IJudgeArgs>(
   {

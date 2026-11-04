@@ -55,7 +55,9 @@ export interface IGuardrailsConfig {
  * and reads the model's caps from the registry (a temperature only where the model takes one, D82).
  */
 export interface IGuardrailsDeps {
+  /** The one client every judge call goes through: usage check, report and trace included. */
   llmClient: ILLMClient;
+  /** Where the judge reads the caps of the model it asks (`caps.temperature`, D82). */
   modelRegistry: IModelRegistry;
 }
 
@@ -66,10 +68,22 @@ export interface IGuardrailsDeps {
  */
 export interface IGuardrails {
   /**
-   * Sanitises the user prompt (trims, normalises line endings) and screens it before the call: the built-in rules
-   * (not empty unless files come with it, not over maxPromptChars, no prompt-injection marker), then — only when those
-   * passed — the app's input rules, in parallel.
-   * The call's `abortSignal` reaches every rule and its judge call; an aborted call rejects with the signal's reason (D90).
+   * checkInput -- screens the prompt before the model call
+   *
+   * # About
+   *
+   * > The built-in rules first, the app's only when those passed.
+   *
+   * Sanitises the prompt (trims, normalises line endings), then runs the built-in input rules (not empty unless files come
+   * with it, not over `maxPromptChars`, no prompt-injection marker) and, only when none of them returned an ERROR, the app's
+   * `inputRules` in parallel. Returns the sanitised prompt, every issue stamped with its rule's name, `ok` and the trace ids
+   * of the judge calls, which the gateway annotates with the issues (D73). The call's `abortSignal` reaches every rule and
+   * its judge call; an aborted call rejects with the signal's reason, not with a `rule_error` (D90).
+   *
+   * # Who needs it
+   *
+   * `prepareCall`, on the prompt of every `ask` and `run`; `AIGateway.resume`, on the free text a user typed into a question
+   * of the model (D62), with no files.
    */
   checkInput(args: {
     prompt: string;
@@ -88,10 +102,22 @@ export interface IGuardrails {
   }): Promise<IInputCheck>;
 
   /**
-   * Checks the model output: flags truncation (finishReason LENGTH) as a WARNING and, with a schema, parses the output
-   * against it — `result.structured`, or the text as JSON when the LLMClient gave no structured value. Then — only when
-   * those passed — the app's output rules, in parallel, with the parsed output (or the text) and the evidence of the call.
-   * The call's `abortSignal` reaches every rule and its judge call; an aborted call rejects with the signal's reason (D90).
+   * checkOutput -- screens the answer after the model call
+   *
+   * # About
+   *
+   * > Truncation and schema first, the app's rules only when those passed.
+   *
+   * Flags a `finishReason` LENGTH as the WARNING `output_truncated` and, with a schema, parses the output against it with
+   * `parseStructured`. Only when no ERROR came out of that, the app's `outputRules` run in parallel on the parsed value (or
+   * the text) with the evidence of the call: the question, the KB chunks, the tool results, the user context, the profile and
+   * the thread. Returns the parsed value, every issue stamped with its rule's name, `ok` and the trace ids of the judge calls,
+   * which the gateway annotates with the issues (D73). The call's `abortSignal` reaches every rule and its judge call; an
+   * aborted call rejects with the signal's reason, not with a `rule_error` (D90).
+   *
+   * # Who needs it
+   *
+   * `checkOutput` of the orchestration, on the answer of every `ask` and of every run that ended with text (`settleRun`).
    */
   checkOutput<TStructured = unknown>(args: {
     result: IModelResult;
@@ -210,6 +236,7 @@ export interface IInputEvidence {
   files: IFileRef[];
   /** The same files with their bytes, in the order of `files`; the judge sends the ones its `fileFilter` picks. */
   inlineFiles: IInlineFilePart[];
+  /** Who is calling: tenant, user, permissions, locale. */
   userContext: IUserContext;
   /** The profile of the call. */
   profile: IAIProfile;
@@ -246,9 +273,11 @@ export interface IOutputEvidence {
   chunks: IChunk[];
   /** Tool results of this run. */
   toolResults: IToolResultPart[];
+  /** Who is calling: tenant, user, permissions, locale. */
   userContext: IUserContext;
   /** The profile of the call. */
   profile: IAIProfile;
+  /** The thread of the call; it exists by now, the user turn is stored. */
   threadId: string;
 }
 
@@ -256,6 +285,7 @@ export interface IOutputEvidence {
 export interface IInputCheck {
   /** Sanitised prompt (trimmed, normalised). */
   prompt: string;
+  /** Every issue the rules returned, in rule order, each with its `ruleName`; empty = clean. */
   issues: IIssue[];
   /** False when an ERROR issue exists. */
   ok: boolean;
@@ -267,6 +297,7 @@ export interface IInputCheck {
 export interface IOutputCheck<TStructured = unknown> {
   /** The parsed value; present when a schema was given and the output matches it. */
   structured?: TStructured;
+  /** The truncation and schema issues, then every issue the rules returned with its `ruleName`; empty = clean. */
   issues: IIssue[];
   /** False when an ERROR issue exists. */
   ok: boolean;

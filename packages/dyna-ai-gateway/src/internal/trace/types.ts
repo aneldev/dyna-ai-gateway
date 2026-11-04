@@ -12,7 +12,7 @@ import {
 
 /** Configuration of the Trace. Lands in IAIGatewayConfig.trace. */
 export interface ITraceConfig {
-  /** Persistence; Mongo in v1. */
+  /** Persistence: the host's adapter; `InMemoryTraceRepository` ships with the gateway for tests and the sandbox. */
   repository: ITraceRepository;
 }
 
@@ -23,14 +23,35 @@ export interface ITraceConfig {
  */
 export interface ITrace {
   /**
-   * Records one interaction. Called by the LLMClient. Never throws into the caller's path:
-   * a failing repository is reported with console.error and the call goes on.
+   * record -- writes the entry of one model call
+   *
+   * # About
+   *
+   * > The call already happened; a lost entry is logged, never thrown.
+   *
+   * Saves the entry the `LLMClient` built (`save` inserts or replaces by id). When the repository throws, the error is
+   * logged and the call goes on: the answer belongs to the user, the audit gap to the server log.
+   *
+   * # Who needs it
+   *
+   * `LLMClient.account`, after every `complete` and `embed`, also for a failed or aborted call.
    */
   record(args: {entry: ITraceEntry}): Promise<void>;
 
   /**
-   * Adds gateway-level facts to an existing entry: its chunk ids and issues grow by the given ones,
-   * and the prompt template that built the request is noted when given. Throws for an unknown entry.
+   * annotate -- adds what the gateway knows to an entry
+   *
+   * # About
+   *
+   * > The LLMClient recorded the call; the checks that came after are written here.
+   *
+   * Loads the entry, merges the chunk ids (a set, no duplicates), appends the issues and notes the template key and version
+   * when given, then saves it. Throws `5372588039586` / 404 for an entry the tenant does not have.
+   *
+   * # Who needs it
+   *
+   * `annotateTraces` of the orchestration, after the output check of an `ask` or a run and for the judge entries of every
+   * check (D73).
    */
   annotate(args: {
     tenantId: string;
@@ -42,7 +63,20 @@ export interface ITrace {
     templateVersion?: number;
   }): Promise<void>;
 
-  /** Paged search for debugging and audits. */
+  /**
+   * query -- the entries of a tenant, filtered and paged
+   *
+   * # About
+   *
+   * > "Why did it say that, what did it cost": the audit page's read.
+   *
+   * Passes the filters (`ITraceFilters`: user, thread, kind, dates) and the page (`skip`, `limit`) to the repository and returns
+   * the entries as stored, request and result included.
+   *
+   * # Who needs it
+   *
+   * The host, as `gateway.trace.query`, for its audit and debugging pages; the tests, to read what a call did.
+   */
   query(args: {
     tenantId: string;
     filters: ITraceFilters;
@@ -50,14 +84,40 @@ export interface ITrace {
     limit: number;
   }): Promise<ITraceEntry[]>;
 
-  /** Hard-deletes the entries of threads: the listed ids or `"all"`, of one user when `userId` is given. Returns how many. */
+  /**
+   * delete -- removes the entries of threads
+   *
+   * # About
+   *
+   * > Hard delete: the audit of a deleted thread goes with it.
+   *
+   * The listed thread ids, or `"all"` for every entry of the tenant, the ones without a thread included; narrowed to one user
+   * when `userId` is given (D119). Returns how many entries went.
+   *
+   * # Who needs it
+   *
+   * `deleteThreads` of the gateway's `delete`; `forgetUser` for `AIGateway.deleteUserData` (D54).
+   */
   delete(args: {
     tenantId: string;
     threadIds: TThreadIds;
     userId?: string;
   }): Promise<number>;
 
-  /** Keeps every entry of a user as an audit skeleton under the pseudonym (GDPR pseudonymisation): usage and cost stay, prompts and answers go. Returns how many. */
+  /**
+   * anonymizeByUser -- keeps a user's entries as an audit skeleton
+   *
+   * # About
+   *
+   * > The numbers stay, the words go.
+   *
+   * GDPR pseudonymisation (D54): `userId` becomes the pseudonym, `request` and `result` are removed; usage, cost, model, kind,
+   * chunk ids, issues and dates stay. Returns how many entries were changed.
+   *
+   * # Who needs it
+   *
+   * `forgetUser` for `AIGateway.anonymizeUserData`.
+   */
   anonymizeByUser(args: {
     tenantId: string;
     userId: string;
@@ -74,6 +134,7 @@ export interface ITraceRepository {
     tenantId: string;
     traceId: string;
   }): Promise<ITraceEntry | null>;
+  /** The entries of the tenant that match the filters, newest first, from `skip`, at most `limit`. */
   query(args: {
     tenantId: string;
     filters: ITraceFilters;
@@ -102,17 +163,25 @@ export interface ITraceRepository {
 
 /** One recorded LLM interaction. */
 export interface ITraceEntry {
+  /** The trace id: the `traceId` of the result, the usage report and the `rule_error` reports. */
   id: string;
+  /** The tenant of the call; every query and deletion is scoped by it. */
   tenantId: string;
   /** Absent for system jobs (e.g. KB ingestion). */
   userId?: string;
   /** The profile the call ran on. Absent for system jobs (e.g. KB ingestion). */
   profileId?: string;
+  /** The thread of the call; absent for a call outside a thread (an embedding, a KB ingestion). */
   threadId?: string;
+  /** The run the call was a step of; absent outside a run. */
   runId?: string;
+  /** What the call was for. */
   kind: ETraceKind;
+  /** The model that answered. */
   modelId: string;
+  /** The prompt template the request was rendered from; set by `annotate` for CHAT / RUN_STEP. */
   templateKey?: EPromptTemplateKey;
+  /** The version of that template, so an answer can be read against the prompt of its day. */
   templateVersion?: number;
   /**
    * The request as sent, its files without their bytes (D108) and without the `outputSchema` (D36: a zod schema is code, it
@@ -121,6 +190,7 @@ export interface ITraceEntry {
   request?: Omit<IModelRequest, "outputSchema">;
   /** Absent for EMBED. */
   result?: IModelResult;
+  /** What the provider reported; all zero for a failed or aborted call. */
   usage: IUsage;
   /** Filled by Trace.annotate for CHAT / RUN_STEP. */
   chunkIds: string[];
@@ -128,24 +198,35 @@ export interface ITraceEntry {
   issues: IIssue[];
   /** List-price cost of the call (`ModelRegistry.estimateCostUsd`). */
   costUsd: number;
+  /** When the call ended. */
   createdAt: Date;
 }
 
 /** What kind of call was traced. */
 export enum ETraceKind {
+  /** The answer of an `ask`. */
   CHAT = "CHAT",
+  /** One step of a `run` or a `resume`. */
   RUN_STEP = "RUN_STEP",
+  /** A working-memory update of a thread (`WorkingMemory.saveContext`). */
   MEMORY_WORKING = "MEMORY_WORKING",
+  /** A user-memory extraction (`UserMemoryStore.extract`). */
   MEMORY_USER = "MEMORY_USER",
+  /** The rewrite of a follow-up question for the KB search (`QueryRewriter`). */
   QUERY_REWRITE = "QUERY_REWRITE",
+  /** A judge call of a guardrail rule. */
   GUARDRAIL_JUDGE = "GUARDRAIL_JUDGE",
+  /** An embedding call: the KB search's query or a KB ingestion; no `result`. */
   EMBED = "EMBED",
 }
 
 /** Query filters for the admin UI. */
 export interface ITraceFilters {
+  /** Only the entries of this user. */
   userId?: string;
+  /** Only the entries of this thread. */
   threadId?: string;
+  /** Only the entries of this kind. */
   kind?: ETraceKind;
   /** Inclusive. */
   from?: Date;
