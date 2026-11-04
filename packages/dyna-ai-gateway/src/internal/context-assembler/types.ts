@@ -70,9 +70,11 @@ export interface IContextAssemblerConfig {
 
 /** Shared instances ContextAssembler needs; created once by AIGateway and passed as the second constructor argument. */
 export interface IContextAssemblerDeps {
+  /** Renders `CHAT_MAIN` with the slots, and is read for the `{cacheBreakpoint}` and `{skills}` checks. */
   promptTemplateStore: IPromptTemplateStore;
   /** Renders the `{skills}` slot from the call's skills (D124). */
   skillRegistry: ISkillRegistry;
+  /** Not read by the assembler today: the messages come from the working memory (D122). */
   turnBuilder: ITurnBuilder;
   /** Asked for the history of every request, once the system prompt is rendered and the budget is known. */
   workingMemory: IWorkingMemory;
@@ -85,19 +87,42 @@ export interface IContextAssemblerDeps {
  */
 export interface IContextAssembler {
   /**
-   * Builds the LLMClient request: system = rendered CHAT_MAIN (output format, addendum, skills, today, locale, timezone, instructions,
-   * context, memory, knowledge-base chunks), messages = the window the working memory gives for the thread. The system prompt is rendered
-   * first, so the memory is asked with the budget that is left (`contextTokens − reserveOutputTokens − system`); its notes
-   * then go into the `{memory}` slot. While the request would still overflow the model's window, the oldest messages are
-   * left out first, then the lowest-ranked chunks; the memory's notes and the user's facts are never cut.
-   * The skills are listed by name and description when `load_skill` is among the tools, written out otherwise; a stored
-   * CHAT_MAIN without `{skills}` drops them with a WARNING skills_slot_missing.
-   * The files of the question are put into its message when the model can read their type (images, PDF); a file it cannot
-   * read is left out with a WARNING file_dropped.
+   * build -- the model request of one call
+   *
+   * # About
+   *
+   * > System prompt first, then the history that fits, then the trim.
+   *
+   * Renders `CHAT_MAIN` (output format, addendum, skills, today, locale, timezone, instructions, context, memory,
+   * knowledge-base chunks) and asks the working memory for the thread's window with the budget that is left
+   * (`contextTokens − reserveOutputTokens − system`); its notes are rendered into `{memory}` after the user's facts. While
+   * the request would still overflow the model's window, the oldest messages are left out first (`turns_trimmed`), then the
+   * lowest-ranked chunks (`kb_chunks_trimmed`); the notes and the facts are never cut. The skills are listed by name and
+   * description when `load_skill` is among the tools, written out otherwise; a stored `CHAT_MAIN` without `{skills}` drops
+   * them with the WARNING `skills_slot_missing`. The files of the question go into its message when the model can read
+   * their type (images, PDF); another file is left out with the WARNING `file_dropped`. Returns the request, the template
+   * version, the chunk ids that are in it, the estimated input tokens and the warnings.
+   *
+   * # Who needs it
+   *
+   * `prepareCall`, for every `ask` and `run`.
    */
   build(args: { input: IContextInput }): Promise<IAssembledContext>;
 
-  /** Token count of a request (`estimateRequestTokens`: a real tokenizer for OpenAI, a safe factor for the other providers, the providers' formulas for files); the same count build trims with and the UsageGuard is asked with. */
+  /**
+   * estimateTokens -- the token count of a request
+   *
+   * # About
+   *
+   * > The same count `build` trims with and the `UsageGuard` is asked with.
+   *
+   * `estimateRequestTokens`: a real tokenizer for OpenAI, a safe factor for the other providers, the providers' formulas for
+   * the files.
+   *
+   * # Who needs it
+   *
+   * `build`, for the trim and for `estimatedInputTokens`; a host that wants to size a request before it sends it.
+   */
   estimateTokens(args: {
     request: IModelRequest;
     /** The model's provider; omit when unknown, the safe factor is applied then. */
@@ -107,15 +132,21 @@ export interface IContextAssembler {
 
 /** Everything one call needs, gathered by the gateway. */
 export interface IContextInput {
+  /** The profile of the call: its addendum, its output limit, its memory strategy. */
   profile: IAIProfile;
+  /** The resolved model: its provider, its window and its caps decide the trim and the files. */
   model: IModelInfo;
+  /** Who is asking: tenant, locale, timezone and "now" for the `{today}` slot. */
   userContext: IUserContext;
+  /** What is known about the user, rendered into `{memory}` before the thread's notes. */
   userFacts: IUserMemoryFact[];
   /** Thread the request is for; the working memory is asked for its window with it. */
   threadId: string;
   /** Files of the current user turn, already loaded as bytes. */
   inlineFiles: IInlineFilePart[];
+  /** The knowledge-base search of the call: whether it ran and what it found, for the `{kb}` slot. */
   retrieval: IRetrievalResult;
+  /** The tools of the call; read only to see whether `load_skill` is offered (the skills are then listed, not inlined). */
   tools: IToolDef[];
   /**
    * The skills of the call, for the `{skills}` slot (D124).
@@ -157,11 +188,13 @@ export interface IContextInput {
 
 /** The request plus provenance for Trace. */
 export interface IAssembledContext {
+  /** The request the LLMClient sends. */
   request: IModelRequest;
   /** Template version used. */
   templateVersion: number;
   /** Chunk ids injected, for citations. */
   chunkIds: string[];
+  /** `estimateTokens` of the request as built; the files' tokens included. */
   estimatedInputTokens: number;
   /** WARNING issues: files dropped because caps forbid them, turns trimmed for the window. */
   issues: IIssue[];
