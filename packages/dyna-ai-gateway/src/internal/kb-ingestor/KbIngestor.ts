@@ -14,7 +14,51 @@ import {
 
 const DEFAULT_CONCURRENCY = 2;
 
-/** KB write path: MD → chunks → vectors → index. */
+/**
+ * KbIngestor -- the write side of the knowledge base: Markdown to chunks to vectors to index
+ *
+ * # About
+ *
+ * > Save a document in the editor; the knowledge base knows it.
+ *
+ * Implements `IKbIngestor`, the gateway's second root (`AIGateway.kbIngestor`), used by the application's knowledge-base
+ * write endpoints and never during a prompt:
+ *
+ * - `ingestDocument`: chunk (`MdChunker`) → embed heading path + text (`Embedder`) → delete the document's old chunks →
+ *   store the new ones (`VectorStore`). Idempotent per document: a re-save replaces that document's chunks only.
+ * - `removeDocument`, `moveBook`: pass through to the index; a moved book is not embedded again (D22).
+ * - `reindexBook`: `ingestDocument` for every document of a book, `concurrency` at a time, one report each; needed
+ *   when the embedding model changes.
+ *
+ * Before any model call it checks that the `Embedder` and the index use the same embedding model and vector length.
+ *
+ * # Who needs it
+ *
+ * The application, through `AIGateway.kbIngestor`, from its document save, delete and move endpoints. A host replaces
+ * it with its own `IKbIngestor` in `overrides.kbIngestor`.
+ *
+ * # What needs
+ *
+ * `mdChunker`, `embedder`, `vectorStore`.
+ *
+ * # Usage
+ *
+ * ## When to use it
+ *
+ * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.kbIngestor` (optional, all
+ * defaults).
+ *
+ * ## When shouldn't use it
+ *
+ * Not from inside a call or a tool: the ingestion is an admin operation with its own usage-guard checks (kind EMBED),
+ * not part of the user's turn.
+ *
+ * # Pitfalls
+ *
+ * The usage adapter may refuse the embedding (a 429 with `code` `USAGE_DENIED_ERROR_CODE`): `ingestDocument` throws
+ * it before anything is written, `reindexBook` stops the book at it. A failed embedding leaves the index as it was: the
+ * delete comes after the embedding.
+ */
 export class KbIngestor implements IKbIngestor {
   constructor(
     private readonly config: IKbIngestorConfig,
@@ -22,11 +66,28 @@ export class KbIngestor implements IKbIngestor {
   ) {}
 
   /**
-   * Replaces a document's chunks in the index: chunk → embed (heading path + text) → delete the old chunks → store the new ones.
-   * The old chunks are only deleted after the new ones were embedded, so a failed embedding leaves the index as it was.
-   * Throws a 400 before any model call when the Embedder and the index do not use the same embedding model and dimensions, and
-   * the usage adapter's refusal of the embedding (a 429 whose `code` is `USAGE_DENIED_ERROR_CODE`, `data.denyCode` the app's code)
-   * before anything is written.
+   * ingestDocument -- replaces a document's chunks in the index
+   *
+   * # About
+   *
+   * > Chunk, embed, then swap the old chunks for the new ones.
+   *
+   * Chunks the document, embeds heading path + text of every chunk, deletes the document's old chunks and stores the
+   * new ones with the `Embedder`'s model id. The delete comes after the embedding, so a failed embedding leaves the
+   * index as it was. Returns the counts, the estimated tokens embedded and the duration.
+   *
+   * Throws a 400 before any model call when the `Embedder` and the index do not use the same embedding model and
+   * dimensions (error 5372774697006), and the usage adapter's refusal of the embedding (a 429 whose `code` is
+   * `USAGE_DENIED_ERROR_CODE`, `data.denyCode` the app's code) before anything is written.
+   *
+   * # Who needs it
+   *
+   * The application's document save endpoint, through `AIGateway.kbIngestor`; `reindexBook`, per document.
+   *
+   * # Pitfalls
+   *
+   * Between the delete and the upsert the document is briefly absent from the index: a search in that window misses
+   * it. One document is one `embed` call per `batchSize` chunks, each checked by the usage adapter.
    */
   public async ingestDocument(
     {
@@ -78,7 +139,19 @@ export class KbIngestor implements IKbIngestor {
     };
   }
 
-  /** Removes a document from the index. Returns the number of chunks removed. */
+  /**
+   * removeDocument -- removes a document from the index
+   *
+   * # About
+   *
+   * > The document was deleted in the editor; its chunks go.
+   *
+   * `VectorStore.deleteByDoc`; returns the number of chunks removed, 0 for a document that is not in the index.
+   *
+   * # Who needs it
+   *
+   * The application's document delete endpoint, through `AIGateway.kbIngestor`.
+   */
   public async removeDocument(
     {
       tenantId,
@@ -94,7 +167,20 @@ export class KbIngestor implements IKbIngestor {
     });
   }
 
-  /** Moves a book to another library without embedding it again. Returns the number of chunks changed; 0 for a book that is not in the index. */
+  /**
+   * moveBook -- moves a book to another library
+   *
+   * # About
+   *
+   * > A new shelf, the same vectors (D22).
+   *
+   * `VectorStore.moveBook`: changes the `libraryId` of the book's chunks, no embedding. Returns the number of chunks
+   * changed; 0 for a book that is not in the index.
+   *
+   * # Who needs it
+   *
+   * The application's book move endpoint, through `AIGateway.kbIngestor`.
+   */
   public async moveBook(
     {
       tenantId,
@@ -114,10 +200,29 @@ export class KbIngestor implements IKbIngestor {
   }
 
   /**
-   * Re-ingests every document of a book (e.g. after an embedding model change), config.concurrency documents at a time.
-   * A document that fails does not stop the book: its report carries the error, and its old chunks stay in the index.
-   * Returns one report per document, in the order of `docs`. Throws a 400, before anything is ingested, when a document is not of the book,
-   * and the usage adapter's refusal (429) as `ingestDocument` does: the documents ingested before it are in the index, the rest are not.
+   * reindexBook -- re-ingests every document of a book
+   *
+   * # About
+   *
+   * > The embedding model changed, or the book is in doubt: build it again, document by document.
+   *
+   * `ingestDocument` for every document of `docs`, `concurrency` at a time; one report per document, in the order of
+   * `docs`, each also given to `onProgress` as it completes. A document that fails does not stop the book: its report
+   * carries the error (logged as 5372774696808) and its old chunks stay in the index.
+   *
+   * Throws a 400 before anything is ingested when a document is not of the book (error 5372774696616), and the usage
+   * adapter's refusal (429) as `ingestDocument` does: the documents ingested before it are in the index, the rest are
+   * not.
+   *
+   * # Who needs it
+   *
+   * The application's reindex endpoint or job, through `AIGateway.kbIngestor`, after a change of the embedding model
+   * or of the chunker settings.
+   *
+   * # Pitfalls
+   *
+   * The caller supplies `docs`: the gateway does not know which documents a book holds. A book with documents missing
+   * from `docs` keeps their old chunks, embedded with the old ruler, and `upsertChunks` refuses nothing about them.
    */
   public async reindexBook(
     {
@@ -202,7 +307,7 @@ export class KbIngestor implements IKbIngestor {
     }
   }
 
-  /** The Embedder and the index must use the same ruler: the same embedding model and the same vector length. */
+  /** The Embedder and the index must use the same ruler: embedding model and vector length. */
   private async checkIndex(): Promise<void> {
     const index = await this.deps.vectorStore.describeIndex();
     const {
