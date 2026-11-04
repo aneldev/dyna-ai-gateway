@@ -23,6 +23,8 @@ private helpers only.
 
 Every exported class, every **public** method of a class and every **exported** function (utils) gets this block. Fill every placeholder; the sections marked *if any* are dropped
 when there is nothing to say — never left as an empty heading, never padded.
+A function its file exports is an "exported function" wherever the file lives — `orchestration/`, `utils/`, `dev-sandbox/`
+too — whether or not the package barrel re-exports it.
 
 ```ts
 /**
@@ -89,6 +91,9 @@ The same block on a **public method** or an **exported function**:
 - **An interface and the class that implements it carry the same JSDoc on every member — repeated, not linked.** A
   `/** See \`IFoo.bar\`. */` on the class method sends the reader elsewhere, and no editor shows the linked text in the
   tooltip. Copy the block; when one side changes, change both (the developer, 2026-10-27).
+  An interface **method** member (`bar(): void`, or a function-typed property the class implements as a method) carries the
+  public method's §1 block, headers included — it is the block the class copies. An interface **property** member stays §3,
+  no header, even when its type is a function (`execute: (…) => …`) and the implementer is a plain field or a callback.
 - Overloads: one block on the first signature.
 
 ```ts
@@ -190,7 +195,9 @@ inline callbacks. The JSDoc answers **"what do I need to know to USE this symbol
 - **1–5 lines preferred.** Hard cap: **~20 lines**.
 - Lead with the rule, contract, or constraint. No re-stating the symbol's name or type.
 - Rationale, history and trade-offs belong in the §1 block of the public symbol that calls it, not on the helper.
-- If a JSDoc only restates the name or the type — delete it.
+- **Every** method and non-exported function carries a block, the private ones too (the developer, 2026-11-04). When the
+  name says it all, the block states the contract — the rule, the precondition, the invariant, what the caller may rely
+  on — instead of restating the name. A block that only restates the name or the type is rewritten, never deleted.
 - A one-liner `/** ... */` is a one-liner only if it fits ~100 chars. Longer → multi-line block,
   one idea per line.
 
@@ -302,6 +309,6 @@ Comment **only** when the WHY is non-obvious — a hidden constraint, an invaria
 2. §1 block: all sections present (or dropped because empty), in order, `Name -- expanded` title?
    Method block repeating the class story instead of linking it? → cut.
 3. Property: optional with a runtime default → is `@default` there? Non-obvious value → `@example value - logic`?
-4. Private helper: can it be deleted (name + type say it all)? Over ~20 lines? One-liner past ~100 chars?
+4. Private helper: does the block state the contract, not the name? Over ~20 lines? One-liner past ~100 chars?
 5. Any `@param` / `@returns`? → rewrite inline (§5).
 6. Headers outside a §1 block? → remove.

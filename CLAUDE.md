@@ -65,7 +65,7 @@ ESLint 8, webpack 5 (from `dyna-ts-module-boilerplate`), pnpm workspace.
 ## Rules enforced by lint
 
 - The AI SDK (`ai`, `@ai-sdk/*`) is imported only inside `src/internal/llm-client/`. One exception: `src/entries/vercel-ui/` (the Vercel UI module, D40) may import **types** from `ai`, never `@ai-sdk/*`, and reaches the gateway through the root barrel only (`"../.."`), never `src/internal`.
-- **Every JSDoc or code comment you write or touch follows the `jsdoc-style` skill** (`.claude/skills/jsdoc-style/SKILL.md`): pick the template by symbol kind, never `@param`/`@returns`. Load the skill before writing it.
+- **Every JSDoc or code comment you write or touch follows the `jsdoc-style` skill** (`.claude/skills/jsdoc-style/SKILL.md`): pick the template by symbol kind, never `@param`/`@returns`. Load the skill before writing it. Lint checks the structure (`jsdoc/*` rules in the root `.eslintrc.base.js`): a block on every class, method and top-level function, no forbidden tag, the `Name -- expanded` title and `# About` on every class and exported function. The content is yours.
 - After any import edit, apply the `sort-imports` skill (`.claude/skills/sort-imports/SKILL.md`): packages first, then relative by depth. Lint does not check import order.
 
 ---

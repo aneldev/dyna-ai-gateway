@@ -12,6 +12,23 @@ module.exports = {
   },
   settings: {
     react: {version: "detect"},
+    jsdoc: {
+      // The tags the jsdoc-style skill forbids (§5, §6): TypeScript carries the types, the tags would only rot
+      tagNamePreference: {
+        param: false,
+        returns: false,
+        return: false,
+        type: false,
+        arg: false,
+        argument: false,
+        private: false,
+        readonly: false,
+        override: false,
+        author: false,
+        since: false,
+        version: false,
+      },
+    },
   },
   ignorePatterns: [
     "under-construction/",
@@ -20,6 +37,7 @@ module.exports = {
   plugins: [
     "etc",
     "jest",
+    "jsdoc",
   ],
   extends: [
     "eslint:recommended",
@@ -286,6 +304,48 @@ module.exports = {
           {ignorePattern: "[a-z$_][\\w$]* -- "},
         ],
 
+        // JSDoc, per the jsdoc-style skill (.claude/skills/jsdoc-style/SKILL.md). Warnings by design, never errors: a
+        // missing or off-template block is a review finding, not a broken build (the developer, 2026-11-04).
+        // Every class, method (private ones too) and top-level function carries a block (skill §1, §4). Arrow and function
+        // expressions count only at the top level of a file (`const foo = () => …`, exported or not): a callback or a
+        // closure inside a body is part of the enclosing function's story, not a symbol of its own.
+        "jsdoc/require-jsdoc": [
+          "warn",
+          {
+            publicOnly: false,
+            checkConstructors: false,
+            checkGetters: true,
+            checkSetters: true,
+            require: {
+              ClassDeclaration: true,
+              MethodDefinition: true,
+              FunctionDeclaration: true,
+            },
+            contexts: [
+              "Program > VariableDeclaration > VariableDeclarator > ArrowFunctionExpression",
+              "Program > VariableDeclaration > VariableDeclarator > FunctionExpression",
+              "ExportNamedDeclaration > VariableDeclaration > VariableDeclarator > ArrowFunctionExpression",
+              "ExportNamedDeclaration > VariableDeclaration > VariableDeclarator > FunctionExpression",
+            ],
+          },
+        ],
+        // The forbidden tags (settings.jsdoc.tagNamePreference above): never @param / @returns, this is TypeScript (§5)
+        "jsdoc/check-tag-names": "warn",
+        // A class or an exported function carries the §1 block: the `Name -- expanded` title, then `# About`
+        "jsdoc/match-description": [
+          "warn",
+          {
+            matchDescription: "^\\S[^\\n]* -- [^\\n]+\\n+# About\\n[\\s\\S]*$",
+            message: "A class or an exported function needs the §1 block: `Name -- expanded` title, then `# About` (jsdoc-style skill)",
+            contexts: [
+              "ClassDeclaration",
+              "ExportNamedDeclaration > FunctionDeclaration",
+              "ExportNamedDeclaration > VariableDeclaration > VariableDeclarator > ArrowFunctionExpression",
+              "ExportNamedDeclaration > VariableDeclaration > VariableDeclarator > FunctionExpression",
+            ],
+          },
+        ],
+
         // Import ordering, grouping, blank lines, duplicate-merging and
         // one-member-per-line are OWNED BY THE AI via the sort-imports Skill
         // (.claude/skills/sort-imports/SKILL.md) — NOT by ESLint, and NOT auto-fixable.
@@ -298,6 +358,18 @@ module.exports = {
         // single line (`{a, b, c}`), so all of those rules were removed. SKILL.md is
         // the single source of truth for import layout.
       }
+    },
+    {
+      // Tests and their configs are not documented API (skill: "tests excluded")
+      files: [
+        "**/tests/**",
+        "*.test.ts",
+        "*.test.tsx",
+      ],
+      rules: {
+        "jsdoc/require-jsdoc": "off",
+        "jsdoc/match-description": "off",
+      },
     },
     {
       "files": [
