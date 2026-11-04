@@ -8,26 +8,90 @@ import {
   EModelProvider,
 } from "./types";
 
+/** The catalog's cache TTL when the config names none. */
 const DEFAULT_CACHE_TTL_MS = 60_000;
+/** The prices of `IModelCaps` are per million tokens. */
 const TOKENS_PER_MILLION = 1_000_000;
 /** Anthropic's list price of a cache read, as a share of the input price. */
 const ANTHROPIC_CACHE_READ_FACTOR = 0.1;
 /** Anthropic's list price of a cache write (5-minute cache), as a share of the input price. */
 const ANTHROPIC_CACHE_WRITE_FACTOR = 1.25;
 
+/**
+ * The in-memory copy of the catalog, with the time it was read.
+ *
+ * `ModelRegistry` only; dropped by every admin write and by `refresh`.
+ */
 interface ICatalogCache {
+  /** Every entry of the repository, enabled or not, by id. */
   models: Map<string, IModelInfo>;
+  /** When the repository was read (`Date.now()`); the cache is stale after `cacheTtlMs`. */
   loadedAt: number;
 }
 
-/** Global catalog of usable models: facts, not tenant choices. Global by design; no tenantId. */
+/**
+ * ModelRegistry -- the global catalog of the models the platform may use
+ *
+ * # About
+ *
+ * > Facts about a model, never a tenant's choice.
+ *
+ * One place that answers "what can this model do and what does it cost": provider and provider id, capabilities, prices,
+ * the enabled flag. No provider knowledge leaks into the rest of the gateway: the LLMClient reads `provider` and
+ * `providerModelId`, the call path reads `caps`, the UsageGuard and the trace get `estimateCostUsd`.
+ *
+ * - Global by design, no `tenantId`: a tenant picks a model through its profile and never edits here.
+ * - The read path is hot (every call reads `caps`), so the catalog is cached with a TTL; the write path is rare and drops
+ *   the cache.
+ * - A disabled model stays in the catalog: it is refused by every call that names it, and a call in flight is still priced.
+ *
+ * Created first by `createGatewayDeps`: the LLMClient, the AIProfileStore and the guardrails depend on it.
+ *
+ * # Who needs it
+ *
+ * `prepareCall` and `AIGateway.resume` (the profile's model), `AIProfileStore.upsertProfile` (validation), `LLMClient` (every
+ * call), the guardrails' judge; the host's administration screen through `AIGateway.modelRegistry`.
+ *
+ * # What needs
+ *
+ * `IModelRegistryConfig`: the `IModelRegistryRepository` and the optional `cacheTtlMs`.
+ *
+ * # Usage
+ *
+ * ## When to use it
+ *
+ * Any question about a model given its id; any admin write to the catalog.
+ *
+ * ## When shouldn't use it
+ *
+ * Which model a tenant uses: that is the profile (`AIProfileStore`). What a call may spend: that is the UsageGuard.
+ *
+ * # Pitfalls
+ *
+ * An admin write is visible to other instances only after their cache TTL. A disabled or removed model fails the profiles that
+ * name it at their next call: switch the profiles first.
+ */
 export class ModelRegistry implements IModelRegistry {
   private cache: ICatalogCache | null = null;
 
   constructor(private readonly config: IModelRegistryConfig) {
   }
 
-  /** Resolves one model; throws if unknown or disabled. Cached. */
+  /**
+   * getModel -- one model entry, enabled
+   *
+   * # About
+   *
+   * > The facts of a model, for a call that is about to use it.
+   *
+   * Reads the cached catalog and returns a copy of the entry. An unknown id is a 404, a disabled one a 400: a call never
+   * reaches a model the platform switched off.
+   *
+   * # Who needs it
+   *
+   * `prepareCall` (the profile's model, step 1), `AIProfileStore.upsertProfile` (the profile's models must exist and be
+   * enabled), `LLMClient` (provider and provider id of every call), the guardrails' judge, `AIGateway.resume`.
+   */
   public async getModel(
     {modelId}: {modelId: string},
   ): Promise<IModelInfo> {
@@ -43,7 +107,19 @@ export class ModelRegistry implements IModelRegistry {
     return structuredClone(model);
   }
 
-  /** Lists models for admin UI or profile editors. Cached. */
+  /**
+   * listModels -- the catalog, for an administration screen or a profile editor
+   *
+   * # About
+   *
+   * > Every model the platform knows, enabled ones by default, one provider on request.
+   *
+   * Read from the cache; copies, in the repository's order.
+   *
+   * # Who needs it
+   *
+   * The host's administration screen and profile editor; the dev sandbox.
+   */
   public async listModels(
     {
       enabledOnly = true,
@@ -61,7 +137,20 @@ export class ModelRegistry implements IModelRegistry {
       .map(model => structuredClone(model));
   }
 
-  /** Shortcut for callers that only need capabilities (Assembler, ToolPolicy). */
+  /**
+   * getCaps -- the capabilities and prices of a model, without the rest of the entry
+   *
+   * # About
+   *
+   * > `getModel(...).caps`, for a caller that holds only the id.
+   *
+   * The same 404 and 400 as `getModel`. No class of the gateway calls it today: `prepareCall` loads the model once and hands
+   * its `caps` to the ToolPolicy and the ContextAssembler.
+   *
+   * # Who needs it
+   *
+   * A host that checks a model's capabilities before it builds a profile.
+   */
   public async getCaps(
     {modelId}: {modelId: string},
   ): Promise<IModelCaps> {
@@ -69,8 +158,20 @@ export class ModelRegistry implements IModelRegistry {
   }
 
   /**
-   * USD estimate for a call; the LLMClient reports it to the UsageGuard and the trace after every call.
-   * Works for a disabled model too: a call that was in flight when the model got disabled is still reported.
+   * estimateCostUsd -- the USD estimate of one call, from its token counts
+   *
+   * # About
+   *
+   * > uncached × costIn + cache reads × costCacheRead + cache writes × costCacheWrite + output × costOut, per million tokens.
+   *
+   * The uncached input is `inputTokens` minus the cached and the cache-write tokens, never below zero (a provider that reports
+   * more cached tokens than the total yields no negative count). The cache rates are the caps' (`costCacheReadPerMTokUsd`,
+   * `costCacheWritePerMTokUsd`) or their provider defaults: Anthropic 0.1 × and 1.25 × the input price, any other provider the
+   * input price. Works for a disabled model too: a call that was in flight when the model got disabled is still reported.
+   *
+   * # Who needs it
+   *
+   * `LLMClient`, after every call, for the UsageGuard and the trace.
    */
   public async estimateCostUsd(
     {
@@ -109,7 +210,20 @@ export class ModelRegistry implements IModelRegistry {
     ) / TOKENS_PER_MILLION;
   }
 
-  /** Admin: inserts or replaces an entry. Invalidates cache. */
+  /**
+   * upsertModel -- inserts or replaces a model entry
+   *
+   * # About
+   *
+   * > The administration write: the entry as given, whole, and the cache dropped.
+   *
+   * Saves through the repository and drops this instance's cache, so the next read sees the entry; other instances see it
+   * after their TTL. No validation of the entry beyond its type: the host's screen is the editor.
+   *
+   * # Who needs it
+   *
+   * The host's administration screen; the tests and the first run, to seed the catalog.
+   */
   public async upsertModel(
     {model}: {model: IModelInfo},
   ): Promise<void> {
@@ -168,7 +282,15 @@ export class ModelRegistry implements IModelRegistry {
     this.cache = null;
   }
 
-  /** Drops the cache and reloads from the repository. */
+  /**
+   * refresh -- drops the cache and reloads the catalog from the repository
+   *
+   * # About
+   *
+   * > For a host that changed the repository behind the registry's back.
+   *
+   * The next reads are served from the reloaded catalog; nothing else changes.
+   */
   public async refresh(): Promise<void> {
     this.cache = null;
     await this.getCatalog();

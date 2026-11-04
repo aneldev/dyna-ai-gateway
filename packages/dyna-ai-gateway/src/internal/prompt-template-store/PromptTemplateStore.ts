@@ -17,12 +17,20 @@ import {
   SEED_VERSION,
 } from "./utils/seedTemplates";
 
+/** The cache TTL of the active templates when the config names none. */
 const DEFAULT_CACHE_TTL_MS = 60_000;
+/** The largest page `listVersions` serves. */
 const MAX_PAGE_LIMIT = 200;
 
+/**
+ * The in-memory copy of the active templates, with the time they were read.
+ *
+ * `PromptTemplateStore` only; dropped by `activate` and `refresh`. The history of a key is never cached.
+ */
 interface IActiveCache {
   /** The active template of every key. */
   templates: IPromptTemplate[];
+  /** When the repository was read (`Date.now()`); the cache is stale after `cacheTtlMs`. */
   loadedAt: number;
 }
 
@@ -74,9 +82,19 @@ export class PromptTemplateStore implements IPromptTemplateStore {
   constructor(private readonly config: IPromptTemplateStoreConfig) {}
 
   /**
-   * Returns the active template of a key. Cached.
-   * Falls back to the seed (version 0) when the repository has no active version: the host's `seedTemplates` entry
-   * for the key, else the shipped one; throws when there is neither.
+   * get -- the active template of a key
+   *
+   * # About
+   *
+   * > The wording in force for a job, with its version.
+   *
+   * Reads the cached active templates. Falls back to the seed (version 0) when the repository has no active version for the
+   * key: the host's `seedTemplates` entry, else the shipped one; a key with neither is a 404.
+   *
+   * # Who needs it
+   *
+   * `ContextAssembler`, which needs the body of CHAT_MAIN before it renders (the cache breakpoint, the `{skills}` slot); the
+   * other callers go through `render`.
    */
   public async get(
     {key}: {key: EPromptTemplateKey},
@@ -102,7 +120,27 @@ export class PromptTemplateStore implements IPromptTemplateStore {
     };
   }
 
-  /** Fills the slots of the active template; throws on a missing slot. */
+  /**
+   * render -- the active template of a key with its slots filled
+   *
+   * # About
+   *
+   * > The text that goes to the model, and the version that produced it.
+   *
+   * Replaces every `{slot}` of the active body (`get`) with the value of that name and returns the text with `key` and
+   * `version`, so the trace can record which wording produced which answer. A slot without a value is a 400: a silent empty
+   * slot is the classic prompt bug. A value given for a slot the body does not use is ignored.
+   *
+   * # Who needs it
+   *
+   * `ContextAssembler` (CHAT_MAIN), `WorkingMemory` (MEMORY_WORKING), `UserMemoryStore` (MEMORY_USER), `QueryRewriter`
+   * (KB_QUERY_REWRITE): each renders its own key before its model call.
+   *
+   * # Pitfalls
+   *
+   * Pass every slot the active version uses, with an empty string when there is nothing to say. A stored version may use
+   * fewer slots than the seed, never more than its key's list (`IPromptTemplateStoreConfig.seedTemplates`).
+   */
   public async render(
     {
       key,
@@ -138,8 +176,18 @@ export class PromptTemplateStore implements IPromptTemplateStore {
   }
 
   /**
-   * The versions of a key for the admin UI, highest version first; the cursors are version numbers.
-   * Throws a 400 for a limit outside 1–200 or both cursors at once, a 404 for an unknown cursor.
+   * listVersions -- the history of a key, paged, for the administration screen
+   *
+   * # About
+   *
+   * > Every version of a key, highest first; the cursors are version numbers.
+   *
+   * Validates the page (a `limit` outside 1–200 or both cursors at once is a 400) and reads the repository: the history is
+   * never cached. An unknown cursor is the repository's 404.
+   *
+   * # Who needs it
+   *
+   * The host's administration screen, before `activate` (pick a version) and after `addVersion` (see it listed).
    */
   public async listVersions(
     {
@@ -179,7 +227,20 @@ export class PromptTemplateStore implements IPromptTemplateStore {
     });
   }
 
-  /** Admin: saves a new version (inactive), numbered after the newest existing one. */
+  /**
+   * addVersion -- saves a new wording of a key, inactive
+   *
+   * # About
+   *
+   * > A new version is a draft until `activate`: nothing changes for the calls.
+   *
+   * Numbers the version after the newest one of the key (the seed is 0, the first stored version 1) and saves it with
+   * `isActive: false`. Returns the stored template.
+   *
+   * # Who needs it
+   *
+   * The host's administration screen.
+   */
   public async addVersion(
     {
       key,
@@ -208,7 +269,25 @@ export class PromptTemplateStore implements IPromptTemplateStore {
     return structuredClone(template);
   }
 
-  /** Admin: activates one version, deactivates the others of that key. Throws when the version does not exist. */
+  /**
+   * activate -- makes one version the wording in force for its key
+   *
+   * # About
+   *
+   * > One active version per key: this one on, the others off, as one repository operation.
+   *
+   * The version must exist (404 otherwise). Drops this instance's cache, so its next render uses the version; other
+   * instances follow after their TTL.
+   *
+   * # Who needs it
+   *
+   * The host's administration screen, for a new wording and for a rollback.
+   *
+   * # Pitfalls
+   *
+   * CHAT_MAIN is cached by the provider only when the version keeps `{cacheBreakpoint}` with no per-call slot before it; a
+   * version without `{skills}` drops the skills of a call with the WARNING `skills_slot_missing`.
+   */
   public async activate(
     {
       key,
@@ -240,7 +319,15 @@ export class PromptTemplateStore implements IPromptTemplateStore {
     this.cache = null;
   }
 
-  /** Drops the cache and reloads the active templates. */
+  /**
+   * refresh -- drops the cache and reloads the active templates from the repository
+   *
+   * # About
+   *
+   * > For a host that changed the repository behind the store's back.
+   *
+   * The next renders use the reloaded versions; nothing else changes.
+   */
   public async refresh(): Promise<void> {
     this.cache = null;
     await this.getActive();
