@@ -173,7 +173,7 @@ export interface IPromptTemplateStore {
 /**
  * Persistence seam of the prompt templates: the active rows whole, the history of a key paged.
  *
- * Implemented by the host's adapter (Mongo in v1, `InMemoryPromptTemplateRepository` in tests); only the `PromptTemplateStore` calls it.
+ * Implemented by the host's adapter (`InMemoryPromptTemplateRepository` in the tests and the sandbox); only the `PromptTemplateStore` calls it.
  * A template is identified by `key` + `version`.
  */
 export interface IPromptTemplateRepository {

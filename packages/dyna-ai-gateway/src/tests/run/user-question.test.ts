@@ -23,7 +23,7 @@ import {
 
 /**
  * The user-question pause by example (D62): the model calls the built-in `ask_user_question` tool with its questions, the run pauses with a
- * CLARIFICATION envelope, the user's answers go in through `resume` with ANSWER and reach the model as the tool's result.
+ * USER_QUESTION envelope, the user's answers go in through `resume` with ANSWER and reach the model as the tool's result.
  */
 
 const userQuestions = {
@@ -83,7 +83,7 @@ describe("AIGateway — user-question pause (D62)", () => {
     expect(setup.llmClient.runCalls[0]?.tools.map(tool => tool.name)).toContain(ASK_USER_QUESTION_TOOL_NAME);
   });
 
-  test("an ask_user_question call pauses the run with a CLARIFICATION envelope that allows ANSWER only", async () => {
+  test("an ask_user_question call pauses the run with a USER_QUESTION envelope that allows ANSWER only", async () => {
     const setup = await makeUserQuestionGateway();
     const {envelopes: [envelope]} = await pauseForUserQuestion(setup);
     expect(envelope).toMatchObject({

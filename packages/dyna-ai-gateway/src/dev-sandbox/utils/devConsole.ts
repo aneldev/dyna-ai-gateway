@@ -13,9 +13,9 @@ export enum EDevConsole {
   RUN_CHAT_SESSION = "RUN_CHAT_SESSION",
   /** One line per sample document ingested at start. */
   INGEST_SAMPLE_KB = "INGEST_SAMPLE_KB",
-  /** Reserved for the retriever's own output; nothing prints on it today. */
+  /** `KbRetriever`: a skipped search (no libraries), the query sent, the hits kept. */
   KB_RETRIEVER = "KB_RETRIEVER",
-  /** Reserved for the user memory's own output; nothing prints on it today. */
+  /** `UserMemoryStore`: the extraction (skipped, started, the ops, the stored facts) and whether one is due. */
   USER_MEMORY_STORE = "USER_MEMORY_STORE",
 }
 
