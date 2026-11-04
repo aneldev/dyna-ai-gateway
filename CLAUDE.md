@@ -7,6 +7,14 @@ storage adapters are sibling packages (`packages/dyna-ai-gateway-mongodb`, `-pos
 
 - **`src/…` in this file, the skills and the docs means `packages/dyna-ai-gateway/src/…`** — the gateway's sources; the private and
   user docs stay at the repo root (`docs/`), they cover the whole workspace.
+- **`docs/internal/` is a gitignored symlink to the private notes, outside this repo** (since 2026-11-04). A machine without the link has no
+  internal docs. Never commit the link, never write its target into a tracked file (`docs/90-workspace.md` § Private notes).
+  **When `docs/internal/` is missing or empty, stop before any work that needs it** and hand Dennis the command to run in this
+  session, with his notes path to fill in (the `!` prefix runs it here):
+  ```
+  ! ln -s /path/to/your/notes/dyna-ai-gateway/docs/internal docs/internal && ls docs/internal
+  ```
+  Never guess the path, never create the folder or a file in its place.
 - The tooling is installed and configured once, at the root, and every package extends it: `tsconfig.base.json` → `tsconfig.json`,
   `.eslintrc.js` (+ `.eslintrc.base.js`) → `.eslintrc.js`, `jest.config.base.js` + `jest.setup.ts` → `jest.config.js`,
   `webpack.dist.config.base.js` + `webpack.loaders.js` + `webpack.plugins.js` → `webpack.dist.config.js`, `babel.config.json`.
@@ -38,7 +46,7 @@ ESLint 8, webpack 5 (from `dyna-ts-module-boilerplate`), pnpm workspace.
 ## Documentation — two audiences, one flow
 
 - `docs/internal/`, `docs/plans/` (`active/` ongoing, `archived/` completed or rejected) and `docs/implementation/` are **private working docs** (Roadmap, Classes, Blueprint,
-  plans, the backlog): the source of truth of the analysis and of how the library is built. `docs/internal/` and `docs/plans/` are gitignored (`**/docs/plans/`, `**/docs/internal/`); `docs/implementation/` leaves the repo before it is published.
+  plans, the backlog): the source of truth of the analysis and of how the library is built. `docs/internal/` (a symlink, Workspace layout) and `docs/plans/` are gitignored (`**/docs/plans/`, `**/docs/internal`); `docs/implementation/` leaves the repo before it is published.
 - Everything else under `docs/` is **for the users of the library**, written per the `write-user-docs` skill
   (`.claude/skills/write-user-docs/SKILL.md`): the final product only, no process, no fluff, no reference to the private docs.
 - Flow of every change: 1. update `docs/internal` (the truth) → 2. update the user docs it affects →

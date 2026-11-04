@@ -17,6 +17,19 @@ Documentation of the gateway: [`README.md`](README.md).
 
 - Node.js 24, pnpm 10
 
+## Private notes (`docs/internal/`)
+
+The analysis the library is built from (the Roadmap, the Classes contracts, the Blueprint) is private and lives outside
+the repo. The repo expects it at `docs/internal/`, a **symlink** that git ignores; a fresh clone has none, so create it
+once per machine, with your own path to the notes:
+
+```bash
+ln -s /path-to/docs/internal
+ls docs/internal/     # AI Gateway Roadmap.md, AI Gateway Classes.md, AI Gateway Blueprint.md, …
+```
+
+Never commit the link or write its target into a tracked file: the path names your machine.
+
 ## Commands (repo root, every package)
 
 ```bash

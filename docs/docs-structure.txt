@@ -212,6 +212,6 @@
   85-terminology.md
   90-workspace.md                             # for the library's developers; stays in the site as the last page
 
-  /internal                                   # private — excluded from the site, gitignored
+  /internal                                   # private — a gitignored symlink to the docs/internal, outside the repo (90-workspace.md § Private notes)
   /plans                                      # private — excluded, gitignored
   /implementation                             # private — excluded, leaves the repo before publishing
