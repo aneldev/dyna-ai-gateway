@@ -8,10 +8,7 @@ import {
   EOutputFormat,
 } from "../../contracts";
 
-import {
-  IModelInfo,
-  EModelProvider,
-} from "../model-registry";
+import {IModelInfo} from "../model-registry";
 import {IAIProfile} from "../ai-profile-store";
 import {IPromptTemplateStore} from "../prompt-template-store";
 import {ISkillRegistry} from "../skill-registry";
@@ -105,26 +102,6 @@ export interface IContextAssembler {
    * `prepareCall`, for every `ask` and `run`.
    */
   build(args: { input: IContextInput }): Promise<IAssembledContext>;
-
-  /**
-   * estimateTokens -- the token count of a request
-   *
-   * # About
-   *
-   * > The same count `build` trims with and the `UsageGuard` is asked with.
-   *
-   * `estimateRequestTokens`: a real tokenizer for OpenAI, a safe factor for the other providers, the providers' formulas for
-   * the files.
-   *
-   * # Who needs it
-   *
-   * `build`, for the trim and for `estimatedInputTokens`; a host that wants to size a request before it sends it.
-   */
-  estimateTokens(args: {
-    request: IModelRequest;
-    /** The model's provider; omit when unknown, the safe factor is applied then. */
-    provider?: EModelProvider;
-  }): number;
 }
 
 /** Everything one call needs, gathered by the gateway. */

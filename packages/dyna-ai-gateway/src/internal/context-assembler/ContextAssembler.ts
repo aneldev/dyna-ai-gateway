@@ -282,20 +282,10 @@ export class ContextAssembler implements IContextAssembler {
   }
 
   /**
-   * estimateTokens -- the token count of a request
-   *
-   * # About
-   *
-   * > The same count `build` trims with and the `UsageGuard` is asked with.
-   *
-   * `estimateRequestTokens`: a real tokenizer for OpenAI, a safe factor for the other providers, the providers' formulas for
-   * the files.
-   *
-   * # Who needs it
-   *
-   * `build`, for the trim and for `estimatedInputTokens`; a host that wants to size a request before it sends it.
+   * `estimateRequestTokens` of a request: the count `build` trims with and reports as `estimatedInputTokens`.
+   * No provider → the safe factor.
    */
-  public estimateTokens(
+  private estimateTokens(
     {
       request,
       provider,

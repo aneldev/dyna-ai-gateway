@@ -23,6 +23,7 @@ import {
   IInlineFilePart,
   IModelRequest,
   EMessageRole,
+  estimateRequestTokens,
   joinSystem,
 } from "../../llm-client";
 
@@ -432,7 +433,7 @@ describe("ContextAssembler", () => {
     test("estimatedInputTokens is the estimate of the built request", async () => {
       const assembler = makeAssembler();
       const context = await assembler.build({input: makeInput()});
-      expect(context.estimatedInputTokens).toBe(assembler.estimateTokens({
+      expect(context.estimatedInputTokens).toBe(estimateRequestTokens({
         request: context.request,
         provider: EModelProvider.OPENAI,
       }));
@@ -449,7 +450,7 @@ describe("ContextAssembler", () => {
     });
   });
 
-  describe("M1 — estimateTokens", () => {
+  describe("M1 — estimateRequestTokens, the count build uses", () => {
     test("counts the system prompt and the message texts with the tokenizer, exactly for OpenAI", () => {
       const request: IModelRequest = {
         modelId: "model-a",
@@ -457,7 +458,7 @@ describe("ContextAssembler", () => {
         messages: new TurnBuilder().toMessages({turns: [makeTurn("Hello again")]}),
         maxOutputTokens: 100,
       };
-      expect(makeAssembler().estimateTokens({
+      expect(estimateRequestTokens({
         request,
         provider: EModelProvider.OPENAI,
       })).toBe(4);
@@ -471,11 +472,11 @@ describe("ContextAssembler", () => {
         maxOutputTokens: 100,
       };
       expect([
-        makeAssembler().estimateTokens({
+        estimateRequestTokens({
           request,
           provider: EModelProvider.ANTHROPIC,
         }),
-        makeAssembler().estimateTokens({request}),
+        estimateRequestTokens({request}),
       ]).toEqual([12, 12]);
     });
   });
