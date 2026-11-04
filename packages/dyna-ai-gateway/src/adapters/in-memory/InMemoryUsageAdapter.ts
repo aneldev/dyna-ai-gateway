@@ -56,6 +56,20 @@ export class InMemoryUsageAdapter implements IUsageAdapter {
 
   constructor(private readonly config: IInMemoryUsageAdapterConfig = {}) {}
 
+  /**
+   * check -- may this model call run?
+   *
+   * # About
+   *
+   * > The app's answer, before every model call the gateway makes.
+   *
+   * Asked for the answer, every run step, every guardrail judge, query rewrite, memory update and embedding, with the call's
+   * factors and its rough size. A throw is treated as a denial (fail closed) and logged.
+   *
+   * # Who needs it
+   *
+   * `UsageGuard.check`, right before the provider is called.
+   */
   public async check(args: IUsageCheckArgs): Promise<IUsageCheckResult> {
     this.checkCalls.push(args);
     const verdict = this.config.deny?.(args);
@@ -69,6 +83,20 @@ export class InMemoryUsageAdapter implements IUsageAdapter {
     return {approved: true};
   }
 
+  /**
+   * addUsage -- what the call used
+   *
+   * # About
+   *
+   * > Told once after every approved `check`, also for a failed or aborted call.
+   *
+   * Then with zero usage, so an adapter that reserves in `check` can always settle by `traceId`. A throw is logged; the call's
+   * answer is still returned.
+   *
+   * # Who needs it
+   *
+   * `UsageGuard.addUsage`, after every provider call.
+   */
   public async addUsage(args: IUsageAddArgs): Promise<void> {
     this.addUsageCalls.push(args);
   }

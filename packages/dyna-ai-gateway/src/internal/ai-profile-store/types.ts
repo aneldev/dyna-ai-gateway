@@ -117,14 +117,50 @@ export interface IAIProfileStore {
 
 /** Persistence seam. Only the store calls it. */
 export interface IAIProfileRepository {
-  /** Every profile of the tenant; empty for a tenant without one. */
+  /**
+   * loadByTenant -- every profile of a tenant
+   *
+   * # About
+   *
+   * > The whole set, for the store's cache.
+   *
+   * Returns every profile stored under the tenant, in any order; empty for a tenant without one.
+   *
+   * # Who needs it
+   *
+   * `AIProfileStore.getProfiles`, when the tenant's profiles are not in its cache yet.
+   */
   loadByTenant(args: {tenantId: string}): Promise<IAIProfile[]>;
-  /** Inserts or replaces one profile, by `tenantId` + `profile.id`. */
+  /**
+   * save -- inserts or replaces one profile
+   *
+   * # About
+   *
+   * > Upsert by `tenantId` + `profile.id`.
+   *
+   * The profile is stored whole under the tenant; a profile with the same id is replaced.
+   *
+   * # Who needs it
+   *
+   * `AIProfileStore.upsertProfile`.
+   */
   save(args: {
     tenantId: string;
     profile: IAIProfile;
   }): Promise<void>;
-  /** Deletes one profile permanently; nothing when it does not exist. */
+  /**
+   * remove -- deletes one profile
+   *
+   * # About
+   *
+   * > Permanent; nothing when it does not exist.
+   *
+   * Removes the profile of the tenant with this id; a missing one is not an error.
+   *
+   * # Who needs it
+   *
+   * `AIProfileStore.removeProfile`.
+   */
   remove(args: {
     tenantId: string;
     profileId: string;

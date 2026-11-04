@@ -167,11 +167,47 @@ export interface IModelRegistry {
 
 /** Persistence seam of the registry. Implement once per storage engine. Only the registry calls it. */
 export interface IModelRegistryRepository {
-  /** Loads every entry; called on refresh. */
+  /**
+   * loadAll -- every model entry
+   *
+   * # About
+   *
+   * > The whole catalog, for the registry's cache.
+   *
+   * Returns every stored entry, in any order.
+   *
+   * # Who needs it
+   *
+   * `ModelRegistry.getCatalog`, on a refresh.
+   */
   loadAll(): Promise<IModelInfo[]>;
-  /** Inserts or replaces one entry. */
+  /**
+   * save -- inserts or replaces one entry
+   *
+   * # About
+   *
+   * > Upsert by `model.id`.
+   *
+   * The entry is stored whole; an entry with the same id is replaced.
+   *
+   * # Who needs it
+   *
+   * `ModelRegistry.upsertModel` and `setEnabled`.
+   */
   save(args: {model: IModelInfo}): Promise<void>;
-  /** Deletes one entry permanently. */
+  /**
+   * remove -- deletes one entry
+   *
+   * # About
+   *
+   * > Permanent; nothing when it does not exist.
+   *
+   * Removes the entry with this id.
+   *
+   * # Who needs it
+   *
+   * `ModelRegistry.removeModel`.
+   */
   remove(args: {modelId: string}): Promise<void>;
 }
 

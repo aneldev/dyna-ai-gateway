@@ -186,23 +186,68 @@ export interface IRunStore {
 
 /** Persistence seam of the runs: what a host implements over its database; the `RunStore` adds the 404 and the status helpers. */
 export interface IRunRepository {
-  /** Creates or replaces the run by `id`, whole. */
+  /**
+   * save -- creates or replaces the run
+   *
+   * # About
+   *
+   * > Whole, by `id` within the tenant.
+   *
+   * The run as the gateway holds it: request, messages, status, pending calls, answer.
+   *
+   * # Who needs it
+   *
+   * `RunStore.save` and `setStatus`.
+   */
   save(args: {run: IRun}): Promise<void>;
-  /** The run, or null when missing or of another tenant. */
+  /**
+   * load -- the run of a tenant by id
+   *
+   * # About
+   *
+   * > Null when missing or of another tenant.
+   *
+   * The run as stored, whole.
+   *
+   * # Who needs it
+   *
+   * `RunStore.load`.
+   */
   load(args: {
     tenantId: string;
     runId: string;
   }): Promise<IRun | null>;
-  /** The tenant's runs in one status, narrowed to one user when `userId` is given; any order. */
+  /**
+   * listByStatus -- the tenant's runs in one status
+   *
+   * # About
+   *
+   * > Narrowed to one user when `userId` is given; any order.
+   *
+   * Every run of the tenant whose `status` matches.
+   *
+   * # Who needs it
+   *
+   * `RunStore.listPaused` and `listRunning`.
+   */
   listByStatus(args: {
     tenantId: string;
     status: ERunStatus;
     userId?: string;
   }): Promise<IRun[]>;
   /**
-   * Moves a run from one status to another in one atomic step (compare-and-set, D69).
+   * transition -- moves a run from one status to another atomically
+   *
+   * # About
+   *
+   * > Compare-and-set (D69): two callers racing for the same run, exactly one gets it.
+   *
    * Returns the updated run, or null when the run is missing or not in `from`; `pending` is cleared when `to` is not PAUSED.
-   * Two callers racing for the same run: exactly one gets the run.
+   * One database operation with the condition in the filter, never a load followed by a save.
+   *
+   * # Who needs it
+   *
+   * `RunStore.transition`, for every status change that must be taken once: a resume, a cancel, an expiry.
    */
   transition(args: {
     tenantId: string;
@@ -210,16 +255,37 @@ export interface IRunRepository {
     from: ERunStatus;
     to: ERunStatus;
   }): Promise<IRun | null>;
-  /** Hard-deletes the runs of the threads (`"all"`: every run of the tenant), narrowed to one user when `userId` is given. Returns how many. */
+  /**
+   * delete -- hard-deletes the runs of threads
+   *
+   * # About
+   *
+   * > The listed ids, or every run of the tenant for `"all"`.
+   *
+   * Narrowed to one user when `userId` is given. Returns how many went.
+   *
+   * # Who needs it
+   *
+   * `RunStore.delete`, for the gateway's `delete` and `deleteUserData`.
+   */
   delete(args: {
     tenantId: string;
     threadIds: TThreadIds;
     userId?: string;
   }): Promise<number>;
   /**
-   * Keeps the runs of a user as skeletons (GDPR pseudonymisation): `userId` becomes the pseudonym; `messages`, `request.system`,
-   * `request.outputSchema`, `skills`, `pending` and `answer` are emptied; a RUNNING or PAUSED run becomes CANCELLED; id, status, steps and dates stay.
-   * Returns how many.
+   * anonymizeByUser -- keeps a user's runs as skeletons
+   *
+   * # About
+   *
+   * > GDPR pseudonymisation: the words go, the record stays.
+   *
+   * `userId` becomes the pseudonym; `messages`, `request.system`, `request.outputSchema`, `skills`, `pending` and `answer` are
+   * emptied; a RUNNING or PAUSED run becomes CANCELLED; id, status, steps and dates stay. Returns how many.
+   *
+   * # Who needs it
+   *
+   * `RunStore.anonymizeByUser`, for the gateway's `anonymizeUserData`.
    */
   anonymizeByUser(args: {
     tenantId: string;

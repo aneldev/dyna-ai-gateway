@@ -79,21 +79,33 @@ export interface IUsageGuard {
  */
 export interface IUsageAdapter {
   /**
-   * May this model call run?
+   * check -- may this model call run?
    *
-   * > Asked before every model call the gateway makes: the answer, every run step, every guardrail judge, query rewrite,
-   * > memory update and embedding.
+   * # About
    *
-   * A throw is treated as a denial (fail closed) and logged.
+   * > The app's answer, before every model call the gateway makes.
+   *
+   * Asked for the answer, every run step, every guardrail judge, query rewrite, memory update and embedding, with the call's
+   * factors and its rough size. A throw is treated as a denial (fail closed) and logged.
+   *
+   * # Who needs it
+   *
+   * `UsageGuard.check`, right before the provider is called.
    */
   check(args: IUsageCheckArgs): Promise<IUsageCheckResult>;
   /**
-   * What the call used.
+   * addUsage -- what the call used
    *
-   * > Told once after every approved `check`, also when the provider call failed or was aborted (then with zero usage),
-   * > so an adapter that reserves in `check` can always settle.
+   * # About
    *
-   * A throw is logged; the call's answer is still returned.
+   * > Told once after every approved `check`, also for a failed or aborted call.
+   *
+   * Then with zero usage, so an adapter that reserves in `check` can always settle by `traceId`. A throw is logged; the call's
+   * answer is still returned.
+   *
+   * # Who needs it
+   *
+   * `UsageGuard.addUsage`, after every provider call.
    */
   addUsage(args: IUsageAddArgs): Promise<void>;
 }

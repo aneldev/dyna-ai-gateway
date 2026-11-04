@@ -39,10 +39,36 @@ import {
 export class InMemoryPromptTemplateRepository implements IPromptTemplateRepository {
   private readonly templates = new Map<string, IPromptTemplate>();
 
+  /**
+   * loadActive -- the active template of every key
+   *
+   * # About
+   *
+   * > At most one per key.
+   *
+   * Returns the versions whose `isActive` is set, in any order.
+   *
+   * # Who needs it
+   *
+   * `PromptTemplateStore.getActive`, when the active set is not cached.
+   */
   public async loadActive(): Promise<IPromptTemplate[]> {
     return structuredClone([...this.templates.values()].filter(template => template.isActive));
   }
 
+  /**
+   * get -- one version of a key
+   *
+   * # About
+   *
+   * > By `key` + `version`; null when it does not exist.
+   *
+   * The template as stored, whole.
+   *
+   * # Who needs it
+   *
+   * `PromptTemplateStore.activate`, to check the version before it flips.
+   */
   public async get(
     {
       key,
@@ -56,6 +82,21 @@ export class InMemoryPromptTemplateRepository implements IPromptTemplateReposito
     return template ? structuredClone(template) : null;
   }
 
+  /**
+   * listVersions -- one page of a key's versions
+   *
+   * # About
+   *
+   * > Highest version first; the cursors are version numbers.
+   *
+   * `endingBefore` reads the `limit` versions below it, `startingAfter` the `limit` versions right above it (the page next to
+   * the cursor, not the highest). A cursor that is not a version of the key is a 404. The store has validated `limit` and
+   * that only one cursor is set.
+   *
+   * # Who needs it
+   *
+   * `PromptTemplateStore.listVersions`; `addVersion`, for the highest version so far.
+   */
   public async listVersions(
     {
       key,
@@ -96,12 +137,39 @@ export class InMemoryPromptTemplateRepository implements IPromptTemplateReposito
     };
   }
 
+  /**
+   * save -- inserts or replaces one version
+   *
+   * # About
+   *
+   * > Upsert by `key` + `version`.
+   *
+   * The template is stored whole; the same key and version is replaced.
+   *
+   * # Who needs it
+   *
+   * `PromptTemplateStore.addVersion`.
+   */
   public async save(
     {template}: {template: IPromptTemplate},
   ): Promise<void> {
     this.templates.set(makeId(template.key, template.version), structuredClone(template));
   }
 
+  /**
+   * setActive -- activates one version of a key
+   *
+   * # About
+   *
+   * > One operation: the version becomes active, the others of the key inactive.
+   *
+   * The version must exist; throws a 404 otherwise. A real adapter does the flip in one transaction, so no reader sees two
+   * active versions or none.
+   *
+   * # Who needs it
+   *
+   * `PromptTemplateStore.activate`.
+   */
   public async setActive(
     {
       key,
@@ -133,4 +201,5 @@ export class InMemoryPromptTemplateRepository implements IPromptTemplateReposito
   }
 }
 
+/** The Map key of one version: `key#version`. */
 const makeId = (key: EPromptTemplateKey, version: number): string => `${key}#${version}`;

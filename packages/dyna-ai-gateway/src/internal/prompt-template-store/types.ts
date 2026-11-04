@@ -177,26 +177,83 @@ export interface IPromptTemplateStore {
  * A template is identified by `key` + `version`.
  */
 export interface IPromptTemplateRepository {
-  /** The active template of every key; at most one per key. */
+  /**
+   * loadActive -- the active template of every key
+   *
+   * # About
+   *
+   * > At most one per key.
+   *
+   * Returns the versions whose `isActive` is set, in any order.
+   *
+   * # Who needs it
+   *
+   * `PromptTemplateStore.getActive`, when the active set is not cached.
+   */
   loadActive(): Promise<IPromptTemplate[]>;
-  /** One version, or null when it does not exist. */
+  /**
+   * get -- one version of a key
+   *
+   * # About
+   *
+   * > By `key` + `version`; null when it does not exist.
+   *
+   * The template as stored, whole.
+   *
+   * # Who needs it
+   *
+   * `PromptTemplateStore.activate`, to check the version before it flips.
+   */
   get(args: {
     key: EPromptTemplateKey;
     version: number;
   }): Promise<IPromptTemplate | null>;
   /**
-   * The versions of a key, highest version first.
-   * The cursors are version numbers; an unknown cursor throws a 404.
+   * listVersions -- one page of a key's versions
+   *
+   * # About
+   *
+   * > Highest version first; the cursors are version numbers.
+   *
+   * `endingBefore` reads the `limit` versions below it, `startingAfter` the `limit` versions right above it (the page next to
+   * the cursor, not the highest). A cursor that is not a version of the key is a 404. The store has validated `limit` and
+   * that only one cursor is set.
+   *
+   * # Who needs it
+   *
+   * `PromptTemplateStore.listVersions`; `addVersion`, for the highest version so far.
    */
   listVersions(args: {
     key: EPromptTemplateKey;
     page: IPageArgs<number>;
   }): Promise<IPage<IPromptTemplate>>;
-  /** Upsert by `key` + `version`. */
+  /**
+   * save -- inserts or replaces one version
+   *
+   * # About
+   *
+   * > Upsert by `key` + `version`.
+   *
+   * The template is stored whole; the same key and version is replaced.
+   *
+   * # Who needs it
+   *
+   * `PromptTemplateStore.addVersion`.
+   */
   save(args: {template: IPromptTemplate}): Promise<void>;
   /**
-   * Activates one version and deactivates the others of its key, as one operation.
-   * The version must exist; throws a 404 otherwise.
+   * setActive -- activates one version of a key
+   *
+   * # About
+   *
+   * > One operation: the version becomes active, the others of the key inactive.
+   *
+   * The version must exist; throws a 404 otherwise. A real adapter does the flip in one transaction, so no reader sees two
+   * active versions or none.
+   *
+   * # Who needs it
+   *
+   * `PromptTemplateStore.activate`.
    */
   setActive(args: {
     key: EPromptTemplateKey;

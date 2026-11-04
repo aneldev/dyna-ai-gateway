@@ -148,30 +148,91 @@ export interface IVectorStore {
 
 /** The index backend seam: what a host implements over its vector database; the `VectorStore` checks, the adapter stores. */
 export interface IVectorIndexAdapter {
-  /** Inserts or replaces the records by chunk id; the store has checked tenant, model and dimensions already. */
+  /**
+   * upsert -- inserts or replaces chunk records
+   *
+   * # About
+   *
+   * > By chunk id within the tenant.
+   *
+   * The store has checked tenant, model and dimensions already; the adapter writes.
+   *
+   * # Who needs it
+   *
+   * `VectorStore.upsertChunks`, for the KB ingestion.
+   */
   upsert(args: {
     tenantId: string;
     records: IChunkRecord[];
   }): Promise<void>;
-  /** Removes every chunk of a document; returns the count. */
+  /**
+   * deleteByDoc -- removes every chunk of a document
+   *
+   * # About
+   *
+   * > By `docId` within the tenant; returns the count.
+   *
+   * A re-ingest deletes first, so a shorter document leaves no stale chunks behind.
+   *
+   * # Who needs it
+   *
+   * `VectorStore.deleteByDoc`.
+   */
   deleteByDoc(args: {
     tenantId: string;
     docId: string;
   }): Promise<number>;
-  /** The k nearest chunks of the tenant that match the filters, best first; the score as `IChunkHit.score` says. */
+  /**
+   * search -- the k nearest chunks of a tenant
+   *
+   * # About
+   *
+   * > Best first, filtered by library, book, tags and language.
+   *
+   * Only the tenant's records are searched; the filters are AND-ed as `IChunkFilters` says; the score is `IChunkHit.score`:
+   * 0..1, best 1.
+   *
+   * # Who needs it
+   *
+   * `VectorStore.search`, for the KB retrieval.
+   */
   search(args: {
     tenantId: string;
     vector: number[];
     k: number;
     filters: IChunkFilters;
   }): Promise<IChunkHit[]>;
-  /** Sets another library on every chunk of a book — metadata only, the vectors stay. Returns the number of chunks changed. */
+  /**
+   * moveBook -- sets another library on every chunk of a book
+   *
+   * # About
+   *
+   * > Metadata only, the vectors stay.
+   *
+   * Returns the number of chunks changed.
+   *
+   * # Who needs it
+   *
+   * `VectorStore.moveBook`.
+   */
   moveBook(args: {
     tenantId: string;
     bookId: string;
     libraryId: string;
   }): Promise<number>;
-  /** Model and dimensions the index was created with. */
+  /**
+   * describe -- model and dimensions of the index
+   *
+   * # About
+   *
+   * > What the index was created with.
+   *
+   * Compared with the `Embedder`'s model before every ingest, so a vector of another model is never written.
+   *
+   * # Who needs it
+   *
+   * `VectorStore.describeIndex`.
+   */
   describe(): Promise<IVectorIndexInfo>;
 }
 

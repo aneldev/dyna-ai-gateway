@@ -311,31 +311,88 @@ export interface IThreadStore {
 
 /** Persistence seam. Only the store calls it. */
 export interface IThreadRepository {
-  /** Inserts or replaces the thread, by `thread.id` within `thread.tenantId`; the turns are not part of it. */
+  /**
+   * saveThread -- inserts or replaces the thread
+   *
+   * # About
+   *
+   * > By `thread.id` within `thread.tenantId`; the turns are not part of it.
+   *
+   * The thread record whole: title, status, working memory, lease, dates.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.createThread`, `updateThread`, `appendTurn` (the counts), `setWorkingMemory`.
+   */
   saveThread(args: {thread: IThread}): Promise<void>;
-  /** The thread as stored, `deletedAt` included, or null when the tenant has no thread with this id. */
+  /**
+   * loadThread -- the thread of a tenant by id
+   *
+   * # About
+   *
+   * > As stored, `deletedAt` included; null when the tenant has no thread with this id.
+   *
+   * The thread record whole, without its turns.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.getThread` and `findThread`.
+   */
   loadThread(args: {
     tenantId: string;
     threadId: string;
   }): Promise<IThread | null>;
   /**
-   * One page of a user's threads, newest first by `createdAt` with the id as the tie-break (D37); a thread whose `deletedAt`
-   * is set is not listed. The cursors are thread ids: `endingBefore` reads the `limit` threads older than it, `startingAfter`
+   * listThreads -- one page of a user's threads
+   *
+   * # About
+   *
+   * > Newest first by `createdAt`, the id as the tie-break (D37); the cursors are thread ids.
+   *
+   * A thread whose `deletedAt` is set is not listed. `endingBefore` reads the `limit` threads older than it, `startingAfter`
    * the `limit` threads right after it (the page next to the cursor, not the newest). A cursor that is not a listed thread of
    * this user is a 404. The store has validated `limit` and that only one cursor is set.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.listThreads`.
    */
   listThreads(args: {
     tenantId: string;
     userId: string;
     page: IPageArgs;
   }): Promise<IPage<IThread>>;
-  /** Stores one turn at the end of the thread; the order of appending is the order `loadTurns` returns. */
+  /**
+   * appendTurn -- stores one turn at the end of the thread
+   *
+   * # About
+   *
+   * > The order of appending is the order `loadTurns` returns.
+   *
+   * The turn whole: role, parts, dates. The thread's counts are the store's, saved with `saveThread`.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.appendTurn`.
+   */
   appendTurn(args: {
     tenantId: string;
     threadId: string;
     turn: ITurn;
   }): Promise<void>;
-  /** A slice of the thread's turns in the order they were appended, reversed when `desc`; `skip` and `limit` cut it. */
+  /**
+   * loadTurns -- a slice of the thread's turns
+   *
+   * # About
+   *
+   * > In the order they were appended, reversed when `desc`; `skip` and `limit` cut it.
+   *
+   * The turns whole, as stored.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.getTurns` and `getLastTurns`.
+   */
   loadTurns(args: {
     tenantId: string;
     threadId: string;
@@ -344,14 +401,36 @@ export interface IThreadRepository {
     skip: number;
     limit: number;
   }): Promise<ITurn[]>;
-  /** The ids of the tenant's threads, of one user when `userId` is given; deleted threads excluded. */
+  /**
+   * listThreadIds -- the ids of the tenant's threads
+   *
+   * # About
+   *
+   * > Of one user when `userId` is given; deleted threads excluded.
+   *
+   * The ids only, in any order, for a bulk operation over every thread.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.listThreadIds`, for the gateway's `delete` with `"all"`.
+   */
   listThreadIds(args: {
     tenantId: string;
     userId?: string;
   }): Promise<string[]>;
   /**
-   * Hard-deletes the threads with their turns and working memory: the listed ids, or every thread of the tenant for `"all"`,
-   * narrowed to one user when `userId` is given. An unknown id or one of another tenant or user is ignored. Returns the counts.
+   * delete -- hard-deletes threads with their turns and working memory
+   *
+   * # About
+   *
+   * > The listed ids, or every thread of the tenant for `"all"`.
+   *
+   * Narrowed to one user when `userId` is given. An unknown id or one of another tenant or user is ignored. Returns the
+   * counts of the threads and of the turns deleted.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.delete`, for the gateway's `delete` and `deleteUserData`.
    */
   delete(args: {
     tenantId: string;
@@ -359,8 +438,18 @@ export interface IThreadRepository {
     userId?: string;
   }): Promise<IThreadCounts>;
   /**
-   * Keeps the threads of a user as skeletons (GDPR pseudonymisation): `userId` becomes the pseudonym, the title and the working
-   * memory are emptied, the status becomes CLOSED, the turns are deleted; id, turnCount and dates stay. Returns how many of each.
+   * anonymizeByUser -- keeps a user's threads as skeletons
+   *
+   * # About
+   *
+   * > GDPR pseudonymisation: the words go, the record stays.
+   *
+   * `userId` becomes the pseudonym, the title and the working memory are emptied, the status becomes CLOSED, the turns are
+   * deleted; id, turnCount and dates stay. Returns how many of each.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.anonymizeByUser`, for the gateway's `anonymizeUserData`.
    */
   anonymizeByUser(args: {
     tenantId: string;
@@ -368,9 +457,19 @@ export interface IThreadRepository {
     pseudonym: string;
   }): Promise<IThreadCounts>;
   /**
-   * Atomic check-and-set of the thread's lease (D77): sets it to `{token, expiresAt}` and returns true only when the thread
-   * has no lease or its lease has expired at `now`; otherwise changes nothing and returns false.
-   * One database operation (Mongo: `findOneAndUpdate` with the condition in the filter), never a load followed by a save.
+   * acquireLease -- takes the thread's lease atomically
+   *
+   * # About
+   *
+   * > Check-and-set (D77): one caller at a time on a thread.
+   *
+   * Sets the lease to `{token, expiresAt}` and returns true only when the thread has no lease or its lease has expired at
+   * `now`; otherwise changes nothing and returns false. One database operation (Mongo: `findOneAndUpdate` with the condition
+   * in the filter), never a load followed by a save.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.acquireLease`, before every call on a thread.
    */
   acquireLease(args: {
     tenantId: string;
@@ -379,7 +478,19 @@ export interface IThreadRepository {
     expiresAt: Date;
     now: Date;
   }): Promise<boolean>;
-  /** Clears the thread's lease when it carries this `token`; a lease another call took meanwhile stays. */
+  /**
+   * releaseLease -- gives the thread's lease back
+   *
+   * # About
+   *
+   * > Only the holder's token clears it.
+   *
+   * Clears the lease when it carries this `token`; a lease another call took meanwhile stays.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.releaseLease`, when the call ends.
+   */
   releaseLease(args: {
     tenantId: string;
     threadId: string;

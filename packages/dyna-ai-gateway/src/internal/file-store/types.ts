@@ -154,21 +154,81 @@ export interface IFileStore {
 
 /** Blob storage seam. */
 export interface IBlobAdapter {
-  /** Stores the bytes under the key, replacing what was there; `mime` is stored with them for the signed URL. */
+  /**
+   * put -- stores the bytes under a key
+   *
+   * # About
+   *
+   * > Replace what was there; keep the media type with the bytes.
+   *
+   * The `mime` is stored with the bytes so the signed URL can serve them with the right type.
+   *
+   * # Who needs it
+   *
+   * `FileStore.put`.
+   */
   put(args: {
     key: string;
     bytes: Uint8Array;
     mime: string;
   }): Promise<void>;
-  /** Throws a 404 for a key that does not exist. */
+  /**
+   * get -- the bytes of a key
+   *
+   * # About
+   *
+   * > The whole blob, as stored.
+   *
+   * Throws a 404 for a key that does not exist.
+   *
+   * # Who needs it
+   *
+   * `FileStore.getBytes`.
+   */
   get(args: {key: string}): Promise<Uint8Array>;
-  /** Throws a 404 for a key that does not exist. */
+  /**
+   * signedUrl -- a URL that serves the blob for a while
+   *
+   * # About
+   *
+   * > The storage serves the file, not the gateway.
+   *
+   * A URL valid for `ttlSec` seconds. Throws a 404 for a key that does not exist.
+   *
+   * # Who needs it
+   *
+   * `FileStore.getSignedUrl`.
+   */
   signedUrl(args: {
     key: string;
     ttlSec: number;
   }): Promise<string>;
-  /** Deletes the blob; nothing when the key does not exist. */
+  /**
+   * remove -- deletes one blob
+   *
+   * # About
+   *
+   * > Nothing when the key does not exist.
+   *
+   * Removes the bytes and the media type stored under the key.
+   *
+   * # Who needs it
+   *
+   * `FileStore.remove`.
+   */
   remove(args: {key: string}): Promise<void>;
-  /** Removes every blob whose key starts with the prefix (a folder, ending with "/"). Returns the number removed. */
+  /**
+   * removeByPrefix -- deletes every blob under a prefix
+   *
+   * # About
+   *
+   * > A folder at a time: the prefix ends with "/".
+   *
+   * Removes every blob whose key starts with the prefix and returns how many went.
+   *
+   * # Who needs it
+   *
+   * `FileStore.removeFilesByUser`, for the user's folder (GDPR erasure).
+   */
   removeByPrefix(args: {prefix: string}): Promise<number>;
 }

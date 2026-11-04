@@ -9,10 +9,25 @@ import {
 import {makeTenantKey} from "./utils/makeTenantKey";
 
 /**
- * Chunk records in a Map with a brute-force cosine search.
- * Score = (1 + cosine) / 2, so it is 0..1 like Atlas Vector Search.
- * Filters are AND-ed; `libraryIds`, `bookIds` and `tags` match when the chunk has any of the listed values.
- * `libraryIds`: "all" = no restriction, an empty array = no chunk matches. `bookIds`: an empty array = no restriction.
+ * InMemoryVectorIndexAdapter -- the vector index in a Map, for tests and the sandbox
+ *
+ * # About
+ *
+ * > A brute-force cosine search over every record: exact, and fine for a few thousand chunks.
+ *
+ * Implements `IVectorIndexAdapter` so the `VectorStore` runs with no infrastructure. The score is (1 + cosine) / 2, 0..1
+ * like Atlas Vector Search, so `minScore` means the same in a test and in production. The filters are AND-ed; `libraryIds`,
+ * `bookIds` and `tags` match when the chunk has any of the listed values; `libraryIds` "all" = no restriction and an
+ * empty array = no chunk matches, `bookIds` empty = no restriction. The constructor takes what `describe` reports.
+ *
+ * # Who needs it
+ *
+ * The gateway tests (`gatewayConfigBase`), the dev sandbox and the cookbook's first run; a host app uses its own adapter.
+ *
+ * # Pitfalls
+ *
+ * Production: nothing survives the process, nothing is shared between processes.
+ * Every search scans every record of the tenant: a large index belongs in a real vector database.
  */
 export class InMemoryVectorIndexAdapter implements IVectorIndexAdapter {
   private readonly records = new Map<string, IChunkRecord>();
@@ -22,6 +37,19 @@ export class InMemoryVectorIndexAdapter implements IVectorIndexAdapter {
     private readonly info: IVectorIndexInfo,
   ) {}
 
+  /**
+   * upsert -- inserts or replaces chunk records
+   *
+   * # About
+   *
+   * > By chunk id within the tenant.
+   *
+   * The store has checked tenant, model and dimensions already; the adapter writes.
+   *
+   * # Who needs it
+   *
+   * `VectorStore.upsertChunks`, for the KB ingestion.
+   */
   public async upsert(
     {
       tenantId,
@@ -42,6 +70,19 @@ export class InMemoryVectorIndexAdapter implements IVectorIndexAdapter {
     });
   }
 
+  /**
+   * deleteByDoc -- removes every chunk of a document
+   *
+   * # About
+   *
+   * > By `docId` within the tenant; returns the count.
+   *
+   * A re-ingest deletes first, so a shorter document leaves no stale chunks behind.
+   *
+   * # Who needs it
+   *
+   * `VectorStore.deleteByDoc`.
+   */
   public async deleteByDoc(
     {
       tenantId,
@@ -59,6 +100,20 @@ export class InMemoryVectorIndexAdapter implements IVectorIndexAdapter {
     return keys.length;
   }
 
+  /**
+   * search -- the k nearest chunks of a tenant
+   *
+   * # About
+   *
+   * > Best first, filtered by library, book, tags and language.
+   *
+   * Only the tenant's records are searched; the filters are AND-ed as `IChunkFilters` says; the score is `IChunkHit.score`:
+   * 0..1, best 1.
+   *
+   * # Who needs it
+   *
+   * `VectorStore.search`, for the KB retrieval.
+   */
   public async search(
     {
       tenantId,
@@ -83,6 +138,19 @@ export class InMemoryVectorIndexAdapter implements IVectorIndexAdapter {
       .slice(0, k);
   }
 
+  /**
+   * moveBook -- sets another library on every chunk of a book
+   *
+   * # About
+   *
+   * > Metadata only, the vectors stay.
+   *
+   * Returns the number of chunks changed.
+   *
+   * # Who needs it
+   *
+   * `VectorStore.moveBook`.
+   */
   public async moveBook(
     {
       tenantId,
@@ -101,10 +169,24 @@ export class InMemoryVectorIndexAdapter implements IVectorIndexAdapter {
     return records.length;
   }
 
+  /**
+   * describe -- model and dimensions of the index
+   *
+   * # About
+   *
+   * > What the index was created with.
+   *
+   * Compared with the `Embedder`'s model before every ingest, so a vector of another model is never written.
+   *
+   * # Who needs it
+   *
+   * `VectorStore.describeIndex`.
+   */
   public async describe(): Promise<IVectorIndexInfo> {
     return {...this.info};
   }
 
+  /** True when the chunk passes the AND-ed filters. */
   private matches(record: IChunkRecord, filters: IChunkFilters): boolean {
     if (filters.libraryIds !== "all" && !filters.libraryIds.includes(record.chunk.libraryId)) return false;
     if (filters.bookIds.length && !filters.bookIds.includes(record.chunk.bookId)) return false;
@@ -113,6 +195,7 @@ export class InMemoryVectorIndexAdapter implements IVectorIndexAdapter {
     return true;
   }
 
+  /** (1 + cosine) / 2 of the two vectors; 0.5 when one of them has no length. */
   private getScore(vectorA: number[], vectorB: number[]): number {
     const dot = vectorA.reduce((sum, value, index) => sum + value * (vectorB[index] ?? 0), 0);
     const norms = this.getNorm(vectorA) * this.getNorm(vectorB);
@@ -120,6 +203,7 @@ export class InMemoryVectorIndexAdapter implements IVectorIndexAdapter {
     return (1 + cosine) / 2;
   }
 
+  /** The Euclidean length of a vector. */
   private getNorm(vector: number[]): number {
     return Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
   }

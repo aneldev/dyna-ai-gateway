@@ -127,14 +127,50 @@ export interface ITrace {
 
 /** Persistence seam. */
 export interface ITraceRepository {
-  /** Inserts or replaces by id. */
+  /**
+   * save -- inserts or replaces one entry
+   *
+   * # About
+   *
+   * > Upsert by `entry.id` within the tenant.
+   *
+   * The entry whole. A repository that must not keep the raw request or result drops them here.
+   *
+   * # Who needs it
+   *
+   * `Trace.record`, for every model call; `Trace.annotate`, to write the entry back.
+   */
   save(args: {entry: ITraceEntry}): Promise<void>;
-  /** One entry by id; null when unknown. Trace.annotate needs it. */
+  /**
+   * load -- one entry by id
+   *
+   * # About
+   *
+   * > Null when the tenant has no entry with this id.
+   *
+   * The entry as stored, whole.
+   *
+   * # Who needs it
+   *
+   * `Trace.annotate`, before it merges the gateway's facts into the entry.
+   */
   load(args: {
     tenantId: string;
     traceId: string;
   }): Promise<ITraceEntry | null>;
-  /** The entries of the tenant that match the filters, newest first, from `skip`, at most `limit`. */
+  /**
+   * query -- the entries of a tenant, filtered and paged
+   *
+   * # About
+   *
+   * > What matches `ITraceFilters`, from `skip`, at most `limit`.
+   *
+   * User, thread, kind and the inclusive `from` / `to` dates narrow the set; the order is the adapter's.
+   *
+   * # Who needs it
+   *
+   * `Trace.query`, for the host's audit pages.
+   */
   query(args: {
     tenantId: string;
     filters: ITraceFilters;
@@ -142,8 +178,17 @@ export interface ITraceRepository {
     limit: number;
   }): Promise<ITraceEntry[]>;
   /**
-   * Hard-deletes the entries of the threads (`"all"`: every entry of the tenant, the ones without a thread included), narrowed
-   * to one user when `userId` is given. Returns how many.
+   * delete -- hard-deletes the entries of threads
+   *
+   * # About
+   *
+   * > `"all"`: every entry of the tenant, the ones without a thread included.
+   *
+   * Narrowed to one user when `userId` is given. Returns how many went.
+   *
+   * # Who needs it
+   *
+   * `Trace.delete`, for the gateway's `delete` and `deleteUserData` (D54, D119).
    */
   delete(args: {
     tenantId: string;
@@ -151,8 +196,18 @@ export interface ITraceRepository {
     userId?: string;
   }): Promise<number>;
   /**
-   * Keeps the entries of a user as an audit skeleton (GDPR pseudonymisation): `userId` becomes the pseudonym, `request` and
-   * `result` are removed; usage, cost, model, kind, chunk ids, issues and dates stay. Returns how many.
+   * anonymizeByUser -- keeps a user's entries as an audit skeleton
+   *
+   * # About
+   *
+   * > GDPR pseudonymisation: the numbers stay, the words go.
+   *
+   * `userId` becomes the pseudonym, `request` and `result` are removed; usage, cost, model, kind, chunk ids, issues and dates
+   * stay. Returns how many.
+   *
+   * # Who needs it
+   *
+   * `Trace.anonymizeByUser`, for the gateway's `anonymizeUserData` (D54).
    */
   anonymizeByUser(args: {
     tenantId: string;

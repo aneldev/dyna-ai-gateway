@@ -270,18 +270,54 @@ export interface IUserMemoryStore {
 
 /** Persistence seam of the user facts: one record per tenant + user, implemented by the host's adapter. */
 export interface IUserMemoryRepository {
-  /** The facts of one user as last saved; [] for a user without a record. */
+  /**
+   * load -- the facts of one user
+   *
+   * # About
+   *
+   * > As last saved; `[]` for a user without a record.
+   *
+   * The user's facts whole, in the order they were saved.
+   *
+   * # Who needs it
+   *
+   * `UserMemoryStore.getFacts`.
+   */
   load(args: {
     tenantId: string;
     userId: string;
   }): Promise<IUserMemoryFact[]>;
-  /** Replaces the user's facts with `facts`; an empty list keeps the record (`clear`), `deleteByUser` removes it. */
+  /**
+   * saveAll -- replaces the user's facts
+   *
+   * # About
+   *
+   * > The whole list at once; an empty list keeps the record.
+   *
+   * `clear` saves an empty list; `deleteByUser` removes the record itself.
+   *
+   * # Who needs it
+   *
+   * `UserMemoryStore.save`, after an extraction or an edit.
+   */
   saveAll(args: {
     tenantId: string;
     userId: string;
     facts: IUserMemoryFact[];
   }): Promise<void>;
-  /** Removes the record of a user (GDPR erasure); nothing is left, not even an empty record. Returns the number of facts removed. */
+  /**
+   * deleteByUser -- removes the record of a user
+   *
+   * # About
+   *
+   * > GDPR erasure: nothing is left, not even an empty record.
+   *
+   * Returns the number of facts removed.
+   *
+   * # Who needs it
+   *
+   * `UserMemoryStore.deleteByUser`, for the gateway's `deleteUserData`.
+   */
   deleteByUser(args: {
     tenantId: string;
     userId: string;

@@ -7,16 +7,59 @@ import {
 
 import {makeTenantKey} from "./utils/makeTenantKey";
 
-/** Runs in a Map. Copies in and out, like a database; lists keep insertion order. */
+/**
+ * InMemoryRunRepository -- the run repository in a Map, for tests and the sandbox
+ *
+ * # About
+ *
+ * > Behaves like a database without one: copies in and out, lists in insertion order.
+ *
+ * Implements `IRunRepository` so the `RunStore` runs with no infrastructure. `transition` is atomic by construction: one
+ * synchronous read and write with no await between them, which is what a real adapter gets from a conditional update.
+ *
+ * # Who needs it
+ *
+ * The gateway tests (`gatewayConfigBase`), the dev sandbox and the cookbook's first run; a host app uses its own adapter.
+ *
+ * # Pitfalls
+ *
+ * Production: nothing survives the process, nothing is shared between processes.
+ */
 export class InMemoryRunRepository implements IRunRepository {
   private readonly runs = new Map<string, IRun>();
 
+  /**
+   * save -- creates or replaces the run
+   *
+   * # About
+   *
+   * > Whole, by `id` within the tenant.
+   *
+   * The run as the gateway holds it: request, messages, status, pending calls, answer.
+   *
+   * # Who needs it
+   *
+   * `RunStore.save` and `setStatus`.
+   */
   public async save(
     {run}: {run: IRun},
   ): Promise<void> {
     this.runs.set(makeTenantKey(run.tenantId, run.id), structuredClone(run));
   }
 
+  /**
+   * load -- the run of a tenant by id
+   *
+   * # About
+   *
+   * > Null when missing or of another tenant.
+   *
+   * The run as stored, whole.
+   *
+   * # Who needs it
+   *
+   * `RunStore.load`.
+   */
   public async load(
     {
       tenantId,
@@ -30,6 +73,19 @@ export class InMemoryRunRepository implements IRunRepository {
     return run ? structuredClone(run) : null;
   }
 
+  /**
+   * listByStatus -- the tenant's runs in one status
+   *
+   * # About
+   *
+   * > Narrowed to one user when `userId` is given; any order.
+   *
+   * Every run of the tenant whose `status` matches.
+   *
+   * # Who needs it
+   *
+   * `RunStore.listPaused` and `listRunning`.
+   */
   public async listByStatus(
     {
       tenantId,
@@ -48,7 +104,20 @@ export class InMemoryRunRepository implements IRunRepository {
       .map(run => structuredClone(run));
   }
 
-  /** Atomic by construction: one synchronous read and write, no await between them. */
+  /**
+   * transition -- moves a run from one status to another atomically
+   *
+   * # About
+   *
+   * > Compare-and-set (D69): two callers racing for the same run, exactly one gets it.
+   *
+   * Returns the updated run, or null when the run is missing or not in `from`; `pending` is cleared when `to` is not PAUSED.
+   * One database operation with the condition in the filter, never a load followed by a save.
+   *
+   * # Who needs it
+   *
+   * `RunStore.transition`, for every status change that must be taken once: a resume, a cancel, an expiry.
+   */
   public async transition(
     {
       tenantId,
@@ -75,6 +144,19 @@ export class InMemoryRunRepository implements IRunRepository {
     return structuredClone(moved);
   }
 
+  /**
+   * delete -- hard-deletes the runs of threads
+   *
+   * # About
+   *
+   * > The listed ids, or every run of the tenant for `"all"`.
+   *
+   * Narrowed to one user when `userId` is given. Returns how many went.
+   *
+   * # Who needs it
+   *
+   * `RunStore.delete`, for the gateway's `delete` and `deleteUserData`.
+   */
   public async delete(
     {
       tenantId,
@@ -96,6 +178,20 @@ export class InMemoryRunRepository implements IRunRepository {
     return keys.length;
   }
 
+  /**
+   * anonymizeByUser -- keeps a user's runs as skeletons
+   *
+   * # About
+   *
+   * > GDPR pseudonymisation: the words go, the record stays.
+   *
+   * `userId` becomes the pseudonym; `messages`, `request.system`, `request.outputSchema`, `skills`, `pending` and `answer` are
+   * emptied; a RUNNING or PAUSED run becomes CANCELLED; id, status, steps and dates stay. Returns how many.
+   *
+   * # Who needs it
+   *
+   * `RunStore.anonymizeByUser`, for the gateway's `anonymizeUserData`.
+   */
   public async anonymizeByUser(
     {
       tenantId,
@@ -130,6 +226,7 @@ export class InMemoryRunRepository implements IRunRepository {
     return keys.length;
   }
 
+  /** The Map keys of the user's runs. */
   private getKeysOfUser(tenantId: string, userId: string): string[] {
     return [...this.runs.entries()]
       .filter(([, run]) => run.tenantId === tenantId && run.userId === userId)
