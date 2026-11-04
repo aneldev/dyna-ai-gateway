@@ -639,8 +639,8 @@ const {response: answer} = gateway.ask({
 
 - **A thread** is its user's: `ask`, `run`, `getTurns`, `renameThread`, `getThreadMemory` and `resetThreadMemory` on another
   user's thread are a 404, like an unknown one, and `listThreads` lists the calling user's threads only.
-- **A file** is its uploader's: a question can carry only the caller's own files, and `deleteFile` touches only the
-  caller's file.
+- **A file** is its uploader's: a question can carry only the caller's own files, and `deleteFile` and `getFileUrl` reach
+  only the caller's files.
 - **A paused run** can be resumed or cancelled by any user of the tenant, because the approver is often not the asker; your
   application decides who may approve or review. The run stays the asker's: its memory and trace go to the user who
   started it. `listPausedRuns` shows the calling user's own runs as summaries, without the draft of a reviewed answer;

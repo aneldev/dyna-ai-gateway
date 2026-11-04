@@ -1220,6 +1220,44 @@ export class AIGateway {
   }
 
   /**
+   * getFileUrl -- a short-lived URL of one uploaded file of the calling user, for a screen
+   *
+   * # About
+   *
+   * > The browser fetches the bytes from the storage; they never pass through the server.
+   *
+   * The adapter signs a URL for the file, valid for `ttlSec` seconds (default 900). The file must be the calling user's:
+   * another user's, or an unknown id, is the adapter's 404.
+   *
+   * # Who needs it
+   *
+   * The host's chat screen, to show an uploaded image or open a PDF; the `files.toUrl` hook of the Vercel UI module.
+   */
+  public async getFileUrl(
+    {
+      userContext,
+      fileId,
+      ttlSec,
+    }: {
+      userContext: IUserContext;
+      fileId: string;
+      /**
+       * How long the URL stays valid, in seconds.
+       *
+       * @default 900
+       */
+      ttlSec?: number;
+    },
+  ): Promise<string> {
+    return this.deps.fileStore.getSignedUrl({
+      tenantId: userContext.tenantId,
+      userId: userContext.userId,
+      fileId,
+      ...ttlSec === undefined ? {} : {ttlSec},
+    });
+  }
+
+  /**
    * removeFilesByUser -- deletes every file a user uploaded
    *
    * # About

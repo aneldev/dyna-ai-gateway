@@ -106,7 +106,7 @@ with the kind `RESULT_REVIEW`; the reviewer's screen is `AIGateway.getPausedRun`
 
 Uploads are your own route on `AIGateway.uploadFile`; the client then names the file in a file part of its message. The `files`
 hooks of the config translate both ways: `fromUi` turns the part into the stored file's pointer, `toUrl` gives `history` the url
-the client loads a stored file from (a signed url, your download route). Without the hooks, a file part in a request is a 400 and
+the client loads a stored file from (`AIGateway.getFileUrl`, a signed url of the storage, or your own download route). Without the hooks, a file part in a request is a 400 and
 the file parts of a stored thread are left out of `history`.
 
 ## 6. What stays the gateway's

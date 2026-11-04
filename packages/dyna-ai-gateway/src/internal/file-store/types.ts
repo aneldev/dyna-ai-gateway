@@ -93,12 +93,11 @@ export interface IFileStore {
    *
    * > The bytes without passing through the server: the adapter signs, the browser fetches.
    *
-   * A file this user of this tenant does not have is the adapter's 404. No facade method calls it: a host that shows the
-   * files builds a `FileStore` on the same adapter and config.
+   * A file this user of this tenant does not have is the adapter's 404.
    *
    * # Who needs it
    *
-   * The host's chat screen, to show an uploaded image or open a PDF.
+   * `AIGateway.getFileUrl`, for the host's chat screen that shows an uploaded image or opens a PDF.
    */
   getSignedUrl(args: {
     tenantId: string;

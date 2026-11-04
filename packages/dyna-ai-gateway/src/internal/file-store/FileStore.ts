@@ -59,8 +59,7 @@ const SEPARATOR = "/";
  * # Pitfalls
  *
  * `path` and every id are checked as folder names (no separator, no "." or ".."): a bad one is a 400 before the adapter is
- * reached. The default types exclude SVG on purpose. `getSignedUrl` has no facade method: a host that needs it builds a
- * `FileStore` on the same adapter and config.
+ * reached. The default types exclude SVG on purpose.
  */
 export class FileStore implements IFileStore {
   /** The folders of config.path joined by single slashes, none at the ends; "" when the config names no folder. */
@@ -194,12 +193,11 @@ export class FileStore implements IFileStore {
    *
    * > The bytes without passing through the server: the adapter signs, the browser fetches.
    *
-   * A file this user of this tenant does not have is the adapter's 404. No facade method calls it: a host that shows the
-   * files builds a `FileStore` on the same adapter and config.
+   * A file this user of this tenant does not have is the adapter's 404.
    *
    * # Who needs it
    *
-   * The host's chat screen, to show an uploaded image or open a PDF.
+   * `AIGateway.getFileUrl`, for the host's chat screen that shows an uploaded image or opens a PDF.
    */
   public async getSignedUrl(
     {

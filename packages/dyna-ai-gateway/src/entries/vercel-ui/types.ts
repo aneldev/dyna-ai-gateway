@@ -143,7 +143,7 @@ export interface IAIGatewayVercelUiConfig {
   files?: {
     /** The `IFileRef` of a file part the client sent (the upload route gave the client the id, e.g. in `url`). A file of another user is the gateway's 400. */
     fromUi: (args: {userContext: IUserContext; part: FileUIPart}) => Promise<IFileRef>;
-    /** The url the client loads a stored file from: a signed url, the application's download route. */
+    /** The url the client loads a stored file from: `AIGateway.getFileUrl` (a signed url), or the application's download route. */
     toUrl: (args: {userContext: IUserContext; file: IFileRef}) => Promise<string>;
   };
 }
