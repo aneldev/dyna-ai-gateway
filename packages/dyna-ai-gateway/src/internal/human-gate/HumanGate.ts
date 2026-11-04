@@ -21,7 +21,52 @@ import {validateAnswers} from "./utils/validateAnswers";
 
 const DEFAULT_TIMEOUT_MS = 24 * 60 * 60 * 1_000;
 
-/** Pause and resume mechanics for runs. */
+/**
+ * HumanGate -- the mechanics of a run's pause: store it, hand the card to the UI, let one decision through
+ *
+ * # About
+ *
+ * > The policy decides that a human is needed; the gate makes the wait safe.
+ *
+ * Implements `IHumanGate` over the `RunStore`. Three pause kinds (`EPauseKind`): a tool call waiting for approval, the
+ * final answer waiting for a reviewer (D99), the model's question to the user (D62). Every pause is a list of envelopes,
+ * one per card the UI renders (D102), stamped with the run, a fresh `pauseId` and one `expiresAt`.
+ *
+ * - `pause` stores the run as PAUSED with its envelopes.
+ * - `assertResumable` and `matchDecisions` check the decisions against the envelopes, without I/O.
+ * - `resume` and `cancel` move the run out of PAUSED in one atomic step (D69): of two callers, one wins, the other reads a
+ *   409.
+ * - `expirePaused` cancels the pauses nobody answered within `timeoutMs` (D75, D80).
+ *
+ * The decision itself is applied elsewhere: the `LLMClient` resumes the loop with it, the settlement delivers or drops a
+ * reviewed answer.
+ *
+ * # Who needs it
+ *
+ * `settleRun` and `settleReviewPause` (`pause`); `AIGateway.resume` (`assertResumable`, `matchDecisions`, `resume`),
+ * `cancelRun`, `listPausedRuns`, `expirePausedRuns`. A host replaces it with its own `IHumanGate` in `overrides.humanGate`.
+ *
+ * # What needs
+ *
+ * `runStore`, whose `transition` is the atomic step.
+ *
+ * # Usage
+ *
+ * ## When to use it
+ *
+ * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.humanGate`.
+ *
+ * ## When shouldn't use it
+ *
+ * To decide whether a call needs a human: that is `ToolPolicy.decide`. To render the card: the app does, from the
+ * envelope's data.
+ *
+ * # Pitfalls
+ *
+ * A decision carries the `pauseId` of the card it answers: a run pauses again under the same `runId` (a tool, then its
+ * answer's review), and a stale decision is a 409. The gate does not close the thread or the tool calls of a cancelled
+ * run; the gateway does, with the envelopes the gate returns.
+ */
 export class HumanGate implements IHumanGate {
   constructor(
     private readonly config: IHumanGateConfig,
@@ -29,8 +74,21 @@ export class HumanGate implements IHumanGate {
   ) {}
 
   /**
-   * Persists the run as PAUSED with its envelopes (runId, a fresh pauseId and one expiresAt added to each) and returns them for the UI.
-   * One envelope per tool call of the step that waits for a human (D102), or the one envelope of a result review (D99).
+   * pause -- stores the run as PAUSED with the cards of its pause
+   *
+   * # About
+   *
+   * > The run stops here; these are the cards the UI shows.
+   *
+   * Stamps every draft with the run's id, one fresh `pauseId` and one `expiresAt` (now + `timeoutMs`), saves the run as
+   * PAUSED with them as `pending` and returns them. One envelope per tool call of the step that waits for a human (D102),
+   * or the one envelope of a result review (D99). An empty list is a 500 (error 5376634521017): a pause without a card
+   * could never be answered.
+   *
+   * # Who needs it
+   *
+   * `settleRun`, when the loop stopped on tool calls that need a human; `settleReviewPause`, when the answer waits for a
+   * reviewer.
    */
   public async pause(
     {
@@ -322,7 +380,20 @@ export class HumanGate implements IHumanGate {
     });
   }
 
-  /** The current envelopes of a paused run, for reloading the UI; null when the run is not paused. */
+  /**
+   * getPending -- the cards of a paused run
+   *
+   * # About
+   *
+   * > For a UI that reloads: the envelopes as `pause` returned them.
+   *
+   * Loads the run (a 404 when missing) and returns its `pending`; null when the run is not paused or carries no envelope
+   * (D80).
+   *
+   * # Who needs it
+   *
+   * A host that shows a pause again; the gateway's own `getPausedRun` reads the run whole from the `RunStore`.
+   */
   public async getPending(
     {
       tenantId,
@@ -338,7 +409,19 @@ export class HumanGate implements IHumanGate {
     }));
   }
 
-  /** Paused runs of a tenant (optionally one user), for the inbox UI. */
+  /**
+   * listPaused -- the paused runs of a tenant
+   *
+   * # About
+   *
+   * > The inbox, as the store has it.
+   *
+   * `RunStore.listPaused`: the tenant's PAUSED runs, one user's when `userId` is given.
+   *
+   * # Who needs it
+   *
+   * `AIGateway.listPausedRuns`, which strips the reviewer's draft before the asker sees the list (D111).
+   */
   public async listPaused(
     {
       tenantId,

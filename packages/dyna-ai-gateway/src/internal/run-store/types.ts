@@ -13,7 +13,7 @@ import {
 
 /** Configuration of the RunStore. Lands in IAIGatewayConfig.runStore. */
 export interface IRunStoreConfig {
-  /** Persistence; Mongo in v1. */
+  /** Persistence of the runs: the host's adapter; `InMemoryRunRepository` ships with the gateway. */
   repository: IRunRepository;
 }
 
@@ -23,22 +23,73 @@ export interface IRunStoreConfig {
  * Implemented by `RunStore`; the type of `IAIGatewayDeps.runStore`, so a host may pass its own in `overrides`.
  */
 export interface IRunStore {
-  /** Creates or replaces a run. */
+  /**
+   * save -- creates or replaces a run
+   *
+   * # About
+   *
+   * > The whole run, as it is now.
+   *
+   * Passes the run to the repository, which replaces it by `id`.
+   *
+   * # Who needs it
+   *
+   * `HumanGate.pause` (the first write of a run that pauses), the settlement of a review (`settleReview`), and the resume
+   * path when the run switches profile (D65).
+   */
   save(args: {run: IRun}): Promise<void>;
 
-  /** Loads a run; throws if missing or not owned by the tenant. */
+  /**
+   * load -- one run of the tenant
+   *
+   * # About
+   *
+   * > The run, or a 404.
+   *
+   * Throws a 404 (error 5372577355245) when the run is missing or belongs to another tenant; the repository's null never
+   * reaches a caller.
+   *
+   * # Who needs it
+   *
+   * `HumanGate.resume`, `getPending` and `cancel`; `AIGateway.getPausedRun`, `cancelRun` and the resume path; `closeRun`.
+   */
   load(args: {
     tenantId: string;
     runId: string;
   }): Promise<IRun>;
 
-  /** Runs waiting for a human, for the UI inbox. */
+  /**
+   * listPaused -- the runs waiting for a human
+   *
+   * # About
+   *
+   * > The inbox.
+   *
+   * The tenant's PAUSED runs, narrowed to one user when `userId` is given.
+   *
+   * # Who needs it
+   *
+   * `HumanGate.listPaused` and `expirePaused`; `AIProfileStore.removeProfile`, which refuses while a paused run uses the
+   * profile.
+   */
   listPaused(args: {
     tenantId: string;
     userId?: string;
   }): Promise<IRun[]>;
 
-  /** Runs marked RUNNING: a live call's, or one an instance that died left behind (`recoverStuckRuns`, D97). */
+  /**
+   * listRunning -- the runs marked RUNNING
+   *
+   * # About
+   *
+   * > A live call's run, or one an instance that died left behind.
+   *
+   * The tenant's RUNNING runs. A RUNNING run whose thread has no live lease is stuck (D97).
+   *
+   * # Who needs it
+   *
+   * `AIGateway.recoverStuckRuns`, from a scheduled job of the application.
+   */
   listRunning(args: {tenantId: string}): Promise<IRun[]>;
 
   /**
@@ -68,14 +119,43 @@ export interface IRunStore {
     to: ERunStatus;
   }): Promise<IRun | null>;
 
-  /** Changes status only (and updatedAt). */
+  /**
+   * setStatus -- changes the status of a run
+   *
+   * # About
+   *
+   * > For the status changes nobody races for.
+   *
+   * Loads the run (a 404 when missing) and saves it with the new status and `updatedAt` now; nothing else changes.
+   *
+   * # Who needs it
+   *
+   * `settleRun` (DONE, FAILED after a resumed run finished), `closeRun`, `AIGateway.closeFailedRun`.
+   *
+   * # Pitfalls
+   *
+   * Read-then-save: a concurrent writer can be overwritten. PAUSED to anything is `transition`'s job.
+   */
   setStatus(args: {
     tenantId: string;
     runId: string;
     status: ERunStatus;
   }): Promise<void>;
 
-  /** Hard-deletes the runs of threads: the listed ids or `"all"`, of one user when `userId` is given. Returns how many. */
+  /**
+   * delete -- hard-deletes the runs of threads
+   *
+   * # About
+   *
+   * > The threads go, their runs go with them (D119).
+   *
+   * Removes the runs of the listed thread ids, or of every thread of the tenant with `"all"`, narrowed to one user when
+   * `userId` is given. Returns how many.
+   *
+   * # Who needs it
+   *
+   * `deleteThreads` (behind `AIGateway.deleteThreads`) and `forgetUser` (behind `AIGateway.deleteUserData`, D54).
+   */
   delete(args: {
     tenantId: string;
     threadIds: TThreadIds;
@@ -83,8 +163,19 @@ export interface IRunStore {
   }): Promise<number>;
 
   /**
-   * Keeps every run of a user as a skeleton under the pseudonym (GDPR pseudonymisation): no messages, no system prompt, no pending
-   * pause; an open run is CANCELLED, since nobody can resume it. Returns how many.
+   * anonymizeByUser -- keeps a user's runs as skeletons under a pseudonym
+   *
+   * # About
+   *
+   * > The record that a run happened stays; what the user said in it goes.
+   *
+   * The repository replaces `userId` with the pseudonym and empties `messages`, `request.system`, `skills`, `pending` and
+   * `answer`; id, status, steps and dates stay. An open run (RUNNING or PAUSED) becomes CANCELLED, since nobody can resume
+   * it. Returns how many.
+   *
+   * # Who needs it
+   *
+   * `forgetUser`, behind `AIGateway.anonymizeUserData` (D54).
    */
   anonymizeByUser(args: {
     tenantId: string;
@@ -93,13 +184,16 @@ export interface IRunStore {
   }): Promise<number>;
 }
 
-/** Persistence seam. */
+/** Persistence seam of the runs: what a host implements over its database; the `RunStore` adds the 404 and the status helpers. */
 export interface IRunRepository {
+  /** Creates or replaces the run by `id`, whole. */
   save(args: {run: IRun}): Promise<void>;
+  /** The run, or null when missing or of another tenant. */
   load(args: {
     tenantId: string;
     runId: string;
   }): Promise<IRun | null>;
+  /** The tenant's runs in one status, narrowed to one user when `userId` is given; any order. */
   listByStatus(args: {
     tenantId: string;
     status: ERunStatus;
@@ -136,11 +230,17 @@ export interface IRunRepository {
 
 /** The persisted state of one agent run. */
 export interface IRun {
+  /** The run's id (`IPausedResponse.runId`); kept across the pauses of one run. */
   id: string;
+  /** The owner; every read is filtered by it. */
   tenantId: string;
+  /** The thread the run answers on; one thread has at most one open run. */
   threadId: string;
+  /** The user who asked; the pseudonym after `anonymizeByUser`. */
   userId: string;
+  /** The profile the run started on; a resume may switch it (D65), the run is saved with the new one. */
   profileId: string;
+  /** Where the run is in its lifecycle (`ERunStatus`). */
   status: ERunStatus;
   /**
    * The request as built for step 1 (system, modelId, caps); messages live separately below. No `outputSchema`: a zod schema
@@ -185,7 +285,9 @@ export interface IRun {
   answer?: IStoredAnswer;
   /** Model calls done so far; the profile's `maxStepsPerRun` caps it. */
   steps: number;
+  /** When the run was first stored. */
   createdAt: Date;
+  /** When the run was last saved or changed status. */
   updatedAt: Date;
 }
 
@@ -210,9 +312,14 @@ export interface IStoredAnswer {
 
 /** Lifecycle of a run. */
 export enum ERunStatus {
+  /** A call is executing it, or an instance died with it (`recoverStuckRuns`, D97). */
   RUNNING = "RUNNING",
+  /** Waiting for a human: `pending` holds the envelopes. */
   PAUSED = "PAUSED",
+  /** Answered. */
   DONE = "DONE",
+  /** Ended without an answer: a failed step, a rejected review, an abort, a stuck run recovered. */
   FAILED = "FAILED",
+  /** Closed by `cancelRun`, by an expired pause or by the user's pseudonymisation. */
   CANCELLED = "CANCELLED",
 }

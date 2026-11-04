@@ -17,9 +17,27 @@ import {
 export const ASK_USER_QUESTION_TOOL_NAME = "ask_user_question";
 
 /**
- * The built-in user-question tool (D62): the model calls it when it cannot proceed without the user. The call never executes:
- * its `policy` is `NEEDS_APPROVAL`, so the loop pauses and `settleRun` turns the input into a CLARIFICATION envelope; the user's
- * answers come back as the tool's result through `resume` with ANSWER.
+ * makeAskUserQuestionTool -- the built-in tool with which the model asks the user
+ *
+ * # About
+ *
+ * > The model asks instead of guessing; the run waits for the answer.
+ *
+ * Builds `ask_user_question` (D62): its input is the form the UI renders (`askUserQuestionInputSchema`, the shape of
+ * `IUserQuestions`), its `policy` is `NEEDS_APPROVAL`, so the loop pauses on every call and `settleRun` turns the input
+ * into a USER_QUESTION envelope (`makePauseEnvelopeDraft`). The call never executes: `execute` throws a 500 (error
+ * 5372634117683) if it is ever reached. The user's answers come back through `resume` with ANSWER and reach the model as
+ * the tool's result.
+ *
+ * # Who needs it
+ *
+ * `createGatewayDeps`, when `humanGate.userQuestions.enabled`: the tool is a built-in, offered in every run whatever the
+ * profile says (D61).
+ *
+ * # Pitfalls
+ *
+ * An input the schema rejects does not pause as a question: `makePauseEnvelopeDraft` makes it a TOOL_APPROVAL, so the
+ * human sees what the model asked for. `ask()` has no tools: there the model cannot ask.
  */
 export const makeAskUserQuestionTool = (): IToolDef<IUserQuestions, never> => defineTool({
   name: ASK_USER_QUESTION_TOOL_NAME,

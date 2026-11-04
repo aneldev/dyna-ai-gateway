@@ -7,8 +7,18 @@ import {
 } from "../types";
 
 /**
- * The envelope of a run paused for the review of its answer (D99): what the reviewer sees is what the end user would have
- * received, and the reviewer may approve, edit or reject it. Built by the gateway's settlement after the output checks passed.
+ * makeResultReviewDraft -- the card of an answer that waits for a reviewer
+ *
+ * # About
+ *
+ * > What the end user would have received, shown to the reviewer first.
+ *
+ * A RESULT_REVIEW envelope (D99) whose `result` is the checked answer (text, the parsed `structured` when there is one,
+ * the citations, the warnings) and whose allowed actions are APPROVE, EDIT, REJECT.
+ *
+ * # Who needs it
+ *
+ * `settleReviewPause`, after the output checks passed, before `HumanGate.pause`.
  */
 export const makeResultReviewDraft = (
   {

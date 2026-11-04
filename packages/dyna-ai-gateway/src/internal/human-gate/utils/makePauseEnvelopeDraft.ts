@@ -11,9 +11,20 @@ import {
 } from "../types";
 
 /**
- * The envelope of a paused run from the tool call that paused it (D62): an `ask_user_question` call is a USER_QUESTION with the call's input
- * as the questions, any other call is a TOOL_APPROVAL that carries the policy's `rejectionText` and `reasonCode` for the call (D87). An `ask_user_question`
- * input the schema rejects pauses as an approval, so the human sees what the model asked for.
+ * makePauseEnvelopeDraft -- the card of one tool call that paused the run
+ *
+ * # About
+ *
+ * > A question to the user, or a call for a human to approve.
+ *
+ * An `ask_user_question` call whose input passes the schema is a USER_QUESTION envelope with the input as the questions
+ * and ANSWER as the only allowed action (D62). Any other call is a TOOL_APPROVAL envelope with the call, the policy's
+ * `rejectionText` and `reasonCode` for it (D87) and APPROVE, EDIT, REJECT allowed. An `ask_user_question` input the schema
+ * rejects pauses as an approval, so the human sees what the model asked for.
+ *
+ * # Who needs it
+ *
+ * `settleRun`, once per pending tool call of the step, before `HumanGate.pause`.
  */
 export const makePauseEnvelopeDraft = (
   {
