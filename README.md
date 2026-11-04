@@ -92,7 +92,7 @@ const {response} = gateway.ask({
 const result = await response;
 if (result.kind === EGatewayResponseKind.ANSWER) {
   result.structured; // {lines: [...]}, validated against the schema
-  result.citations;  // the knowledge-base chunks the answer was grounded on
+  result.citations;  // the ids of the knowledge-base chunks the model was given
   result.threadId;   // pass it on the next call to continue the conversation
 }
 ```

@@ -84,7 +84,10 @@ export const deleteThreads = async (
   return {threads: counts.threads};
 };
 
-/** Removes the owner's files the thread's turns point at; the turns go with the thread right after. */
+/**
+ * Removes the owner's files the thread's turns point at; the turns go with the thread right after.
+ * Another user's pointer in a turn stays: not this thread's to delete.
+ */
 const removeFiles = async (deps: IAIGatewayDeps, thread: IThread): Promise<void> => {
   if (!thread.turnCount) return;
   const turns = await deps.threadStore.getLastTurns({
