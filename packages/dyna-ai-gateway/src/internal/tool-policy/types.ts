@@ -54,14 +54,33 @@ export interface IToolPolicyConfig {
  */
 export interface IToolPolicy {
   /**
-   * Computes the tool set for a run: the tools the profile allows and the user's permissions unlock, narrowed to `activeTools` when the call
-   * names them (D48); none when the model cannot call tools.
-   * The gateway's built-in tools (D61) are always in the set, in the order of the registry: no profile, permission or activeTools
-   * filters them, and the profile's `approvals` do not apply to them; a built-in's own `policy` still pauses (`ask_user_question`, D62).
-   * Approvals: the tools whose `policy` is `NEEDS_APPROVAL`, plus the tools the profile lists (D87).
-   * Throws a 400 when `activeTools` names a tool the profile or the user's permissions do not allow: a call can narrow the set, never widen it.
-   * The tools added for the call (`additionalTools`, D66) are allowed because the app passed them; the permissions still apply.
-   * An additional tool whose name is in `allTools`, or given twice, is a 400.
+   * resolve -- the tool set of one run
+   *
+   * # About
+   *
+   * > Everything the profile allows and the user may use, cut to what the call asked for; the built-ins always.
+   *
+   * The tools of `allTools` the profile allows and the user's permissions unlock, plus the call's `additionalTools`
+   * (allowed because the app passed them, the permissions still apply, D66), narrowed to `activeTools` when the call
+   * names them (D48); none when the model cannot call tools (`caps.tools`). The gateway's built-in tools (D61) are always
+   * in the set, in the order of the registry: no profile, permission or `activeTools` filters them, and the profile's
+   * `approvals` do not apply to them; a built-in's own `policy` still pauses (`ask_user_question`, D62).
+   *
+   * `approvals`: the tools whose `policy` is `NEEDS_APPROVAL`, plus the tools the profile lists (D87).
+   *
+   * Throws a 400 when `activeTools` names a tool the profile or the permissions do not allow (error 5373897180054): a call
+   * narrows the set, never widens it. An additional tool whose name is in `allTools`, or given twice, is a 400 (error
+   * 5374506419213).
+   *
+   * # Who needs it
+   *
+   * `prepareCall`, once per `run()`; `AIGateway.resume`, with the paused run's tool names, so the resumed run offers what
+   * the paused one did.
+   *
+   * # Pitfalls
+   *
+   * The checks run before `caps.tools` is read: a bad `activeTools` is a 400 even on a model without tools. `resolved.tools`
+   * is the run's whole set; what the model sees in a step is `narrowForStep`'s cut.
    */
   resolve(args: {
     allTools: IToolDef[];
@@ -77,9 +96,24 @@ export interface IToolPolicy {
   }): IResolvedTools;
 
   /**
-   * Narrows the set for the next step of a run (guarded workflows): a tool listed in `requires` stays hidden
-   * until every tool it requires has been executed in this run, and a tool with `visibleWhen` only when its predicate says so
-   * for this step (D89). The approvals follow the visible tools.
+   * narrowForStep -- the tools of one step of a run
+   *
+   * # About
+   *
+   * > Not every tool of the run is on the table at every step.
+   *
+   * A tool listed in `requires` stays hidden until every tool it requires has been executed in this run (D15, D88); a tool
+   * with `visibleWhen` is shown only when its predicate says so for this step (D89); a tool must pass both. The approvals
+   * follow the visible tools. Returns the same object when nothing was hidden.
+   *
+   * # Who needs it
+   *
+   * `createRunHooks`, for the loop's `prepareStep` hook, before every model call of a run.
+   *
+   * # Pitfalls
+   *
+   * `executed` is the run's list: tools run in earlier runs of the thread do not count, and a rejected or failed call is
+   * not an execution (D76).
    */
   narrowForStep(args: {
     resolved: IResolvedTools;
@@ -142,9 +176,23 @@ export interface IToolPolicy {
   }): Promise<TToolCallPolicyResult>;
 
   /**
-   * True when this executed tool call ends the run (D86): the tool's `endsRun` is `true`, or its predicate says so on the parsed
-   * input and the output. A tool outside `resolved.tools` or an input the schema rejects never ends the run: neither can have
-   * executed. The caller asks only after a successful execution; a failed, refused or rejected call must not reach here.
+   * endsRun -- whether an executed tool call is the run's final answer
+   *
+   * # About
+   *
+   * > Some tools are the end of the conversation: a handover, an order placed.
+   *
+   * True when the tool's `endsRun` is `true`, or when its predicate says so on the parsed input and the output (D86). A
+   * tool outside `resolved.tools` or an input the schema rejects never ends the run: neither can have executed.
+   *
+   * # Who needs it
+   *
+   * `createRunHooks`, for the loop's `endsRun` hook, after every successful execution.
+   *
+   * # Pitfalls
+   *
+   * Ask only after a successful execution: a failed, refused or rejected call must not reach here, the loop keeps that
+   * rule.
    */
   endsRun(args: {
     name: string;
@@ -159,6 +207,7 @@ export interface IToolPolicy {
 
 /** The tools for one run and which of them pause. */
 export interface IResolvedTools {
+  /** The tools the run may offer, built-ins first in the registry's order; `narrowForStep` picks each step's from them. */
   tools: IToolDef[];
   /** Names that need a human before every execution: the profile's `approvals` and the tools with `policy: NEEDS_APPROVAL` (D87). */
   approvals: Set<string>;
