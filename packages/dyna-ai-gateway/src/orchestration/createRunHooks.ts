@@ -12,7 +12,34 @@ import {IAIGatewayDeps} from "../types";
 
 import {TOnCallEventHandler} from "./startCall";
 
-/** The decisions of a run, wired to the children: ToolRegistry executes, ToolPolicy decides the verdict on a call, which tool ends the run and the tools of a step. */
+/**
+ * createRunHooks -- the gateway's answers to the agent loop's questions, for one run
+ *
+ * # About
+ *
+ * > The loop owns the flow, these hooks own the decisions.
+ *
+ * Builds the `ILLMClientHooks` of a run by wiring each hook to the child that decides it:
+ *
+ * - `prepareStep` → `ToolPolicy.narrowForStep`: the tools of the next step (`requires`, D72).
+ * - `decideToolCall` → `ToolPolicy.decide`: ALLOW, DENY or NEEDS_APPROVAL for the call (D87).
+ * - `executeTool` → `ToolPolicy.assertOfferedInStep`, then `ToolRegistry.execute`: a tool the step did not offer is refused,
+ *   and the refusal names what must run first (D88); it is reported through `ToolRegistry.reportFailure` like every failed call.
+ * - `endsRun` → `ToolPolicy.endsRun`: whether the executed call ends the run (D86).
+ * - `onEvent` → the call's stream (D38); with `holdText`, the text deltas are kept back (a reviewed answer is nobody's before
+ *   the reviewer, D99).
+ *
+ * Called once per `LLMClient.run`, after `prepareCall` resolved the tools, for a fresh run and for a resumed one alike.
+ * `ask` passes `onEvent` only and never calls it.
+ *
+ * # Who needs it
+ *
+ * `AIGateway.executeRun` and `AIGateway.continueRun`.
+ *
+ * # What needs
+ *
+ * `resolved`: the tools of the run as `ToolPolicy.resolve` returned them; on a resume, the tools `splitRunTools` rebuilt.
+ */
 export const createRunHooks = (
   {
     deps,

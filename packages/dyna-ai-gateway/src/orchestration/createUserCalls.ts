@@ -15,9 +15,27 @@ export interface IUserCalls {
 }
 
 /**
- * The guard of the GDPR erasure against the user's own calls: none starts while the user is erased, and the erasure waits
- * for the ones that are running, so nothing they write (a turn, a trace entry, a remembered fact) survives it. Per process:
- * calls on another instance are not seen.
+ * createUserCalls -- the guard of a user's erasure against the user's own calls
+ *
+ * # About
+ *
+ * > No call starts while the user is erased, and the erasure waits for the ones that run.
+ *
+ * Builds the `IUserCalls` of one gateway: `begin` marks a call of the users it acts for as in flight (a 409 while one of
+ * them is being erased), `whileErasing` refuses new calls of the user, waits for the ones in flight, runs the erasure, then
+ * lets calls in again. Nothing a call writes (a turn, a trace entry, a remembered fact) survives the erasure that way.
+ *
+ * Created once, in the constructor of `AIGateway`; every call that acts for a user (`ask`, `run`, `resume`, `uploadFile`,
+ * `upsertUserFact`) passes
+ * through `begin` (`asUserCall`); `AIGateway.deleteUserData` and `anonymizeUserData` run inside `whileErasing`.
+ *
+ * # Who needs it
+ *
+ * The constructor of `AIGateway`.
+ *
+ * # Pitfalls
+ *
+ * Per process: a call on another instance is not seen; an erasure on a fleet needs the host's own fence.
  */
 export const createUserCalls = (): IUserCalls => {
   const inFlight = new Map<string, Set<Promise<void>>>();

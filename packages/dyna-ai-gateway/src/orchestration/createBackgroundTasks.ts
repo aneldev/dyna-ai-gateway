@@ -13,13 +13,41 @@ export interface IBackgroundTasks {
   whenIdle(owner?: string): Promise<void>;
 }
 
-/** The owner of background work: a user of a tenant. */
+/**
+ * makeOwnerKey -- the key of a user of a tenant
+ *
+ * # About
+ *
+ * > One string for "this user of this tenant", the same wherever it is built.
+ *
+ * Names whose data a background task writes and whose calls are in flight, so an erasure (`AIGateway.deleteUserData`,
+ * `anonymizeUserData`) waits for exactly that user's work. The one key of `IBackgroundTasks.run`'s `owner` and of `IUserCalls`.
+ */
 export const makeOwnerKey = (tenantId: string, userId: string): string => JSON.stringify([tenantId, userId]);
 
 /**
- * The gateway's background queue: one line of tasks per key (a thread),
- * so two memory updates of a thread never overlap.
- * A task that throws is reported and does not stop the tasks behind it.
+ * createBackgroundTasks -- the gateway's background queue
+ *
+ * # About
+ *
+ * > One line of tasks per key, so two memory updates of a thread never overlap.
+ *
+ * Builds the `IBackgroundTasks` of one gateway: `run` appends a task to the line of its key (a thread) and returns at once,
+ * `whenIdle` waits for every line, or for one user's. A task that throws is logged (`5372600823804`) and does not stop the
+ * tasks behind it. Nothing is polled: a line is a chain of promises, kept only while it has work.
+ *
+ * Created once, in the constructor of `AIGateway`; fed by `scheduleMemory` after every ANSWER (the working-memory update
+ * and the fact extraction, D122) and by `resetThreadMemory`; drained by `AIGateway.whenIdle` and `shutdown`, and per user by
+ * `forgetUser` and `deleteThreads`.
+ *
+ * # Who needs it
+ *
+ * The constructor of `AIGateway`.
+ *
+ * # Pitfalls
+ *
+ * Per process: a task of another instance is not seen. A task that never settles blocks its key for good and keeps
+ * `whenIdle` waiting; give long work the call's signal.
  */
 export const createBackgroundTasks = (): IBackgroundTasks => {
   // Per key, the tail promise of a `.then` chain: the chain is the queue.

@@ -10,11 +10,32 @@ import {
 export type TOnCallEventHandler = (args: { event: ILLMClientEvent }) => void;
 
 /**
- * Starts a call and returns it at once (D38): its events as a stream, its response as a promise.
- * `execute` is the call. Its events are collected only from the moment `events` is accessed: a caller that awaits only
- * `response` costs no memory for them. Once accessed, they are buffered until read, so a slow reader never slows the call;
- * a reader that stops early (`break`) ends the collecting. The stream ends when the call settles and throws the call's
- * error after the events sent before it.
+ * startCall -- starts a call and hands back its stream and its response at once (D38)
+ *
+ * # About
+ *
+ * > The call runs; the caller reads the events, awaits the response, or both.
+ *
+ * Runs `execute` (the call) and returns an `IGatewayCall`: `events`, the call's stream, and `response`, its promise. The
+ * events are collected only from the moment `events` is accessed: a caller that awaits only `response` costs no memory for
+ * them. Once accessed, they are buffered until read, so a slow reader never slows the call; a reader that stops early
+ * (`break`) ends the collecting. The stream ends when the call settles and throws the call's error after the events sent
+ * before it.
+ *
+ * - A caller that reads only `events` gets the call's error there, never as an unhandled rejection of `response`.
+ * - Nothing is kept for a caller that never reads the events.
+ *
+ * The outermost wrapper of a call: inside `execute` come `makeCallSignal`, the thread's lease (`withThreadLease`) and the
+ * call's work (`executeAsk`, `executeRun`, `executeResume`).
+ *
+ * # Who needs it
+ *
+ * `AIGateway.ask`, `AIGateway.run` and `AIGateway.resume`.
+ *
+ * # Pitfalls
+ *
+ * `events` is read once: a second iteration is a 400. Every event of the call must go through the `onEvent` that `execute`
+ * receives; an event sent anywhere else never reaches the stream.
  */
 export const startCall = <TStructured>(
   {execute}: {
@@ -48,14 +69,22 @@ export const startCall = <TStructured>(
   };
 };
 
+/**
+ * The buffer between the call and the one reader of its events: the call pushes, the reader iterates, the call ends or
+ * fails the stream when it settles.
+ *
+ * `startCall` only; one per call.
+ */
 interface IEventQueue {
+  /** The stream the reader iterates; one reader only, a second one is a 400. */
   events: AsyncIterable<ILLMClientEvent>;
   /** Starts keeping the pushed events; before it, push drops them. */
   collect(): void;
+  /** Hands one event to the buffer; dropped before `collect`, after the reader stopped, and after `end` or `fail`. */
   push: TOnCallEventHandler;
-
+  /** Closes the stream: the reader gets the buffered events, then the end. */
   end(): void;
-
+  /** Closes the stream with an error: the reader gets the buffered events, then the throw. */
   fail(error: unknown): void;
 }
 

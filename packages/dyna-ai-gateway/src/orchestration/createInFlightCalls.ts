@@ -23,6 +23,28 @@ export interface IInFlightCalls {
   whenEmpty(): Promise<void>;
 }
 
+/**
+ * createInFlightCalls -- the register of the calls in flight on one gateway
+ *
+ * # About
+ *
+ * > Every call signs in and out, so a shutdown knows whom to wait for and whom to abort.
+ *
+ * Builds the `IInFlightCalls` of one gateway: `begin` registers a call and hands it the signal the shutdown aborts it through,
+ * `close` refuses every new call with a 503, `abortAll` fires the signals of the calls still running, `whenEmpty` waits for
+ * the last one to end (D96).
+ *
+ * Created once, in the constructor of `AIGateway`; every `ask`, `run` and `resume` passes through `begin` before the thread's
+ * lease; `AIGateway.shutdown` closes, waits for the grace period, aborts.
+ *
+ * # Who needs it
+ *
+ * The constructor of `AIGateway`.
+ *
+ * # Pitfalls
+ *
+ * A call that never runs its `end` stays registered and keeps `whenEmpty` waiting: `end` belongs in a `finally`.
+ */
 export const createInFlightCalls = (): IInFlightCalls => {
   const calls = new Map<AbortController, Promise<void>>();
   let closed = false;

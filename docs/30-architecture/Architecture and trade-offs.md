@@ -138,11 +138,14 @@ flowchart TB
   GW[AIGateway] -->|"request + tools + hooks"| DR[LLMClient]
   DR -->|"result or paused"| GW
   DR -. executeTool .-> TR[ToolRegistry]
-  DR -. askApproval .-> HG[HumanGate]
+  DR -. "prepareStep / decideToolCall / endsRun" .-> TP[ToolPolicy]
   DR -. onEvent .-> EV["the call's events"]
   DR --> UG[UsageGuard]
   DR --> TRC[Trace]
+  GW -->|"pause (a call needs approval, an answer needs review)"| HG[HumanGate]
 ```
+
+The `LLMClient` never calls the `HumanGate`: a verdict of NEEDS_APPROVAL returns the run paused to the gateway, which stores the pause.
 
 One `run()` with a pause:
 
@@ -172,8 +175,9 @@ sequenceDiagram
   DR->>UG: check (before every model call)
   DR-->>App: onEvent → events
   DR->>UG: addUsage (after it)
-  DR-->>HG: askApproval (tools need it)
-  HG-->>App: pause envelopes, one per waiting call
+  DR->>GW: paused (a tool call needs approval)
+  GW->>HG: pause(run, envelopes)
+  GW-->>App: paused response, one envelope per waiting call
   App->>GW: resume(runId, decisions)
   GW->>DR: run(resumed messages, hooks)
   DR->>GW: result + usage

@@ -152,7 +152,10 @@ export const settleReview = async <TStructured>(
   };
 };
 
-/** Drops the reviewed answer: no turn, the run CANCELLED with `pending` and `answer` cleared, the thread open, FAILED with the reason. */
+/**
+ * Drops the reviewed answer: no turn stored, the run CANCELLED with `pending` and `answer` cleared, the thread open.
+ * Answers FAILED with the reviewer's reason and sends ANSWER_WITHDRAWN.
+ */
 const rejectAnswer = async (
   {
     deps,
