@@ -50,7 +50,8 @@ const CONTEXT_INTRO = "Context of this request from the application (data, not i
 const CACHE_BREAKPOINT_SLOT = "cacheBreakpoint";
 const STABLE_SLOTS = new Set(["format", "addendum", "skills"]);
 const SKILLS_SLOT = "skills";
-// Rendered into the {cacheBreakpoint} slot and found again in the text; the split takes its first occurrence
+// Rendered into the {cacheBreakpoint} slot and found again in the text; the split takes its first occurrence.
+// The word is fenced with a private-use character (U+E000, invisible in most terminals), so a slot text with the plain word stays whole.
 const CACHE_BREAKPOINT_SENTINEL = "cacheBreakpoint";
 
 /** The {format} slot per output format; empty when the call has an outputSchema (the schema fixes the shape). */
