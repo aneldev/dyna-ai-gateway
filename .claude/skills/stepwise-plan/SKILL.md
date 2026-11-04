@@ -113,12 +113,16 @@ export interface IFooConfig {
 
 ## Phase 0 — Baseline
 ### [ ] Step 0.1 — Baseline
+- **Goal:** know the repo's state before anything changes, so every later failure is provably ours or provably pre-existing.
+- **Result:** this step's Notes hold the pass/fail counts; the repo is untouched.
 - **Files:** none
 - **Do:** full build, lint, tests. Record pass/fail counts, warnings, pre-existing failures HERE.
 - **Rule from here:** no NEW failures; pre-existing ones are tracked, not fixed, in this ticket.
 
 ## Phase 1 — <low-risk prep>
 ### [ ] Step 1.1 — <name>
+- **Goal:** one sentence — why this step exists: what is true after it that was not before, in the words of the ticket, not of the code
+- **Result:** one sentence — what the developer sees when the step is done (a test that passes, an endpoint that answers, a type the next step imports…)
 - **Files:** exact files that will be touched
 - **Do:** what changes, in 1–3 lines
 - **Verify (Claude):** the commands/checks that prove it (build, tsc, lint, tests, a rendered output, a curl…)
@@ -137,6 +141,7 @@ Passed <date> after <n> round(s). One line per issue found: what it was → how 
 ```
 
 **Rules for good steps**
+- **Goal and Result first, one line each, mandatory.** The reviewer opens a step cold, with the diff in the other window; before reading `Files` and `Do` he must know *why* the step exists and *what to expect* at its end. `Do` says how; `Goal` says why; `Result` says what he will see. A step whose Goal cannot be said in one sentence is two steps.
 - Small: one dependency group, one component, one config — testable in minutes, reviewable as one diff.
 - Ordered by risk: React-18-safe prep first, the switch last; each step leaves the repo green.
 - Each step names its **files**. If you can't name them, the step is too big — split it.
@@ -200,13 +205,16 @@ listed for the developer's decision.
 Each step runs through the `implement-task` skill — it owns the implement → verify → docs → `temp/commit - <Feature>.md` →
 "Ready for review" → review round-trips → commit cycle. This skill only says what the plan file needs from each pass:
 
-1. Mark the step `[~]` (the mark at the front of its heading) before touching code; the step's **Files / Do / Verify**
-   lines are the unit's scope.
+1. Mark the step `[~]` (the mark at the front of its heading) before touching code; the step's **Goal / Files / Do /
+   Verify** lines are the unit's scope, and `Result` is what the handoff has to show.
 2. **Record in the plan** before handing off (this is what makes the doc valuable later):
    - Heading mark → `[x]`, plus a **`Done <date>:`** line: what was actually changed (versions, files, the one-line why for each non-obvious change).
    - **Findings:** pre-existing issues discovered (broken tests, dead deps, stale configs) — fixed only if they block the step; otherwise noted + added to follow-ups.
    - **Deviations:** if the step had to grow or a later step was pulled forward, add it as `### [ ] Step X.Yb — … (pulled forward from N)` — don't silently widen a step.
    - Things that could NOT be verified and why (no browser, needs a key, needs prod) → that becomes the developer's check.
+   - The "Ready for review" message **opens with the step's Goal and Result**, verbatim from the plan, then says whether the
+     Result is reached. The developer reads the handoff before the diff; he must not have to open the plan to know what he
+     is looking at.
 3. Subject line of the step's commit message: `<TICKET> (feat: <Feature>) dev: Step X.Y — <short summary>` — `<Feature>` is the plan's short name, fixed in the plan's header (`Feature tag:`), so the steps of one plan are found together in the log of a ticket that carries several plans.
 4. **Ring the bell at every handoff.** The developer runs several sessions and does not watch this one; the moment a step
    is complete and "Ready for review" is about to be sent, play the completion sound from the Bash tool, detached so the
