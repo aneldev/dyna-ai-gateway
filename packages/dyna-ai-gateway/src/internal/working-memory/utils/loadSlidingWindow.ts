@@ -15,9 +15,27 @@ import {
 import {startOnUserTurn} from "./startOnUserTurn";
 
 /**
- * The SLIDING_WINDOW window: the newest turns that fit `chatHistoryRatio × budgetTokens`, at least the last one,
- * opened on a user turn. `turns` are the newest `maxLoadedTurns` of the thread, oldest first; `turnCount` is the
- * thread's total, for the `turns_trimmed` WARNING.
+ * loadSlidingWindow -- the SLIDING_WINDOW window of one request
+ *
+ * # About
+ *
+ * > Newest first, until the share is full; at least the newest turn.
+ *
+ * Counts every turn with the model's tokenizer (`estimateMessagesTokens`), walks from the newest back and keeps the turns
+ * while they fit `chatHistoryRatio × budgetTokens`; the newest turn is always kept. The window is then opened on a user
+ * turn (`startOnUserTurn`). The notes are "" (nothing is stored under this strategy). When fewer turns than the thread
+ * holds (`turnCount`) are in the window, a `turns_trimmed` WARNING says how many made it.
+ *
+ * `turns` are the newest `maxLoadedTurns` of the thread, oldest first, already read by the caller.
+ *
+ * # Who needs it
+ *
+ * `WorkingMemory.load`, when the resolved strategy is `SLIDING_WINDOW`.
+ *
+ * # Pitfalls
+ *
+ * A thread longer than `maxLoadedTurns` is trimmed by the read, not by the budget: the warning appears although the
+ * budget had room. `startOnUserTurn` may drop one more turn than the budget did.
  */
 export const loadSlidingWindow = (
   {

@@ -16,9 +16,27 @@ export const USER_MEMORY_TOOL_NAMES = {
 } as const;
 
 /**
- * The built-in tools of the user memory (D61): the model stores a fact the moment the user asks ("remember this") or forgets one
- * ("forget my language"), without waiting for the extraction. Both write through the store, like the user's own edits.
- * `remember_user_fact` waits for the user's approval unless `rememberNeedsApproval` is false (D116).
+ * makeUserMemoryTools -- the two built-in tools of the user memory
+ *
+ * # About
+ *
+ * > "Remember this" and "forget that", stored the moment the user says it.
+ *
+ * Builds `remember_user_fact` (writes through `upsertFact`) and `forget_user_fact` (writes through `removeFact`), tagged
+ * `memory`, so the model acts on the user's request at once instead of waiting for the extraction (D61). Both write
+ * like the user's own edits, scoped by the call's `userContext`. `remember_user_fact` carries `NEEDS_APPROVAL` unless
+ * `rememberNeedsApproval` is false, so the run pauses for the user before a fact is stored (D116); `forget_user_fact`
+ * never pauses.
+ *
+ * # Who needs it
+ *
+ * `createGatewayDeps`, when `userMemoryStore.enabled`: the tools go first into the `ToolRegistry` and are offered in
+ * every run.
+ *
+ * # Pitfalls
+ *
+ * `ask()` has no tools: there "remember this" waits for the extraction. An app tool named like one of these is a
+ * duplicate the registry rejects.
  */
 export const makeUserMemoryTools = (
   {
