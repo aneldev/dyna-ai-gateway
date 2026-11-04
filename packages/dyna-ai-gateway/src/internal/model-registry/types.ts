@@ -60,22 +60,6 @@ export interface IModelRegistry {
   }): Promise<IModelInfo[]>;
 
   /**
-   * getCaps -- the capabilities and prices of a model, without the rest of the entry
-   *
-   * # About
-   *
-   * > `getModel(...).caps`, for a caller that holds only the id.
-   *
-   * The same 404 and 400 as `getModel`. No class of the gateway calls it today: `prepareCall` loads the model once and hands
-   * its `caps` to the ToolPolicy and the ContextAssembler.
-   *
-   * # Who needs it
-   *
-   * A host that checks a model's capabilities before it builds a profile.
-   */
-  getCaps(args: {modelId: string}): Promise<IModelCaps>;
-
-  /**
    * estimateCostUsd -- the USD estimate of one call, from its token counts
    *
    * # About
