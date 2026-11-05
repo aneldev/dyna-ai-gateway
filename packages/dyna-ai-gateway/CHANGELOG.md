@@ -6,6 +6,8 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+## [0.0.1-beta.5] - 2026-11-05
+
 ### Breaking changes
 
 - **Four members that the gateway never used are removed.** A host that only calls `ask()` / `run()` is not affected, and
