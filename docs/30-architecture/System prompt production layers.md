@@ -49,4 +49,4 @@ and `{kb}` may not. A per-call slot before it switches the cache off for the cal
 naming the slot; a template without the placeholder is sent as one block, with no issue. A template without `{skills}`
 drops the skills of a call that has some, with the WARNING issue `skills_slot_missing` naming the template version.
 
-A tenant template (`PromptTemplateStore`, a new version of `CHAT_MAIN`) may drop a slot it does not want; a slot it keeps is filled as above. A slot named in the template and not in this list is a 400 at render time (`5372567786106`). `IAIProfile.templateOverrides` is declared and not yet read (see the [Roadmap](../Roadmap.md#planned)).
+A tenant template (`PromptTemplateStore`, a new version of `CHAT_MAIN`) may drop a slot it does not want; a slot it keeps is filled as above. A slot named in the template and not in this list is a 400 at render time (`5372567786106`). `IAIProfile.templateOverrides` is declared and not yet read (see the [Roadmap](../80-roadmap.md#planned)).

@@ -43,6 +43,7 @@ export interface ILLMClientConfig {
 
 /** Shared instances LLMClient needs; created once by AIGateway and passed as the second constructor argument. */
 export interface ILLMClientDeps {
+  /** Resolves a `modelId` to its provider and caps, and prices a call for the usage report and the trace. */
   modelRegistry: IModelRegistry;
   /** Asked before every call and told after it, including helper calls; the app's adapter sits behind it. */
   usageGuard: IUsageGuard;
@@ -52,13 +53,17 @@ export interface ILLMClientDeps {
 
 /** Who and why, for every LLMClient call. The UsageGuard and the Trace need it; the LLMClient stores nothing. */
 export interface ILLMClientCallMeta {
+  /** The tenant that pays and owns the trace entry. */
   tenantId: string;
   /** Omitted for system jobs (e.g. KB ingestion). */
   userId?: string;
   /** The profile the call runs on. Omitted for system jobs (e.g. KB ingestion). */
   profileId?: string;
+  /** The thread of the call; omitted for a call outside a thread (an embedding, a KB ingestion). */
   threadId?: string;
+  /** The run the call is a step of; omitted outside a run. */
   runId?: string;
+  /** What the call is for: the answer, a run step, a judge, a rewrite, a memory update, an embedding. */
   kind: ETraceKind;
 }
 
@@ -68,6 +73,7 @@ export interface ILLMClientCallMeta {
  * `apiKey` is the provider's key; for `EModelProvider.BEDROCK` it is a Bedrock API key (bearer token), not an IAM key pair.
  */
 export interface IProviderCredentials {
+  /** The provider's API key; for Bedrock the bearer token. */
   apiKey: string;
   /** For proxies or self-hosted gateways. */
   baseUrl?: string;
@@ -83,6 +89,7 @@ export interface IProviderCredentials {
 
 /** One request to a model. Built by ContextAssembler. */
 export interface IModelRequest {
+  /** The registry id of the model to call. */
   modelId: string;
   /**
    * System prompt as blocks, in order (rendered CHAT_MAIN: the stable block, then the per-call block).
@@ -104,9 +111,11 @@ export interface IModelRequest {
    * @default false
    */
   cacheTools?: boolean;
+  /** The transcript the model continues: the history, the user turn, the tool turns of a run. */
   messages: IMessage[];
   /** Zod schema for structured output; omitted = free text. */
   outputSchema?: ZodType;
+  /** The output cap of the call: the profile's, set by the ContextAssembler; the `output` of the usage check. */
   maxOutputTokens: number;
   /**
    * Sampling temperature, in the provider's range (OpenAI 0–2, Anthropic 0–1); omit for the provider default.
@@ -117,6 +126,7 @@ export interface IModelRequest {
 
 /** One block of the system prompt; the ContextAssembler splits CHAT_MAIN into a stable and a per-call block. */
 export interface ISystemBlock {
+  /** The block's text, as rendered from the template. */
   text: string;
   /**
    * Marks the end of the part the provider may cache: everything up to and including this block.
@@ -130,14 +140,19 @@ export interface ISystemBlock {
 
 /** A message in LLMClient shape (provider-agnostic, SDK-agnostic). */
 export interface IMessage {
+  /** Who speaks: the user, the model, or a tool answering the model. */
   role: EMessageRole;
+  /** The content, in order; which kinds a role may carry, `toSdkMessages` decides. */
   parts: TMessagePart[];
 }
 
 /** Roles the LLMClient understands. */
 export enum EMessageRole {
+  /** The user: text and inlined files. */
   USER = "USER",
+  /** The model: text and tool calls. */
   ASSISTANT = "ASSISTANT",
+  /** A tool's results, one message per step. */
   TOOL = "TOOL",
 }
 
@@ -150,10 +165,13 @@ export type TMessagePart =
 
 /** A file inlined for the model. Built by the gateway from FileStore bytes. */
 export interface IInlineFilePart {
+  /** The discriminator of the part. */
   kind: EPartKind.INLINE_FILE;
+  /** The media type the provider reads the bytes as. */
   mime: string;
   /** Empty in a trace entry and in a stored run: the bytes stay in the FileStore only, a resume loads them again by `fileId` (D108). */
   bytes: Uint8Array;
+  /** The file name shown to the model. */
   name: string;
   /** Id of the stored file the bytes come from. */
   fileId: string;
@@ -163,6 +181,7 @@ export interface IInlineFilePart {
 
 /** What one model call produced. */
 export interface IModelResult {
+  /** The model that answered. */
   modelId: string;
   /** Free text, when any. */
   text: string;
@@ -170,7 +189,9 @@ export interface IModelResult {
   structured?: unknown;
   /** Tool requests made in this call (complete: unexecuted; run: executed with results in messages). */
   toolCalls: IToolCallPart[];
+  /** Why the model stopped. */
   finishReason: EFinishReason;
+  /** What the provider reported for this call. */
   usage: IUsage;
   /** Wall time. */
   latencyMs: number;
@@ -180,10 +201,15 @@ export interface IModelResult {
 
 /** Why the model stopped. */
 export enum EFinishReason {
+  /** The model finished its answer (also the SDK's "other"). */
   STOP = "STOP",
+  /** The output cap was hit; the answer may be incomplete (`output_truncated`). Also a run the limits stopped. */
   LENGTH = "LENGTH",
+  /** The model stopped to ask for tools. */
   TOOL_CALLS = "TOOL_CALLS",
+  /** The provider's content filter cut the answer. */
   CONTENT_FILTER = "CONTENT_FILTER",
+  /** The provider reported an error as the finish. */
   ERROR = "ERROR",
 }
 
@@ -195,6 +221,7 @@ export enum EFinishReason {
  * pause envelope from it.
  */
 export interface IPendingCall {
+  /** The tool call as the model made it. */
   call: IToolCallPart;
   /** The policy's text for a rejection of this call; omitted = the default. */
   rejectionText?: string;
@@ -204,6 +231,7 @@ export interface IPendingCall {
 
 /** Outcome of a run: finished, paused for a human, or aborted by the caller's signal (D90). */
 export interface IRunOutcome {
+  /** How the run ended: DONE, PAUSED for a human, or ABORTED by the caller's signal. */
   status: ERunOutcomeStatus;
   /** Present when DONE. */
   result?: IModelResult;
@@ -246,7 +274,9 @@ export interface IRunOutcome {
 
 /** Run outcome states. */
 export enum ERunOutcomeStatus {
+  /** The model answered, the limits stopped it, or a terminal tool ended it: `result` is set. */
   DONE = "DONE",
+  /** Tool calls wait for a human: `pendingCalls` is set, the gateway stores the pause. */
   PAUSED = "PAUSED",
   /** The call's signal fired: the loop stopped where it was and returned what it had (D90). */
   ABORTED = "ABORTED",
@@ -293,6 +323,7 @@ export interface ILLMClientHooks {
 
 /** One streamed event. */
 export interface ILLMClientEvent {
+  /** What happened. */
   kind: ELLMClientEventKind;
   /** Text chunk for TEXT_DELTA. */
   text?: string;
@@ -304,26 +335,33 @@ export interface ILLMClientEvent {
   toolOutput?: unknown;
   /** For ANSWER_WITHDRAWN: the issues of the output check, or the one issue of an abort; the same the FAILED response carries. */
   issues?: IIssue[];
+  /** The step of the run (0-based) the event belongs to; 0 for an `ask`. */
   stepIndex: number;
 }
 
 /** Event kinds a client can render as progress. */
 export enum ELLMClientEventKind {
+  /** A chunk of the model's text, in `text`. */
   TEXT_DELTA = "TEXT_DELTA",
   /**
    * The model asked for a tool call; its TOOL_RESULT follows once the tool answered. A call the abort cut (D90) gets no
    * TOOL_RESULT event: the response says the call failed, and the thread holds the error result.
    */
   TOOL_REQUEST = "TOOL_REQUEST",
+  /** A tool answered (or was denied): the call in `toolCall`, what the model reads in `toolOutput`. */
   TOOL_RESULT = "TOOL_RESULT",
+  /** The run waits for a human: the pending calls in `toolCalls`, or none when the answer waits for a review (D99). */
   RUN_PAUSED = "RUN_PAUSED",
   /**
    * A tool with `endsRun` ran (D86): sent once, after the STEP_END of its step and before the final step that phrases the answer.
    * A client can show "handed over" before the closing text streams.
    */
   RUN_ENDED_BY_TOOL = "RUN_ENDED_BY_TOOL",
+  /** A step of the run is complete: its model call and its tools. */
   STEP_END = "STEP_END",
+  /** The call is complete; the response follows. Sent once per call, after the last step. */
   DONE = "DONE",
+  /** The call failed; the response says why. */
   ERROR = "ERROR",
   /**
    * The answer streamed by this call is not kept (D74): it failed the output checks, or the call was aborted while they ran
@@ -336,17 +374,61 @@ export enum ELLMClientEventKind {
 
 /** Public surface of the LLMClient. Every `deps.llmClient` is typed with it; tests inject a FakeLLMClient that implements it. */
 export interface ILLMClient {
-  /** One model call. May return tool requests; never executes them. */
+  /**
+   * complete -- one model call
+   *
+   * # About
+   *
+   * > Checked before, reported and traced after; tool requests come back unexecuted.
+   *
+   * Resolves the model, refuses a temperature on a model without `caps.temperature` (400, D82), asks the `UsageGuard`
+   * (a no rejects with the usage-denied error, 429, and the provider is not called), then makes the SDK call: streamed
+   * through `hooks.onEvent` (TEXT_DELTA, then DONE) when hooks are given, generated otherwise. Returns the text, the parsed
+   * structured output when the request had a schema, the tool requests as the model made them, the finish reason, the usage
+   * and the trace id. After the call the app is told what it used and the entry is recorded, also for a failed or aborted
+   * call (then with zero usage and no entry). A provider failure is a 502; an aborted signal rejects with its reason, the
+   * partial stream is neither returned nor traced (D90). An answer that does not parse against the schema is returned as
+   * text, for the `Guardrails` to report.
+   *
+   * # Who needs it
+   *
+   * `AIGateway` for an `ask`; `run`, once per step; `createJudge`, `QueryRewriter`, `UserMemoryStore.extract` and
+   * `updateSummary` for their one completion.
+   */
   complete(args: {
     request: IModelRequest;
     meta: ILLMClientCallMeta;
+    /** Tools the model may request (forced-choice routing). */
     tools?: IToolDef[];
+    /** Only onEvent is used. */
     hooks?: Pick<ILLMClientHooks, "onEvent">;
-    /** Aborts the provider call; the caller's deadline, next to the client's own timeout. */
+    /**
+     * Aborts the provider call; the caller's deadline, next to the client's own timeout.
+     * An aborted call rejects with the signal's reason, not with a 502; it is reported to the usage adapter with zero usage
+     * and not traced (the provider bills its own count).
+     */
     abortSignal?: AbortSignal;
   }): Promise<IModelResult>;
 
-  /** The agent loop; pauses and stops through the hooks. */
+  /**
+   * run -- the agent loop
+   *
+   * # About
+   *
+   * > One `complete` per step; every decision is a hook the gateway implements.
+   *
+   * Runs `runAgentLoop` with `complete` as its model call. Each step offers the tools `hooks.prepareStep` returns; a tool
+   * request is decided by `hooks.decideToolCall` (ALLOW runs it through `hooks.executeTool`, DENY writes a denied result the
+   * model reads, NEEDS_APPROVAL pauses the run, D87), `hooks.endsRun` may end the run after the step with one final step
+   * without tools (D86), and `limits.maxSteps` ends it with finishReason LENGTH. A `resume` continues a paused run from its
+   * stored messages with the human's decisions. The steps stream through `hooks.onEvent` with their `stepIndex`; DONE is sent
+   * once, at the end. The signal ends the loop between steps, in a model call or in a tool: the outcome is ABORTED with the
+   * steps that completed (D90).
+   *
+   * # Who needs it
+   *
+   * `AIGateway` for a `run` and for a `resume`; `tools` is the set the run starts with, as `prepareCall` resolved it.
+   */
   run(args: {
     request: IModelRequest;
     meta: ILLMClientCallMeta;
@@ -361,6 +443,7 @@ export interface ILLMClient {
      * @default true
      */
     parallelToolCalls?: boolean;
+    /** Messages of a paused run plus the human's decisions; omit for a fresh run. */
     resume?: {
       messages: IMessage[];
       /** One per pending call the human decided on; a single decision without `callId` is for the first unresolved call. */
@@ -375,13 +458,41 @@ export interface ILLMClient {
     abortSignal?: AbortSignal;
   }): Promise<IRunOutcome>;
 
-  /** Text → vectors with an embedding model. */
+  /**
+   * embed -- texts to vectors
+   *
+   * # About
+   *
+   * > One vector per text, in order; checked, reported and traced like a completion.
+   *
+   * Refuses a model without `caps.embeddings` (400), asks the `UsageGuard` with the token count of the texts, embeds them in
+   * one SDK call under the client's timeout and retries, then reports the usage and records the entry (kind EMBED, no
+   * request and no result: the usage is what matters). A provider failure is a 502, after the app was told the call used
+   * nothing. An empty list returns an empty list without a call.
+   *
+   * # Who needs it
+   *
+   * `Embedder`, for the KB ingestion and the KB search.
+   */
   embed(args: {
     modelId: string;
     texts: string[];
     meta: ILLMClientCallMeta;
   }): Promise<number[][]>;
 
-  /** Providers with credentials configured. */
+  /**
+   * providers -- the providers with credentials
+   *
+   * # About
+   *
+   * > Which of `EModelProvider` this client can call.
+   *
+   * The providers that have an entry in `ILLMClientConfig.providers`, in enum order. A model of any other provider is a 400
+   * when it is called.
+   *
+   * # Who needs it
+   *
+   * The real-provider tests, to skip a provider without a key; a host that lists what its gateway can reach.
+   */
   readonly providers: EModelProvider[];
 }

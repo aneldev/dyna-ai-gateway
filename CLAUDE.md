@@ -7,6 +7,14 @@ storage adapters are sibling packages (`packages/dyna-ai-gateway-mongodb`, `-pos
 
 - **`src/…` in this file, the skills and the docs means `packages/dyna-ai-gateway/src/…`** — the gateway's sources; the private and
   user docs stay at the repo root (`docs/`), they cover the whole workspace.
+- **`docs/internal/` is a gitignored symlink to the private notes, outside this repo** (since 2026-11-04). A machine without the link has no
+  internal docs. Never commit the link, never write its target into a tracked file (`docs/90-workspace.md` § Private notes).
+  **When `docs/internal/` is missing or empty, stop before any work that needs it** and hand Dennis the command to run in this
+  session, with his notes path to fill in (the `!` prefix runs it here):
+  ```
+  ! ln -s /path/to/your/notes/dyna-ai-gateway/docs/internal docs/internal && ls docs/internal
+  ```
+  Never guess the path, never create the folder or a file in its place.
 - The tooling is installed and configured once, at the root, and every package extends it: `tsconfig.base.json` → `tsconfig.json`,
   `.eslintrc.js` (+ `.eslintrc.base.js`) → `.eslintrc.js`, `jest.config.base.js` + `jest.setup.ts` → `jest.config.js`,
   `webpack.dist.config.base.js` + `webpack.loaders.js` + `webpack.plugins.js` → `webpack.dist.config.js`, `babel.config.json`.
@@ -32,18 +40,18 @@ ESLint 8, webpack 5 (from `dyna-ts-module-boilerplate`), pnpm workspace.
 - **No `Co-Authored-By` or any AI-attribution trailer** in commit messages, the commit files or PR descriptions.
 - **Commit only the files you changed in this unit**, by path; the other sessions' files in the tree are not yours.
 - An issue found during development that the current unit does not fix → propose it to Dennis as an entry of
-  `docs/implementation/Backlog.md` (`[(security)] (<severity>) #INT<n> <bug|impr> <title>`); add it only after he agrees.
+  `docs/87-backlog.md` (`[(security)] (<severity>) #INT<n> <bug|impr> <title>`); add it only after he agrees.
 - The implement → "Ready for review" → review → commit cycle of every task is the `implement-task` skill (`.claude/skills/implement-task/SKILL.md`); `stepwise-plan` runs each step through it. "commit and proceed" / "CAP" = commit this unit, then start the next one.
 
 ## Documentation — two audiences, one flow
 
 - `docs/internal/`, `docs/plans/` (`active/` ongoing, `archived/` completed or rejected) and `docs/implementation/` are **private working docs** (Roadmap, Classes, Blueprint,
-  plans, the backlog): the source of truth of the analysis and of how the library is built. `docs/internal/` and `docs/plans/` are gitignored (`**/docs/plans/`, `**/docs/internal/`); `docs/implementation/` leaves the repo before it is published.
+  plans, the backlog): the source of truth of the analysis and of how the library is built. `docs/internal/` (a symlink, Workspace layout) and `docs/plans/` are gitignored (`**/docs/plans/`, `**/docs/internal`); `docs/implementation/` leaves the repo before it is published.
 - Everything else under `docs/` is **for the users of the library**, written per the `write-user-docs` skill
   (`.claude/skills/write-user-docs/SKILL.md`): the final product only, no process, no fluff, no reference to the private docs.
 - Flow of every change: 1. update `docs/internal` (the truth) → 2. update the user docs it affects →
-  3. `docs/architecture/Decisions.md` is derived from `docs/internal` **and** the codebase → 4. all docs agree with each
-  other and with the code. JSDoc counts as user documentation (it ships in the `.d.ts`).
+  3. `docs/30-architecture` is derived from `docs/internal` **and** the codebase → 4. all docs agree with each
+     other and with the code. JSDoc counts as user documentation (it ships in the `.d.ts`).
 
 ## Commands
 
@@ -57,7 +65,7 @@ ESLint 8, webpack 5 (from `dyna-ts-module-boilerplate`), pnpm workspace.
 ## Rules enforced by lint
 
 - The AI SDK (`ai`, `@ai-sdk/*`) is imported only inside `src/internal/llm-client/`. One exception: `src/entries/vercel-ui/` (the Vercel UI module, D40) may import **types** from `ai`, never `@ai-sdk/*`, and reaches the gateway through the root barrel only (`"../.."`), never `src/internal`.
-- **Every JSDoc or code comment you write or touch follows the `jsdoc-style` skill** (`.claude/skills/jsdoc-style/SKILL.md`): pick the template by symbol kind, never `@param`/`@returns`. Load the skill before writing it.
+- **Every JSDoc or code comment you write or touch follows the `jsdoc-style` skill** (`.claude/skills/jsdoc-style/SKILL.md`): pick the template by symbol kind, never `@param`/`@returns`. Load the skill before writing it. Lint checks the structure (`jsdoc/*` rules in the root `.eslintrc.base.js`): a block on every class, method and top-level function, no forbidden tag, the `Name -- expanded` title and `# About` on every class and exported function. The content is yours.
 - After any import edit, apply the `sort-imports` skill (`.claude/skills/sort-imports/SKILL.md`): packages first, then relative by depth. Lint does not check import order.
 
 ---
@@ -122,7 +130,7 @@ I am the learner here. Wrong assumptions and wrong terminology are expected from
 
 ## Terminology — one name per concept
 
-The glossary of this repo is `docs/Terminology.md`, a user doc (`write-user-docs` skill). These rules apply in every
+The glossary of this repo is `docs/85-terminology.md`, a user doc (`write-user-docs` skill). These rules apply in every
 conversation, not only while planning:
 
 - When I use a term that conflicts with the glossary, say so at once: "the glossary defines X as …, you seem to mean Y. Which is it?"

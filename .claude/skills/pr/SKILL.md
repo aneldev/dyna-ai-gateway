@@ -34,7 +34,7 @@ Use this template for writing the PR body:
 
 ## Sections
 
-Skip all preambles and keep prose brief. Use the user's domain language from the glossary, `docs/Terminology.md` (if it exists).
+Skip all preambles and keep prose brief. Use the user's domain language from the glossary, `../../../docs/85-terminology.md` (if it exists).
 
 ### Summary
 

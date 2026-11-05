@@ -17,7 +17,8 @@
     "test-no-coverage": "pnpm -r test-no-coverage --passWithNoTests",
     "sandbox-cli": "pnpm --filter dyna-ai-gateway sandbox-cli",
     "sandbox-debug": "pnpm --filter dyna-ai-gateway sandbox-debug",
-    "update-deps": "rimraf pnpm-lock.yaml && pnpm -r update --latest"
+    "update-deps": "rimraf pnpm-lock.yaml && pnpm -r update --latest",
+    "release": "node scripts/release.mjs"
   },
   "author": "Anel dev",
   "license": "MIT",
@@ -53,6 +54,7 @@
     "eslint-plugin-flowtype": "^8.0.3",
     "eslint-plugin-import": "^2.25.4",
     "eslint-plugin-jest": "^25.3.0",
+    "eslint-plugin-jsdoc": "^48.11.0",
     "eslint-plugin-jsx-a11y": "^6.5.1",
     "eslint-plugin-react": "^7.27.1",
     "eslint-plugin-react-hooks": "^4.3.0",

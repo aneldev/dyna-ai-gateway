@@ -40,10 +40,11 @@ Fixed for every config: the user is `sampleUser` (`src/tests/internal/samples/pr
 
 ## In the chat
 
-- Type a prompt and Enter. `/exit` (or Ctrl+D) leaves; the chat waits for the background memory work first.
+- Type a prompt and Enter. `/exit` or `/quit` (or Ctrl+D) leaves; the chat waits for the background memory work first.
 - A paused run (`run` mode, a tool that needs approval or a user question) asks `decision (approve | edit | reject) >` once per card (the action in any case)
   (a parallel step can hold several tool calls back at once; the run resumes with all the decisions):
-  `approve`, `edit <json>` (the whole new tool input, e.g. `edit {"amount": 200}` — it replaces the LLM's input, the LLM is not told),
+  `approve`, `edit <json>` (the whole new tool input, e.g. `edit {"amount": 200}` — it replaces the LLM's input, the LLM is not told;
+  on a reviewed answer `edit <text>` is the new answer text),
   `reject <reason>`, or `answer <text> | <text>` for a user question (one text per question, `|` separated; an option's text picks it).
 - Input can be piped for scripted sessions: `printf 'What time is it?\n/exit\n' | ./sandbox.cli.sh run`.
 - Output mode per script (`utils/devOutputMode.ts`, env `AIGATEWAY_DEV_OUTPUT_MODE`): `sandbox.cli.sh` sets `CLI` — a terminal,
@@ -55,11 +56,11 @@ What is printed per prompt, in order:
 1. `event {…}` — one JSON line per `ILLMClientEvent` of the call's `events` (`TEXT_DELTA`, `TOOL_REQUEST`, `TOOL_RESULT`,
    `RUN_PAUSED`, `STEP_END`, `DONE`, `ANSWER_WITHDRAWN` after `DONE` when the output checks blocked the answer), printed while they
    arrive. This is what a web client receives.
-2. `TRACE llm call <kind> · <modelId> · <tokens> · <cost>` followed by the `IModelRequest` the LLMClient sent, pretty JSON:
-   the system prompt the ContextAssembler built, the messages, `maxOutputTokens`, `temperature`. One `console.log` per model call,
-   printed when the call is traced (after its stream): the `CHAT` / `RUN_STEP` call, and the helper calls when they run
+2. `TRACE llm call <kind> · <modelId> · <tokens> · <cost>` followed by the `ITraceEntry` the trace saved, pretty JSON; its
+   `request` is the `IModelRequest` the LLMClient sent: the system prompt the ContextAssembler built, the messages,
+   `maxOutputTokens`, `temperature`. One print per model call (CLI: a label line and the payload), when the call is traced (after its stream): the `CHAT` / `RUN_STEP` call, and the helper calls when they run
    (`MEMORY_WORKING`, `MEMORY_USER`, `QUERY_REWRITE`, `EMBED`). Inline file bytes show as `<n bytes>`, a zod schema as `<zod schema>`
-   (in `DEBUG` mode the request is the object itself, expandable in the dev-tools console).
+   (in `DEBUG` mode the entry is the object itself, expandable in the dev-tools console).
    A failed tool call (the tool threw, timed out, got an input its schema rejected, was refused) is printed between the model
    calls as `TRACE tool error <tool> · code <code> · status <status> · step <n> · call <id> · <ms>` with the `IToolErrorReport`
    the gateway hands to `toolRegistry.onToolError` (the sandbox's handler prints, then calls the config's own): the error as

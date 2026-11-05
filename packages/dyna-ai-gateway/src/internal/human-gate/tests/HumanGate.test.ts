@@ -130,9 +130,9 @@ describe("HumanGate", () => {
       expect((await loadRun(runStore)).status).toBe(ERunStatus.PAUSED);
     });
 
-    test("getPending returns the envelope after pause", async () => {
-      const {gate} = await setup();
-      expect(await gate.getPending(ids)).toMatchObject([{
+    test("the stored run carries the envelope after pause", async () => {
+      const {runStore} = await setup();
+      expect((await loadRun(runStore)).pending).toMatchObject([{
         runId: "run-1",
         kind: EPauseKind.TOOL_APPROVAL,
         toolCall: {toolName: "refund"},
@@ -158,16 +158,16 @@ describe("HumanGate", () => {
       expect([run.status, run.pending]).toEqual([ERunStatus.RUNNING, undefined]);
     });
 
-    test("getPending is null after resume", async () => {
+    test("the stored run carries no envelope after a reject", async () => {
       const {
-        gate, pauseId,
+        gate, pauseId, runStore,
       } = await setup();
       await gate.resume({
         ...ids,
         pauseId,
         decisions: [{action: EResumeAction.REJECT}],
       });
-      expect(await gate.getPending(ids)).toBeNull();
+      expect((await loadRun(runStore)).pending).toBeUndefined();
     });
 
     test("throws a 400 with code 5372577355281 for an action that is not allowed", async () => {
@@ -247,10 +247,12 @@ describe("HumanGate", () => {
       expect((await loadRun(runStore)).status).toBe(ERunStatus.CANCELLED);
     });
 
-    test("getPending is null after cancel", async () => {
-      const {gate} = await setup();
+    test("the stored run carries no envelope after cancel", async () => {
+      const {
+        gate, runStore,
+      } = await setup();
       await gate.cancel(ids);
-      expect(await gate.getPending(ids)).toBeNull();
+      expect((await loadRun(runStore)).pending).toBeUndefined();
     });
 
     test("throws a 409 with code 5372577355293 when the run is not paused", async () => {

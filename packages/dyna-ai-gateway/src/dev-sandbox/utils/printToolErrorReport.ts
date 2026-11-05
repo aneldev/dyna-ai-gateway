@@ -11,9 +11,19 @@ import {
 import {toPrintableError} from "./toPrintableError";
 
 /**
- * Prints one failed tool call on the TRACE channel, as the sandbox's `onToolError`: the label names the tool, the code and the
- * status, the payload is the report with the error as JSON can show it (a `dynaError` through its `toJSON`, anything else its
- * message). What a developer wires `onToolError` to in an app, shown at once in the chat.
+ * printToolErrorReport -- one failed tool call on the `TRACE` channel
+ *
+ * # About
+ *
+ * > What a host wires `onToolError` to, shown at once in the chat.
+ *
+ * The label names the tool, the error's code and status, the step, the call and the duration; the payload is the
+ * `IToolErrorReport` with the error as JSON can show it (a `dynaError` through its `toJSON`, anything else its message).
+ * DEBUG mode prints the report object itself; CLI mode the label and the colourised JSON.
+ *
+ * # Who needs it
+ *
+ * `createSandboxAIGateway`, as the `onToolError` it puts in front of the config's own handler.
  */
 export const printToolErrorReport = (
   {

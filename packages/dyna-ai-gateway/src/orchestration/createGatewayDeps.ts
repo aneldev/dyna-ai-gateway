@@ -33,7 +33,37 @@ import {
   TDepFactory,
 } from "../types";
 
-/** The composition root: every child is created once, in dependency order; an override's factory builds the instance everyone that depends on it gets. */
+/**
+ * createGatewayDeps -- the composition root: builds the gateway's children once, in dependency order
+ *
+ * # About
+ *
+ * > One instance of each child, wired to the ones it depends on.
+ *
+ * Creates every child of the gateway from its slice of the config and returns them as `IAIGatewayDeps`, the shared
+ * instances the facade and the orchestration code read. A child is created once and handed to everyone that depends on it:
+ * the LLMClient to the Guardrails, the memories, the Embedder and the QueryRewriter; the ToolRegistry to the AIProfileStore.
+ *
+ * - An override's factory (`IAIGatewayOverrides`) builds the instance in place of the gateway's class, with the same config
+ *   and the same deps, and everyone that depends on it gets that instance.
+ * - The gateway's own tools (the user-memory tools, `ask_user_question`; D61) are registered before the host's: a host tool with the same
+ *   name is the duplicate the registry rejects.
+ *
+ * Runs once, in the constructor of `AIGateway`, before any call.
+ *
+ * # Who needs it
+ *
+ * The constructor of `AIGateway`.
+ *
+ * # What needs
+ *
+ * A validated `IAIGatewayConfig`: a required slice that is missing fails inside the child's constructor, not here.
+ *
+ * # Pitfalls
+ *
+ * The order of the lines is the dependency order: a child is created after every child it takes. A new child goes below its
+ * deps and above its dependants.
+ */
 export const createGatewayDeps = (
   {
     config,
@@ -99,7 +129,6 @@ export const createGatewayDeps = (
   const contextAssembler = make(overrides.contextAssembler, config.contextAssembler, {
     promptTemplateStore,
     skillRegistry,
-    turnBuilder,
     workingMemory,
   }, (config, deps) => new ContextAssembler(config, deps));
   const embedder = make(overrides.embedder, config.embedder, {llmClient}, (config, deps) => new Embedder(config, deps));
@@ -147,7 +176,10 @@ export const createGatewayDeps = (
   };
 };
 
-/** The host's factory when there is one, the gateway's class otherwise; both get the same config and deps. */
+/**
+ * The host's factory when there is one, the gateway's class otherwise.
+ * Both get the same config and deps.
+ */
 const make = <TConfig, TDeps, TDep>(
   factory: TDepFactory<TConfig, TDeps, TDep> | undefined,
   config: TConfig,

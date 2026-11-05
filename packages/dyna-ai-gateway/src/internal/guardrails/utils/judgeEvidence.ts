@@ -9,7 +9,20 @@ import {
   IOutputJudgeArgs,
 } from "../types";
 
-/** The evidence of an input check as message parts for the judge: the prompt, then the files the call's filter picks. */
+/**
+ * toInputJudgeParts -- the evidence of an input check as message parts
+ *
+ * # About
+ *
+ * > The prompt always, the files the rule's filter picks.
+ *
+ * One text part with the sanitised prompt, then the inline files of `IInputEvidence.inlineFiles` whose `IFileRef` passes the
+ * call's `fileFilter` (D59: the rule says which files, never the evidence itself).
+ *
+ * # Who needs it
+ *
+ * `Guardrails.checkInput`, as the `toEvidenceParts` of its judge.
+ */
 export const toInputJudgeParts = (
   {
     evidence: {
@@ -30,7 +43,21 @@ export const toInputJudgeParts = (
   ...inlineFiles.filter((_, index) => fileFilter(files[index])),
 ];
 
-/** The evidence of an output check as message parts for the judge: question and answer, then what the call switches on. */
+/**
+ * toOutputJudgeParts -- the evidence of an output check as message parts
+ *
+ * # About
+ *
+ * > Question and answer always, the KB chunks and the tool results when the rule switches them on.
+ *
+ * One text part in sections: the question, the answer (a structured value as pretty JSON), then "Knowledge-base chunks"
+ * with every chunk's heading path and text when `withChunks`, and "Tool results" with every result's tool name and output when
+ * `withToolResults`; an empty section is left out.
+ *
+ * # Who needs it
+ *
+ * `Guardrails.checkOutput`, as the `toEvidenceParts` of its judge.
+ */
 export const toOutputJudgeParts = (
   {
     evidence: {

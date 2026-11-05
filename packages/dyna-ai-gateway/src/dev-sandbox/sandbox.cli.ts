@@ -15,6 +15,10 @@ import {
 import {parseArgs} from "./utils/parseArgs";
 import {runChatSession} from "./utils/runChatSession";
 
+/**
+ * `<ask|run>` parsed, the chat's channels on, the gateway of `sandbox.config.ts` built, then the chat loop until `/exit`.
+ * Any throw lands in the `catch` below: the message in red, exit code 1.
+ */
 const main = async (): Promise<void> => {
   const {mode} = parseArgs({argv: process.argv.slice(2)});
   // The chat shows what README "In the chat" promises: the events, the traced model calls, a thrown error.

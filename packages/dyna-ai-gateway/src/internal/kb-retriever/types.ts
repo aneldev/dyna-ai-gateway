@@ -9,16 +9,39 @@ import {IQueryRewriter} from "../query-rewriter";
 
 /** Configuration of the KbRetriever. Lands in IAIGatewayConfig.kbRetriever. */
 export interface IKbRetrieverConfig {
-  /** Max chunks returned. Default 5. */
+  /**
+   * The most chunks a search returns (top-k).
+   *
+   * > Each chunk costs prompt tokens on every call; more chunks is not more grounding.
+   *
+   * @example 5 - a few chunks of a few hundred tokens: the default
+   * @example 10 - short chunks (a low `maxTokens` of the chunker) or a model with a large window
+   *
+   * @default 5
+   */
   k?: number;
-  /** Hits below are dropped. Default 0.6, measured for text-embedding-3-small with the eval set; another embedding model needs its own number. */
+  /**
+   * The similarity below which a hit is dropped; an empty result after it is a `noMatch`.
+   *
+   * > Decides between a wrong chunk in the prompt and "not in the knowledge base".
+   *
+   * Measured for text-embedding-3-small with the eval set (the right chunk scores 0.64–0.85, the best chunk of an
+   * off-topic question 0.54–0.57); another embedding model needs its own number.
+   *
+   * @example 0.6 - text-embedding-3-small
+   *
+   * @default 0.6
+   */
   minScore?: number;
 }
 
 /** Shared instances KbRetriever needs; created once by AIGateway and passed as the second constructor argument. */
 export interface IKbRetrieverDeps {
+  /** Prompt → query, when switched on. */
   queryRewriter: IQueryRewriter;
+  /** Query → vector (`embedOne`). */
   embedder: IEmbedder;
+  /** Vector → nearest chunks (`search`). */
   vectorStore: IVectorStore;
 }
 
@@ -29,9 +52,25 @@ export interface IKbRetrieverDeps {
  */
 export interface IKbRetriever {
   /**
-   * Retrieves the chunks for one prompt, tenant-filtered: rewrite the prompt into a query (when switched on) → embed it →
-   * search the libraries and books of `filters` → keep the hits of at least minScore, best first, at most k.
-   * With an empty filters.libraryIds the knowledge base is not used: no model call, `searched` is false.
+   * retrieve -- the chunks for one prompt
+   *
+   * # About
+   *
+   * > Rewrite, embed, search, cut.
+   *
+   * Rewrites the prompt into a query (when switched on), embeds it, searches the libraries and books of `filters` for
+   * the tenant and keeps the hits of at least `minScore`, best first, at most `k`. With an empty `filters.libraryIds`
+   * the knowledge base is not used: no model call, `searched` is false, `noMatch` is true. `k` and `minScore` override
+   * the config for this call (the caller's `IGatewayAskInput.kbRetrieval`).
+   *
+   * # Who needs it
+   *
+   * `prepareCall`, once per call, after the input check and before the request is assembled.
+   *
+   * # Pitfalls
+   *
+   * Two model calls per search (rewrite, embed), each one usage-guard check and one trace. The search takes no abort
+   * signal: `prepareCall` checks the signal before it, not during.
    */
   retrieve(
     {
@@ -66,6 +105,7 @@ export interface IKbRetriever {
 export interface IRetrievalResult {
   /** The query actually embedded (after rewrite). */
   query: string;
+  /** The chunks of at least `minScore`, best first, at most `k`; what the assembler injects and cites. */
   hits: IChunkHit[];
   /** True when nothing passed the threshold. */
   noMatch: boolean;

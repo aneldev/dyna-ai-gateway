@@ -18,6 +18,7 @@ import {
   createLineReader,
 } from "./createLineReader";
 import {formatResponse} from "./formatResponse";
+import {toPrintableError} from "./toPrintableError";
 import {
   devConsole,
   EDevConsole,
@@ -44,8 +45,24 @@ interface ISessionInput {
 }
 
 /**
- * The chat loop on one thread, for any gateway: a prompt → `ask` or `run` → the call's events, printed while they arrive →
- * the response as JSON → the response as a user would see it. Ends on `/exit` or EOF.
+ * runChatSession -- the chat loop on one thread
+ *
+ * # About
+ *
+ * > A prompt in; the events as they arrive, the response as JSON, the response as the user sees it out.
+ *
+ * Every prompt is `ask` or `run` (the mode) on the session's thread (none for the first, then the response's). A PAUSED
+ * response asks the developer for a decision per card and resumes until the run ends. A thrown error is printed as
+ * `thrown {…}` and the session goes on. Ends on `/exit`, `/quit` or the end of the input, after the gateway's background
+ * work (`whenIdle`).
+ *
+ * # Who needs it
+ *
+ * `sandbox.cli.ts`, with the gateway `createSandboxAIGateway` built.
+ *
+ * # Pitfalls
+ *
+ * Prints on the `RUN_CHAT_SESSION` channel: switch it on first, or only the responses (plain `console.log`) show.
  */
 export const runChatSession = async (
   {
@@ -88,7 +105,7 @@ export const runChatSession = async (
       threadId = response.threadId ?? threadId;
     }
     catch (error) {
-      devConsole.log(EDevConsole.RUN_CHAT_SESSION, "error", styleText("red", "thrown"), colorizeJson({value: toPlainError(error)}));
+      devConsole.log(EDevConsole.RUN_CHAT_SESSION, "error", styleText("red", "thrown"), colorizeJson({value: toPrintableError(error)}));
     }
   }
 
@@ -97,6 +114,9 @@ export const runChatSession = async (
   await gateway.whenIdle();
 };
 
+/**
+ * `ask` or `run` with the session's input and a fresh `now`; the gateway call is not awaited here.
+ */
 const call = (
   {
     gateway,
@@ -125,7 +145,11 @@ const call = (
     : gateway.run(input);
 };
 
-/** Prints every response; while the run is paused, asks the developer for a decision per card and resumes with all of them. */
+/**
+ * Prints every response; while the run is paused, asks the developer for a decision per card and resumes with all of them.
+ * A RESULT_REVIEW pause is printed again with the stored draft (`getPausedRun`): the developer is the reviewer here.
+ * Returns the last response, or the pause itself when the input closed.
+ */
 const settlePauses = async (
   {
     gateway,
@@ -185,7 +209,10 @@ const settlePauses = async (
   return current;
 };
 
-/** Prints every event of the call while it arrives (what a web client receives), then returns the response. */
+/**
+ * Prints every event of the call while it arrives (what a web client receives) on the `RUN_CHAT_SESSION` channel,
+ * then returns the response.
+ */
 const streamCall = async (
   {call}: { call: IGatewayCall },
 ): Promise<TGatewayResponse> => {
@@ -198,6 +225,10 @@ const streamCall = async (
   return call.response;
 };
 
+/**
+ * The response twice: as colourised JSON, then as the user sees it (`formatResponse`).
+ * Plain `console.log`: printed whatever the channels say.
+ */
 const printResponse = (
   {response}: { response: TGatewayResponse },
 ): void => {
@@ -207,22 +238,8 @@ const printResponse = (
   console.log("#", formatResponse({response}));
 };
 
+/** The session's user context with `now` = this moment; every call gets a fresh one. */
 const withNow = (userContext: Omit<IUserContext, "now">): IUserContext => ({
   ...userContext,
   now: new Date(),
 });
-
-/** A thrown dynaError (or anything else) as a JSON-printable object. */
-const toPlainError = (error: unknown): unknown => {
-  if (!(error instanceof Error)) return {error};
-  const {
-    name,
-    message,
-    ...rest
-  } = error as Error & Record<string, unknown>;
-  return {
-    name,
-    message,
-    ...rest,
-  };
-};

@@ -6,9 +6,19 @@ import {
 } from "../types";
 
 /**
- * The body of a `useChat` request, checked for what the module reads: JSON, a `messages` array of messages with a `role`
- * and `parts`, no regenerate (the gateway stores the turns, a regenerate would need the last answer deleted). Anything
- * else is a 400 before the gateway is called.
+ * parseChatRequest -- the body of a `useChat` request, checked for what the module reads
+ *
+ * # About
+ *
+ * > A 400 for anything the module cannot read, before the gateway is called.
+ *
+ * JSON, a `messages` array of messages with a `role` and `parts`, no regenerate (the gateway stores the turns; a
+ * regenerate would need the last answer deleted). The messages are not validated further: `UiMapper` reads the last
+ * one and throws its own 400.
+ *
+ * # Who needs it
+ *
+ * `AIGatewayVercelUi.chat`, right after `userContext`.
  */
 export const parseChatRequest = async ({request}: {request: Request}): Promise<IUiChatRequestBody> => {
   let body: unknown;
@@ -46,8 +56,10 @@ export const parseChatRequest = async ({request}: {request: Request}): Promise<I
   };
 };
 
+/** A non-null object; the narrowing every field check starts from. */
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
+/** A `role` string and a `parts` array of typed parts; nothing more is checked here. */
 const isUiMessage = (value: unknown): value is TGatewayUiMessage =>
   isRecord(value)
   && typeof value.role === "string"

@@ -12,10 +12,20 @@ const PROMPT_CACHE_KEY_LENGTH = 16;
 export type TSdkProviderOptions = Parameters<typeof generateText>[0]["providerOptions"];
 
 /**
- * Our system blocks → the SDK's call-level `providerOptions`. OpenAI, with a `cache` block: `openai.promptCacheKey` is the
- * 16-hex SHA-256 of that block's text, so the provider routes the calls that share the stable block to one cache; the key
- * names exactly the calls that may share it (per tenant when the block opens with the tenant-scope line, across tenants
- * when sharing is on). Every other case: no options, byte-for-byte the request before the blocks existed.
+ * toSdkProviderOptions -- the call-level provider options of a request
+ *
+ * # About
+ *
+ * > OpenAI's prompt cache key, derived from the `cache` block; nothing for anyone else.
+ *
+ * OpenAI, with a `cache` block: `openai.promptCacheKey` is the 16-hex SHA-256 of that block's text, so the provider routes
+ * the calls that share the stable block to one cache; the key names exactly the calls that may share it (per tenant when
+ * the block opens with the tenant-scope line, across tenants when sharing is on). Every other case: undefined, byte-for-byte
+ * the request before the blocks existed (D123).
+ *
+ * # Who needs it
+ *
+ * `LLMClient.complete`, on every call.
  */
 export const toSdkProviderOptions = (
   {

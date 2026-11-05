@@ -50,12 +50,17 @@ const DEFAULT_RULE_TIMEOUT_MS = 10_000;
 /** Sentinel of the abort race; a rule cannot return it. */
 const ABORTED: unique symbol = Symbol("aborted");
 
+/** True when one issue is ERROR: the check fails and the next stage does not run. */
+/** True when one issue is ERROR: the check fails and the next stage does not run. */
 const hasError = (issues: IIssue[]): boolean => issues.some(issue => issue.severity === EIssueSeverity.ERROR);
 
 /** What every rule looks like to the runner: input and output rules differ only in their evidence and their judge. */
 interface IRule<TEvidence, TJudge> {
+  /** The rule's name, stamped on its issues. */
   name: string;
+  /** The rule's own timeout; the config's `ruleTimeoutMs` when absent. */
   timeoutMs?: number;
+  /** The rule itself: issues out, empty = pass. */
   check(args: {
     evidence: TEvidence;
     abortSignal: AbortSignal;
@@ -70,9 +75,39 @@ type TMakeJudgeHandler<TJudge> = (args: {
 }) => TJudge;
 
 /**
- * Checks around a model call: the gateway's built-in rules, then the app's. Rules are fixed at construction.
- * A rule that classifies asks the model through `judge`: one completion on the profile's cheap (or main) model, checked
- * with the usage adapter, reported to it and traced by the LLMClient like every other call.
+ * Guardrails -- every check around a model call, in one place
+ *
+ * # About
+ *
+ * > The gateway knows that rules exist, not what the app's rules check.
+ *
+ * Two checks: `checkInput` on the prompt before the model call, `checkOutput` on the answer after it. Each runs the gateway's
+ * built-in rules first (prompt not empty, not over `maxPromptChars`, no prompt-injection marker; answer not truncated, matches
+ * the schema) and the app's `inputRules` / `outputRules` only when those passed, so a paid moderation call is never made for a
+ * prompt that is already rejected. The app's rules run in parallel, each under its timeout; a rule that throws or times out is
+ * the ERROR issue `rule_error`, so a broken rule never lets anything pass (D47). A rule that classifies asks a model through
+ * the `judge` it receives: one completion on the profile's cheap or main model, checked with the usage adapter, reported to it
+ * and traced like every other call (D57, D59). The severity of an issue is the only verdict: ERROR fails the call, WARNING
+ * flags it (D49).
+ *
+ * Sits between the orchestration (`prepareCall`, `checkOutput`, `parseEditedAnswer`), which calls it, and the `LLMClient`,
+ * which the judge calls go through.
+ *
+ * # Who needs it
+ *
+ * `AIGateway`, through the orchestration, on every `ask`, `run` and `resume`. Constructed once from
+ * `IAIGatewayConfig.guardrails`; a host replaces it through `IAIGatewayDeps.guardrails`.
+ *
+ * # What needs
+ *
+ * `IGuardrailsConfig`: the app's rules and the limits, fixed at construction. `IGuardrailsDeps`: the `LLMClient` and the
+ * `ModelRegistry` the judge calls use, so the Guardrails are created after them.
+ *
+ * # Pitfalls
+ *
+ * Rules are fixed at construction: there is no `addRule`, a gateway that needs other rules is constructed again. Rule names
+ * are unique, the app's input rules also against the built-in names; a duplicate throws `5373891090405`. The error a rule
+ * threw never reaches the caller's issues, it goes to the server log and to `onRuleError` only (D107).
  */
 export class Guardrails implements IGuardrails {
   private readonly ruleTimeoutMs: number;
@@ -101,10 +136,22 @@ export class Guardrails implements IGuardrails {
   }
 
   /**
-   * Sanitises the user prompt (trims, normalises line endings) and screens it before the call: the built-in rules
-   * (not empty unless files come with it, not over maxPromptChars, no prompt-injection marker), then — only when those
-   * passed — the app's input rules, in parallel.
-   * The call's `abortSignal` reaches every rule and its judge call; an aborted call rejects with the signal's reason (D90).
+   * checkInput -- screens the prompt before the model call
+   *
+   * # About
+   *
+   * > The built-in rules first, the app's only when those passed.
+   *
+   * Sanitises the prompt (trims, normalises line endings), then runs the built-in input rules (not empty unless files come
+   * with it, not over `maxPromptChars`, no prompt-injection marker) and, only when none of them returned an ERROR, the app's
+   * `inputRules` in parallel. Returns the sanitised prompt, every issue stamped with its rule's name, `ok` and the trace ids
+   * of the judge calls, which the gateway annotates with the issues (D73). The call's `abortSignal` reaches every rule and
+   * its judge call; an aborted call rejects with the signal's reason, not with a `rule_error` (D90).
+   *
+   * # Who needs it
+   *
+   * `prepareCall`, on the prompt of every `ask` and `run`; `AIGateway.resume`, on the free text a user typed into a question
+   * of the model (D62), with no files.
    */
   public async checkInput(
     {
@@ -189,10 +236,22 @@ export class Guardrails implements IGuardrails {
   }
 
   /**
-   * Checks the model output: flags truncation (finishReason LENGTH) as a WARNING and, with a schema, parses the output
-   * against it — `result.structured`, or the text as JSON when the LLMClient gave no structured value. Then — only when
-   * those passed — the app's output rules, in parallel, with the parsed output (or the text) and the evidence of the call.
-   * The call's `abortSignal` reaches every rule and its judge call; an aborted call rejects with the signal's reason (D90).
+   * checkOutput -- screens the answer after the model call
+   *
+   * # About
+   *
+   * > Truncation and schema first, the app's rules only when those passed.
+   *
+   * Flags a `finishReason` LENGTH as the WARNING `output_truncated` and, with a schema, parses the output against it with
+   * `parseStructured`. Only when no ERROR came out of that, the app's `outputRules` run in parallel on the parsed value (or
+   * the text) with the evidence of the call: the question, the KB chunks, the tool results, the user context, the profile and
+   * the thread. Returns the parsed value, every issue stamped with its rule's name, `ok` and the trace ids of the judge calls,
+   * which the gateway annotates with the issues (D73). The call's `abortSignal` reaches every rule and its judge call; an
+   * aborted call rejects with the signal's reason, not with a `rule_error` (D90).
+   *
+   * # Who needs it
+   *
+   * `checkOutput` of the orchestration, on the answer of every `ask` and of every run that ended with text (`settleRun`).
    */
   public async checkOutput<TStructured = unknown>(
     {
@@ -362,7 +421,7 @@ export class Guardrails implements IGuardrails {
     };
   }
 
-  /** The meta of the judge calls of one check: the user context, the profile and the thread stamp the trace. */
+  /** The meta of one check's judge calls: tenant, user, profile, thread, kind GUARDRAIL_JUDGE. */
   private makeMeta(
     {
       userContext,
@@ -383,7 +442,7 @@ export class Guardrails implements IGuardrails {
     };
   }
 
-  /** Runs the rules in parallel; their issues come back in rule order, each stamped with its rule's name. */
+  /** Runs the rules in parallel; the issues come back in rule order, stamped with the rule's name. */
   private async runRules<TEvidence extends IInputEvidence | IOutputEvidence, TJudge>(
     {
       stage,
@@ -524,6 +583,7 @@ export class Guardrails implements IGuardrails {
     }
   }
 
+  /** The ERROR issue `rule_error` of a rule that threw or timed out; `what` says which. */
   private makeRuleError(ruleName: string, what: string): IIssue {
     return {
       code: "rule_error",

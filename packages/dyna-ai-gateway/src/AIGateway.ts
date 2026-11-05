@@ -97,7 +97,63 @@ import {
 } from "./types";
 import {deleteThreads} from "./utils/deleteThreads";
 
-/** Facade and composition root. The business service's only entry point. */
+/**
+ * AIGateway -- the facade of the gateway and its composition root
+ *
+ * # About
+ *
+ * > One object the application talks to; every child of the gateway behind it.
+ *
+ * Creates every child once from `IAIGatewayConfig` (through `createGatewayDeps`), injects the shared instances, and runs a
+ * call as a sequence of child calls: no prompt text, no token math, no SDK of its own.
+ *
+ * - Three calls:
+ *   - `ask` (one grounded answer, no tools)
+ *   - `run` (an agent run with tools, may pause for a human),
+ *   - `resume` (continues a paused run with the human's decisions). The three return at once with an `IGatewayCall`: `events` to
+ *   stream, `response` to await (D38).
+ * - Thread, file and memory management for the UI (`listThreads`, `getTurns`, `uploadFile`, `getUserFacts`, …), the
+ *   erasure of a user (`deleteUserData`, `anonymizeUserData`) and of conversations (`delete`), the scheduled jobs
+ *   (`expirePausedRuns`, `recoverStuckRuns`) and a graceful `shutdown`.
+ * - The admin surfaces as getters (`modelRegistry`, `aiProfileStore`, `promptTemplateStore`, `toolRegistry`, `trace`,
+ *   `usageGuard`) and the second root, `kbIngestor`, for the knowledge-base write endpoints.
+ *
+ * The host application constructs one per process and keeps it: the children hold caches, the background work and the
+ * calls in flight.
+ *
+ * # Who needs it
+ *
+ * The host application: its HTTP handlers for the chat, the approval screens and the admin pages; its scheduled jobs; its
+ * SIGTERM handler. Nothing inside the gateway calls the facade.
+ *
+ * # What needs
+ *
+ * `IAIGatewayConfig`: one config per child, with the repositories and adapters the host implements (or the in-memory ones,
+ * for tests and the first run). Optionally `IAIGatewayOverrides`: a factory per child the host replaces (tests: a fake
+ * `llmClient`).
+ *
+ * # Usage
+ *
+ * ## When to use it
+ *
+ * `ask` for a question an answer settles: a summary, a classification, a grounded reply over the knowledge base, a
+ * structured extraction (`outputSchema`). `run` when the model may act through tools, pause for an approval or a question
+ * to the user, and the answer may be reviewed. `resume` from the request that carries the human's decision, often from
+ * another user than the asker.
+ *
+ * ## When shouldn't use it
+ *
+ * Not for writing documents into the knowledge base: that is `kbIngestor`. Not from inside a tool: a tool receives the
+ * user context and the thread id and talks to the application's own services.
+ *
+ * # Pitfalls
+ *
+ * One call at a time on a thread (D77): a second `ask` / `run` on a thread with a call in flight is a 409; keep every call's
+ * `timeoutMs` at or under `IThreadStoreConfig.leaseMs`. `response` resolves FAILED for what the call could not do (a
+ * rejected prompt, a blocked answer, a refused model call, an abort, a timeout, D90) and rejects for what the caller got
+ * wrong (an unknown profile or thread, another user's thread, a thread that waits for a human) or a provider failure.
+ * Call `shutdown` before the process ends, or `whenIdle` in tests: the memory updates run in the background after an answer.
+ */
 export class AIGateway {
   private readonly deps: IAIGatewayDeps;
   private readonly background: IBackgroundTasks = createBackgroundTasks();
@@ -117,13 +173,54 @@ export class AIGateway {
   }
 
   /**
-   * One grounded answer, no tools. Returns at once (D38): `events` streams the answer, `response` is the final response.
-   * `response` is FAILED when the prompt is rejected or the answer does not pass the checks (a failed answer is not stored).
-   * It rejects with the dynaError of a child for what the caller got wrong or the provider broke: unknown profile, thread or model,
-   * a thread that waits for a human, a provider failure.
-   * User memory: facts are extracted in the background after the first answer and then every `extractEveryTurns` turns;
-   * nothing is stored on request. ask() has no tools, so "remember this" is not acted on at once. Use run() for that.
-   * `abortSignal` / `timeoutMs` of the input stop the call (D90): the response is FAILED with the reason, nothing is thrown.
+   * ask -- one grounded answer, no tools
+   *
+   * # About
+   *
+   * > A question in, an answer out, streamed while it is written.
+   *
+   * Returns at once (D38): `events` streams the answer, `response` is the final ANSWER or FAILED. The call screens the
+   * prompt (guardrails), stores the user turn, searches the knowledge base within `kbFilters`, builds the request with the
+   * thread's memory and the user's facts, calls the model once, checks the answer, stores it and annotates the trace; the
+   * memory updates follow in the background.
+   *
+   * - `response` is FAILED when the prompt is rejected, the answer does not pass the checks (a failed answer is not stored),
+   *   the usage adapter refuses the model call, or `abortSignal` / `timeoutMs` stop the call (D90). Nothing is thrown for
+   *   those.
+   * - `response` rejects with the `dynaError` of a child for what the caller got wrong or the provider broke: an unknown
+   *   profile, thread or model, another user's thread (404), a thread that waits for a human or has a call in flight (409),
+   *   a provider failure.
+   *
+   * The path: `makeCallSignal` → `getOwnThread` → the thread's lease (`withThreadLease`) → `prepareCall` →
+   * `LLMClient.complete` → `checkOutput` → the assistant turn → the response → `scheduleMemory`.
+   *
+   * # Who needs it
+   *
+   * The host's chat endpoint for a conversation without tools, and every feature that needs one answer from the model over
+   * the knowledge base: a summary button, an extraction with `outputSchema`, a classification.
+   *
+   * # What needs
+   *
+   * A profile the tenant has (`profileId`, required, D103), a `kbFilters` scope (an empty `libraryIds` = no search), and for
+   * `files` the pointers `uploadFile` returned to the calling user.
+   *
+   * # Usage
+   *
+   * ## When to use it
+   *
+   * The answer is the whole job: nothing has to be looked up through a tool, nobody has to approve anything.
+   *
+   * ## When shouldn't use it
+   *
+   * `run` when the model should act (tools), when a human may have to approve a step or review the answer, or when
+   * "remember this" must be acted on at once: `ask` has no tools, so the user memory grows only from the background
+   * extraction (after the first answer, then every `extractEveryTurns` turns).
+   *
+   * # Pitfalls
+   *
+   * Read `events` before the first `await` when you stream (`const {events, response} = gateway.ask(input)`): the stream is
+   * collected from its first access. The user turn is stored even when the answer fails. The thread is locked for the
+   * duration of the call (D77).
    */
   public ask<TStructured = unknown>(input: IGatewayAskInput<TStructured>): IGatewayCall<TStructured> {
     return startCall({
@@ -168,6 +265,10 @@ export class AIGateway {
     });
   }
 
+  /**
+   * The work of `ask` under the thread's lease: `prepareCall`, one model call, the output checks, the assistant turn, the
+   * response, the memory in the background. Answers FAILED for an abort or a refused model call, rethrows the rest.
+   */
   private async executeAsk<TStructured>(
     {
       input,
@@ -344,16 +445,54 @@ export class AIGateway {
   }
 
   /**
-   * Agent run with tools; may return PAUSED. Returns at once (D38): `events` streams the run, `response` is the final response.
-   * The model sees the tools ToolPolicy resolves for the profile and the user; a tool that needs approval pauses the run:
-   * the run is stored, the thread waits for a human, and `resume` continues it. On a profile with `reviewAnswers` (D99) the
-   * finished answer pauses the run too, once it passed the output checks: the envelope shows it to a reviewer, and `resume`
-   * delivers, edits or drops it without another model call.
-   * The tool turns a run produced (tool requests, tool results) are stored even when the final answer fails the checks, because
-   * the tools did run; the failed answer itself is not stored (D70).
-   * `abortSignal` / `timeoutMs` of the input stop the call (D90): the model call and the tool in flight are aborted, the response
-   * is FAILED with the reason; the steps that completed are stored (the tools did run), a tool call the abort cut gets an error
-   * result, and a paused run is never created.
+   * run -- an agent run with tools; may pause for a human
+   *
+   * # About
+   *
+   * > The model works the task through the tools until it answers, a tool ends the run, or a human has to step in.
+   *
+   * Returns at once (D38): `events` streams the run (text, tool requests and results, step ends, a pause), `response` is the
+   * final ANSWER, PAUSED or FAILED. The model sees the tools the `ToolPolicy` resolves for the profile, the user's
+   * permissions and the call (`activeTools`, `additionalTools`); every step goes through the usage adapter. A tool whose
+   * policy says NEEDS_APPROVAL, a question the model asks the user and, on a profile with `reviewAnswers` (D99), the
+   * finished answer pause the run: it is stored, the thread waits for a human, and `resume` continues it.
+   *
+   * - The tool turns a run produced (tool requests, tool results) are stored even when the final answer fails the checks,
+   *   because the tools did run; the failed answer itself is not stored (D70).
+   * - `abortSignal` / `timeoutMs` stop the call (D90): the model call and the tool in flight are aborted, the response is
+   *   FAILED with the reason, the steps that completed are stored, a tool call the abort cut gets an error result, and a
+   *   paused run is never created.
+   * - `response` rejects as in `ask` for what the caller got wrong; a tool name outside what the profile and the
+   *   permissions allow is a 400 before anything is stored (D48).
+   *
+   * The path is `ask`'s with `LLMClient.run` in place of `complete`, the hooks of `createRunHooks` (execute a tool, decide
+   * a call, narrow the tools of a step) and `settleRun` for the turns, the pause and the response.
+   *
+   * # Who needs it
+   *
+   * The host's chat endpoint for an assistant that acts: a support agent with a refund tool, an accounting assistant that
+   * posts a credit note after an approval, a form the model fills by asking the user.
+   *
+   * # What needs
+   *
+   * As `ask`, plus the tools: registered in `IToolRegistryConfig.tools` or passed as `additionalTools`, allowed by the
+   * profile's `allowedTools` and the user's permissions.
+   *
+   * # Usage
+   *
+   * ## When to use it
+   *
+   * The model needs tools, a step may need a human, or the answer must be reviewed before the user sees it.
+   *
+   * ## When shouldn't use it
+   *
+   * `ask` for a plain answer: one model call, no tool list in the prompt, and it never pauses.
+   *
+   * # Pitfalls
+   *
+   * Keep the PAUSED response's `pauseId` and `envelopes`: `resume` needs one decision per envelope. A paused run holds the
+   * thread AWAITING_HUMAN until it is resumed, cancelled or expired (`expirePausedRuns`). `additionalTools` and
+   * `outputSchema` are not stored with a paused run: `resume` must receive them again.
    */
   public run<TStructured = unknown>(input: IGatewayRunInput<TStructured>): IGatewayCall<TStructured> {
     return startCall({
@@ -398,6 +537,10 @@ export class AIGateway {
     });
   }
 
+  /**
+   * The work of `run` under the thread's lease: `prepareCall` with the tools, the agent loop with the run hooks, `settleRun`
+   * for the turns, the pause and the response, the memory on an ANSWER. Answers FAILED for an abort or a refused model call.
+   */
   private async executeRun<TStructured>(
     {
       input,
@@ -498,31 +641,67 @@ export class AIGateway {
   }
 
   /**
-   * Continues a paused run with the human's decisions: one per envelope of the pause (D102), each named by the envelope's
-   * `callId` (a pause of one envelope takes one decision without it); a decision that names no envelope, an envelope left
-   * without one, or an action its envelope does not allow is a 400 and the run stays paused. May pause again when a later
-   * step needs approval, or when the answer it produces is reviewed (D99). On a reviewed answer no model is called: APPROVE delivers it, EDIT delivers `editedInput`
-   * as the new text (parsed through the run's `outputSchema` again; a miss is a 400 and the run stays paused), REJECT drops
-   * it and the call is FAILED with `text` as the reason.
-   * The tools run with the context of the user who resumes (the approver is accountable for them); the run stays the asker's
-   * (D32): the memory extracted after it, its trace entries and the screens of the answer are under the user who started it.
-   * When the continuation throws, the run is marked FAILED,
-   * its pending tool call is closed in the thread and the thread is opened again.
-   * The run continues on its profile as it is now, or on `profileId` (D65): the model, the output cap, the tools and the
-   * limits come from that profile; the system prompt and the messages so far stay. The review of the answer and the
-   * approvals are those of both profiles (D113): a switch never skips a guard the run started under. A pending tool the profile does not
-   * allow is a 400 and the run stays paused. A run that started with `additionalTools` (D66) needs them again. Its skills it kept
-   * (D124): `load_skill` is rebuilt from them and the skills of the profile it continues on, while the system prompt keeps the list
-   * of the start; a name in both is a 400 and the run stays paused.
-   * The free text of an ANSWER goes through the input rules like a prompt (D71): an ERROR returns FAILED and the run stays
-   * paused, so the user can answer again; WARNINGs travel on the response.
-   * `abortSignal` / `timeoutMs` stop the resume as they stop a call (D90): FAILED with the reason. An abort during the step closes
-   * the run as FAILED (its open tool call gets an error result, the thread is open again); an abort before the step, while the
-   * answer is screened, leaves the run paused.
-   * A resumed run answers like one that never paused (D36): its answer cites the knowledge-base chunks of its first step, its
-   * trace entries carry the template version, and the user's facts are extracted from the whole run. What a stored run cannot
-   * keep is the `outputSchema` (a zod schema is code): a run started with one is resumed with the same schema again, or its
-   * answer is plain text (an EDIT of a structured reviewed answer without it is a 400).
+   * resume -- continues a paused run with the human's decisions
+   *
+   * # About
+   *
+   * > The human has decided; the run goes on from where it stopped.
+   *
+   * One decision per envelope of the pause (D102), each named by the envelope's `callId` (a pause of one envelope takes one
+   * decision without it). On a tool approval the step continues: APPROVE or EDIT executes the call (an edited input goes
+   * through the tool's policy again, D109), REJECT hands the rejection text to the model. On a user question the answers
+   * reach the model. On a reviewed answer (D99) no model is called: APPROVE delivers it, EDIT delivers `editedInput` as the
+   * new text (parsed through the run's `outputSchema` again), REJECT drops it and the call is FAILED with the reviewer's
+   * text as the reason. The run may pause again when a later step needs an approval or its answer is reviewed.
+   *
+   * - The tools run with the context of the user who resumes (the approver is accountable for them); the run stays the
+   *   asker's (D32): the memory extracted after it, its trace entries and the screens of the answer are under the user who
+   *   started it.
+   * - The run continues on its profile as it is now, or on `profileId` (D65): the model, the output cap, the tools and the
+   *   limits come from that profile; the system prompt and the messages so far stay. The review of the answer and the
+   *   approvals are those of both profiles (D113): a switch never skips a guard the run started under. The skills the run
+   *   kept (D124) and the profile's are offered again through a rebuilt `load_skill`; the system prompt keeps the list of
+   *   the start.
+   * - The free text of an ANSWER goes through the input rules like a prompt (D71): an ERROR returns FAILED and the run
+   *   stays paused, so the user can answer again; WARNINGs travel on the response.
+   * - A resumed run answers like one that never paused (D36): its answer cites the knowledge-base chunks of its first step,
+   *   its trace entries carry the template version, the user's facts are extracted from the whole run.
+   * - `abortSignal` / `timeoutMs` stop the resume as they stop a call (D90). An abort during the step closes the run as
+   *   FAILED (its open tool call gets an error result, the thread is open again); an abort before the step, while the
+   *   answer is screened, leaves the run paused. When the continuation throws, the run is marked FAILED, its pending tool
+   *   call is closed in the thread and the thread is opened again.
+   *
+   * The path: `makeCallSignal` → `RunStore.load` → the thread's lease → `continueRun` (the gate's `matchDecisions`, the
+   * profile, the tools, the answer screen, `HumanGate.resume`, `LLMClient.run`, `settleRun`), or `continueReview` for a
+   * reviewed answer.
+   *
+   * # Who needs it
+   *
+   * The host's endpoint behind the approval card, the user-question form and the reviewer's screen; called from another
+   * request than the `run` that paused, and often by another user.
+   *
+   * # What needs
+   *
+   * The `runId` and `pauseId` of the PAUSED response (a decision for an earlier pause of the run is a 409, D110), and the
+   * same `additionalTools` (D66) and `outputSchema` (D36) the run started with: a stored run keeps neither (a Zod schema is
+   * code).
+   *
+   * # Usage
+   *
+   * ## When to use it
+   *
+   * A `run` or an earlier `resume` returned PAUSED and the human has decided.
+   *
+   * ## When shouldn't use it
+   *
+   * `cancelRun` drops a paused run without a decision. A new `run` on the thread is refused while the run waits.
+   *
+   * # Pitfalls
+   *
+   * A decision that names no envelope, an envelope left without one, an action its envelope does not allow, a pending tool
+   * the profile does not allow, a skill name in both the run and the profile, or an EDIT that misses the schema is a 400,
+   * and the run stays paused. Without the `outputSchema` a structured run answers in plain text, and an EDIT of a
+   * structured reviewed answer is a 400.
    */
   public resume<TStructured = unknown>(
     {
@@ -588,6 +767,11 @@ export class AIGateway {
     });
   }
 
+  /**
+   * The outer half of `resume`: the call signal first (a bad deadline never reads the run), the run loaded, then the lease on
+   * its thread and `continueRun`. Runs as a call of the resumer and the asker both: the tools act for the one, the run
+   * writes the other's data.
+   */
   private async executeResume<TStructured>(
     {
       userContext,
@@ -660,7 +844,10 @@ export class AIGateway {
     });
   }
 
-  /** The work of `resume` under the thread's lease: the checks, the gate, the step, the settlement. */
+  /**
+   * The work of `resume` under the thread's lease: the decisions matched to the pause, the profile and the tools checked,
+   * the free text screened, the gate, the step, the settlement; a failure after the gate closes the run FAILED.
+   */
   private async continueRun<TStructured>(
     {
       paused,
@@ -915,8 +1102,19 @@ export class AIGateway {
 
 
   /**
-   * Cancels a paused run: the run becomes CANCELLED, its pending tool call is closed as rejected in the thread, the thread is open again.
-   * Open to every user of the tenant, like `resume` (D32): the run id is the key, a random UUID nobody can guess (D115).
+   * cancelRun -- drops a paused run without a decision
+   *
+   * # About
+   *
+   * > The run becomes CANCELLED, its pending tool call is closed as rejected in the thread, the thread is open again.
+   *
+   * `HumanGate.cancel` marks the run, `closeRun` does the thread work ("Cancelled by the user"). A run that does not exist
+   * is the RunStore's 404.
+   *
+   * # Who needs it
+   *
+   * The host's "dismiss" action next to an approval card or a question. Open to every user of the tenant, like `resume`
+   * (D32): the run id is the key, a random UUID nobody can guess (D115).
    */
   public async cancelRun(
     {
@@ -947,9 +1145,25 @@ export class AIGateway {
   }
 
   /**
-   * Stores an upload; returns the pointer to pass in IGatewayAskInput.files. The file is the calling user's.
-   * Refused with a 400: a type outside `fileStore.allowedMime` (default PNG, JPEG, WebP, GIF, PDF; no SVG), an empty file, a name
-   * over 255 characters or with control characters; with a 413: a file over `fileStore.maxBytes`.
+   * uploadFile -- stores an upload and returns its pointer
+   *
+   * # About
+   *
+   * > The bytes go to the `FileStore`; the application keeps the pointer.
+   *
+   * The file is the calling user's. The pointer goes into `IGatewayAskInput.files` of a later call, where the model reads
+   * the image or the PDF. Refused with a 400: a type outside `fileStore.allowedMime` (default PNG, JPEG, WebP, GIF, PDF; no
+   * SVG), an empty file, a name over 255 characters or with control characters; with a 413: a file over `fileStore.maxBytes`;
+   * with a 409 while the user is being erased (D114).
+   *
+   * # Who needs it
+   *
+   * The host's upload endpoint, before the chat call that sends the file.
+   *
+   * # Pitfalls
+   *
+   * A pointer of another user in a call is a 400. A file nobody references stays until `deleteFile`, the `delete` of its
+   * thread or the erasure of the user.
    */
   public async uploadFile(
     {
@@ -976,7 +1190,19 @@ export class AIGateway {
     }));
   }
 
-  /** Deletes an uploaded file of the calling user that is not referenced yet or no longer needed. Another user's file is not touched. */
+  /**
+   * deleteFile -- removes one uploaded file of the calling user
+   *
+   * # About
+   *
+   * > For a file that is not referenced yet, or no longer needed.
+   *
+   * Another user's file is not touched.
+   *
+   * # Who needs it
+   *
+   * The host's "remove attachment" before the message is sent.
+   */
   public async deleteFile(
     {
       userContext,
@@ -993,7 +1219,58 @@ export class AIGateway {
     });
   }
 
-  /** Deletes every file a user uploaded, for a "forget this user" request (GDPR). Returns the number of files deleted. */
+  /**
+   * getFileUrl -- a short-lived URL of one uploaded file of the calling user, for a screen
+   *
+   * # About
+   *
+   * > The browser fetches the bytes from the storage; they never pass through the server.
+   *
+   * The adapter signs a URL for the file, valid for `ttlSec` seconds (default 900). The file must be the calling user's:
+   * another user's, or an unknown id, is the adapter's 404.
+   *
+   * # Who needs it
+   *
+   * The host's chat screen, to show an uploaded image or open a PDF; the `files.toUrl` hook of the Vercel UI module.
+   */
+  public async getFileUrl(
+    {
+      userContext,
+      fileId,
+      ttlSec,
+    }: {
+      userContext: IUserContext;
+      fileId: string;
+      /**
+       * How long the URL stays valid, in seconds.
+       *
+       * @default 900
+       */
+      ttlSec?: number;
+    },
+  ): Promise<string> {
+    return this.deps.fileStore.getSignedUrl({
+      tenantId: userContext.tenantId,
+      userId: userContext.userId,
+      fileId,
+      ...ttlSec === undefined ? {} : {ttlSec},
+    });
+  }
+
+  /**
+   * removeFilesByUser -- deletes every file a user uploaded
+   *
+   * # About
+   *
+   * > The files only; `deleteUserData` is the whole "forget this user".
+   *
+   * Returns the number of files deleted. Raw ids, no user check: an admin surface.
+   *
+   * # Who needs it
+   *
+   * The host, when only the uploads of a user must go (GDPR); `deleteUserData` and `anonymizeUserData` remove the files as
+   * one of their steps.
+   */
   public async removeFilesByUser(
     {
       tenantId,
@@ -1267,7 +1544,20 @@ export class AIGateway {
     });
   }
 
-  /** User memory management for the UI: what the gateway remembers about the calling user, across threads. */
+  /**
+   * getUserFacts -- what the gateway remembers about the calling user
+   *
+   * # About
+   *
+   * > The user's facts, across threads, for a "what you know about me" screen.
+   *
+   * The facts the `UserMemoryStore` extracted in the background and the ones set by hand (`upsertUserFact`); every one of
+   * them goes into every prompt of the user.
+   *
+   * # Who needs it
+   *
+   * The host's memory settings screen, next to `upsertUserFact`, `removeUserFact` and `clearUserFacts`.
+   */
   public async getUserFacts(
     {userContext}: { userContext: IUserContext },
   ): Promise<IUserMemoryFact[]> {
@@ -1277,7 +1567,15 @@ export class AIGateway {
     });
   }
 
-  /** Removes one remembered fact of the calling user. A key that is not there changes nothing. */
+  /**
+   * removeUserFact -- forgets one fact about the calling user
+   *
+   * # About
+   *
+   * > One entry of the memory screen, gone.
+   *
+   * A key that is not there changes nothing.
+   */
   public async removeUserFact(
     {
       userContext,
@@ -1295,8 +1593,18 @@ export class AIGateway {
   }
 
   /**
-   * Sets one remembered fact of the calling user by hand; same key = replace. Throws a 400 for an empty key or value, and for a
-   * key or value over `userMemoryStore.maxFactChars` (default 500): every fact goes into every prompt of the user.
+   * upsertUserFact -- sets one remembered fact of the calling user by hand
+   *
+   * # About
+   *
+   * > The user tells the assistant what to remember, without a conversation.
+   *
+   * Same key = replace. Throws a 400 for an empty key or value, and for a key or value over `userMemoryStore.maxFactChars`
+   * (default 500): every fact goes into every prompt of the user. A 409 while the user is being erased (D114).
+   *
+   * # Who needs it
+   *
+   * The host's memory settings screen ("add", "edit").
    */
   public async upsertUserFact(
     {
@@ -1320,7 +1628,13 @@ export class AIGateway {
     }));
   }
 
-  /** Removes every remembered fact of the calling user. */
+  /**
+   * clearUserFacts -- forgets every fact about the calling user
+   *
+   * # About
+   *
+   * > "Forget what you know about me": the facts only, threads and files stay.
+   */
   public async clearUserFacts(
     {userContext}: { userContext: IUserContext },
   ): Promise<void> {
@@ -1331,9 +1645,18 @@ export class AIGateway {
   }
 
   /**
-   * Thread memory for the UI: what the gateway remembers about one conversation of the calling user. Under `SLIDING_WINDOW`
-   * nothing is written, so the state is empty, or what an earlier `SUMMARY_BUFFER` period left (ignored, never wiped).
-   * Another user's thread is a 404.
+   * getThreadMemory -- what the gateway remembers about one conversation
+   *
+   * # About
+   *
+   * > The summary and the notes of a thread, for a "memory of this chat" panel.
+   *
+   * Under `SLIDING_WINDOW` nothing is written, so the state is empty, or what an earlier `SUMMARY_BUFFER` period left
+   * (ignored, never wiped). The thread must be the calling user's; another user's thread is a 404.
+   *
+   * # Who needs it
+   *
+   * The host's chat screen, next to `resetThreadMemory`.
    */
   public async getThreadMemory(
     {
@@ -1356,8 +1679,14 @@ export class AIGateway {
   }
 
   /**
-   * Clears the memory of one conversation of the calling user ("forget this thread"); the turns stay.
-   * Runs after the memory updates of the thread that are already queued. Another user's thread is a 404.
+   * resetThreadMemory -- "forget this thread": clears its memory, the turns stay
+   *
+   * # About
+   *
+   * > The conversation is kept; what the model remembers of it is dropped.
+   *
+   * Runs after the memory updates of the thread that are already queued, so a late update does not bring the memory back.
+   * Another user's thread is a 404.
    */
   public async resetThreadMemory(
     {
@@ -1377,8 +1706,17 @@ export class AIGateway {
   }
 
   /**
-   * Resolves when the gateway's background work (the memory updates after an answer) is done.
-   * For a server that shuts down, and for tests. Never rejects: a background task that fails is reported, not thrown.
+   * whenIdle -- resolves when the background work is done
+   *
+   * # About
+   *
+   * > The memory updates after an answer run in the background; this is how to wait for them.
+   *
+   * Never rejects: a background task that fails is reported, not thrown.
+   *
+   * # Who needs it
+   *
+   * Tests, before they read the memory; `shutdown`, as its last step. A server calls `shutdown`.
    */
   public whenIdle(): Promise<void> {
     return this.background.whenIdle();
@@ -1529,9 +1867,18 @@ export class AIGateway {
   }
 
   /**
-   * The runs that wait for a human, of the calling user: what the user's UI lists ("waiting for approval", "in review").
-   * A summary per run, never the stored run: no system prompt, no messages, and a review's envelope without the draft
-   * answer (D99) — the reviewer reads the whole run with `getPausedRun`.
+   * listPausedRuns -- the runs that wait for a human, of the calling user
+   *
+   * # About
+   *
+   * > What the user's UI lists as "waiting for approval" or "in review".
+   *
+   * A summary per run (`IPausedRunSummary`), never the stored run: no system prompt, no messages, and a review's envelope
+   * without the draft answer (D99, D111); the reviewer reads the whole run with `getPausedRun`.
+   *
+   * # Who needs it
+   *
+   * The host's inbox of pending approvals and questions, for the user who asked.
    */
   public async listPausedRuns(
     {userContext}: { userContext: IUserContext },
@@ -1590,37 +1937,120 @@ export class AIGateway {
     });
   }
 
-  /** The second root, for the KB write endpoints. */
+  /**
+   * kbIngestor -- the second root: the write side of the knowledge base
+   *
+   * # About
+   *
+   * > Documents go in here; the calls read them through `ask` and `run`.
+   *
+   * # Who needs it
+   *
+   * The host's knowledge-base write endpoints and import jobs.
+   */
   public get kbIngestor(): IKbIngestor {
     return this.deps.kbIngestor;
   }
 
-  /** Admin surfaces (owner permission checked by the caller). */
+  /**
+   * modelRegistry -- the admin surface of the models
+   *
+   * # About
+   *
+   * > Which models exist, with their caps and prices.
+   *
+   * Raw ids, no user check: the host checks the owner permission before it calls, as for every admin getter.
+   *
+   * # Who needs it
+   *
+   * The host's admin pages and seed scripts.
+   */
   public get modelRegistry(): IModelRegistry {
     return this.deps.modelRegistry;
   }
 
+  /**
+   * aiProfileStore -- the admin surface of the profiles
+   *
+   * # About
+   *
+   * > Create, change and read the profiles of a tenant.
+   *
+   * Raw ids, no user check: the host checks the owner permission before it calls.
+   *
+   * # Who needs it
+   *
+   * The host's admin pages and seed scripts.
+   */
   public get aiProfileStore(): IAIProfileStore {
     return this.deps.aiProfileStore;
   }
 
+  /**
+   * promptTemplateStore -- the admin surface of the prompt templates
+   *
+   * # About
+   *
+   * > The versions of every template: read, add one, set the active one.
+   *
+   * Raw ids, no user check: the host checks the owner permission before it calls.
+   *
+   * # Who needs it
+   *
+   * The host's prompt editor and seed scripts.
+   */
   public get promptTemplateStore(): IPromptTemplateStore {
     return this.deps.promptTemplateStore;
   }
 
+  /**
+   * toolRegistry -- the admin surface of the tools
+   *
+   * # About
+   *
+   * > The tools as registered, the built-in ones included, for a page that lists them.
+   *
+   * # Who needs it
+   *
+   * The host's admin pages; a profile editor that offers the tool names for `allowedTools`.
+   */
   public get toolRegistry(): IToolRegistry {
     return this.deps.toolRegistry;
   }
 
+  /**
+   * trace -- the admin surface of the model calls
+   *
+   * # About
+   *
+   * > Every model call of the tenant, for the audit page and for debugging.
+   *
+   * Raw ids, no user check: it holds system prompts and tool outputs, so the host checks the owner permission before it
+   * calls.
+   *
+   * # Who needs it
+   *
+   * The host's audit and debugging pages.
+   */
   public get trace(): ITrace {
     return this.deps.trace;
   }
 
+  /**
+   * usageGuard -- the gateway's side of the usage adapter
+   *
+   * # About
+   *
+   * > The checks and the reports the gateway's model calls go through, over the adapter the host passed.
+   *
+   * # Who needs it
+   *
+   * A host that checks or reports usage outside a call, with the gateway's own logic.
+   */
   public get usageGuard(): IUsageGuard {
     return this.deps.usageGuard;
   }
 
-  /** Step 11: the memory of the thread and of the user, after an answer, one update at a time per thread. */
   /**
    * The profile a resume continues on (D65). A switch keeps what the run started under: the review of the answer and the
    * approvals are the union of both profiles (D113), so a resume cannot pick a profile that skips them. A paused run's
@@ -1653,7 +2083,10 @@ export class AIGateway {
     };
   }
 
-  /** The work of `resume` on a RESULT_REVIEW pause (D99): the gate, then the settlement of the stored answer; no tools, no model step. `userContext` is the asker's (D32). */
+  /**
+   * The work of `resume` on a RESULT_REVIEW pause (D99): the gate, then the settlement of the stored answer; no tools, no
+   * model step. `userContext` is the asker's (D32).
+   */
   private async continueReview<TStructured>(
     {
       paused,
@@ -1794,6 +2227,10 @@ export class AIGateway {
     }
   }
 
+  /**
+   * Step 11 of a call: the memory of the thread and of the user, after an answer, in the background.
+   * One update at a time per thread; `whenIdle` waits for them.
+   */
   private scheduleMemory(
     {
       userContext,
@@ -1903,7 +2340,10 @@ export class AIGateway {
     throw error;
   }
 
-  /** Runs one call of these users; refused with a 409 while one of them is being erased, which waits for it to end (D114). */
+  /**
+   * Runs one call of these users; refused with a 409 while one of them is being erased, and an erasure that starts meanwhile
+   * waits for it to end (D114).
+   */
   private async asUserCall<T>(
     {
       tenantId,
@@ -1953,7 +2393,10 @@ export class AIGateway {
     };
   }
 
-  /** Close the door, drain within the grace period, abort what is left, let the background work land. */
+  /**
+   * Close the door, drain within the grace period, abort what is left, let the background work land.
+   * Runs once: `shutdown` keeps its promise.
+   */
   private async executeShutdown({deadline}: {deadline?: AbortSignal}): Promise<void> {
     this.inFlightCalls.close();
     const drained = await Promise.race([

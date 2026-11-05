@@ -8,16 +8,29 @@ import {TWorkingMemoryStrategy} from "../working-memory";
 
 /** Configuration of the AIProfileStore. Lands in IAIGatewayConfig.aiProfileStore. */
 export interface IAIProfileStoreConfig {
-  /** Persistence; Mongo in v1. */
+  /** Persistence of the profiles: the host's adapter (in memory for the tests and the first run, a database in production). */
   repository: IAIProfileRepository;
-  /** Cache per tenant. Default 30_000. */
+  /**
+   * How long a tenant's profiles stay cached in memory, in milliseconds.
+   *
+   * > Every call loads a profile; the repository is read once per tenant and TTL, not once per call.
+   *
+   * An admin write on this instance drops the tenant's cache at once; another instance sees it after its TTL.
+   *
+   * @example 5_000 - an admin screen that wants its own edits visible fast on every instance
+   *
+   * @default 30_000
+   */
   cacheTtlMs?: number;
 }
 
 /** Shared instances AIProfileStore needs; created once by AIGateway and passed as the second constructor argument. */
 export interface IAIProfileStoreDeps {
+  /** Validates `IAIProfile.modelId` and `cheapModelId` at `upsertProfile`: the models must exist and be enabled. */
   modelRegistry: IModelRegistry;
+  /** Validates `IAIProfile.allowedTools` and `approvals` at `upsertProfile`: every name must be registered. */
   toolRegistry: IToolRegistry;
+  /** Read at `removeProfile`: a profile a PAUSED run waits on cannot go (D46). */
   runStore: IRunStore;
   /** Validates `IAIProfile.skills` at `upsertProfile` (D124). */
   skillRegistry: ISkillRegistry;
@@ -29,7 +42,20 @@ export interface IAIProfileStoreDeps {
  * Implemented by `AIProfileStore`; the type of `IAIGatewayDeps.aiProfileStore`, so a host may pass its own in `overrides`.
  */
 export interface IAIProfileStore {
-  /** Loads one profile; throws if missing. */
+  /**
+   * getProfile -- one profile of a tenant
+   *
+   * # About
+   *
+   * > The first read of every call: which model, which tools, which caps.
+   *
+   * Reads the tenant's cached profiles and returns a copy. An unknown id, or an id of another tenant, is a 404
+   * (`5372567786127`): a profile is never visible across tenants.
+   *
+   * # Who needs it
+   *
+   * `prepareCall` (step 1 of `ask` and `run`), `AIGateway.resume` (the profile a paused run continues on, D65).
+   */
   getProfile(args: {
     tenantId: string;
     profileId: string;
@@ -47,9 +73,25 @@ export interface IAIProfileStore {
   listProfiles(args: {tenantId: string}): Promise<IAIProfile[]>;
 
   /**
-   * Admin: creates or replaces; validates modelId (and cheapModelId, when set) against ModelRegistry,
-   * allowedTools / approvals against ToolRegistry, and the names of `skills` with the SkillRegistry (unique, non-empty).
-   * The registry's own error surfaces for an unknown or disabled model.
+   * upsertProfile -- creates or replaces a profile of a tenant, validated against the registries
+   *
+   * # About
+   *
+   * > A profile that is stored can be run: every name it holds was checked.
+   *
+   * Validates before the write: `modelId` and `cheapModelId` (when set) must exist and be enabled in the ModelRegistry (the
+   * registry's own 404 or 400 surfaces); every name of `allowedTools` and `approvals` must be registered in the ToolRegistry
+   * (400, `data.unknownTools`); the `skills` must have unique, non-empty names (the SkillRegistry's 400, D124). Then saves
+   * the profile as given and drops the tenant's cache.
+   *
+   * # Who needs it
+   *
+   * The host's administration screen; the tests and the first run, to seed a profile.
+   *
+   * # Pitfalls
+   *
+   * The profile is stored whole, so a partial object replaces every field. Other instances see the new version after their
+   * cache TTL; a paused run keeps resuming on the profile it was started with, as stored at its resume (D46).
    */
   upsertProfile(args: {
     tenantId: string;
@@ -75,11 +117,50 @@ export interface IAIProfileStore {
 
 /** Persistence seam. Only the store calls it. */
 export interface IAIProfileRepository {
+  /**
+   * loadByTenant -- every profile of a tenant
+   *
+   * # About
+   *
+   * > The whole set, for the store's cache.
+   *
+   * Returns every profile stored under the tenant, in any order; empty for a tenant without one.
+   *
+   * # Who needs it
+   *
+   * `AIProfileStore.getProfiles`, when the tenant's profiles are not in its cache yet.
+   */
   loadByTenant(args: {tenantId: string}): Promise<IAIProfile[]>;
+  /**
+   * save -- inserts or replaces one profile
+   *
+   * # About
+   *
+   * > Upsert by `tenantId` + `profile.id`.
+   *
+   * The profile is stored whole under the tenant; a profile with the same id is replaced.
+   *
+   * # Who needs it
+   *
+   * `AIProfileStore.upsertProfile`.
+   */
   save(args: {
     tenantId: string;
     profile: IAIProfile;
   }): Promise<void>;
+  /**
+   * remove -- deletes one profile
+   *
+   * # About
+   *
+   * > Permanent; nothing when it does not exist.
+   *
+   * Removes the profile of the tenant with this id; a missing one is not an error.
+   *
+   * # Who needs it
+   *
+   * `AIProfileStore.removeProfile`.
+   */
   remove(args: {
     tenantId: string;
     profileId: string;
@@ -88,7 +169,9 @@ export interface IAIProfileRepository {
 
 /** Tenant choices for one way of using AI. Passed as data to Assembler, ToolPolicy, LLMClient. */
 export interface IAIProfile {
+  /** The tenant's own id of the profile; what a call names in `profileId` (D103). */
   id: string;
+  /** The tenant the profile belongs to; a profile is never visible to another tenant. */
   tenantId: string;
   /** Human label, e.g. "Careful refunds". */
   name: string;

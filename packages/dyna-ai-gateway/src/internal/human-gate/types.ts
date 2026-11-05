@@ -10,7 +10,16 @@ import {
 
 /** Configuration of the HumanGate. Lands in IAIGatewayConfig.humanGate. */
 export interface IHumanGateConfig {
-  /** A pause older than this is cancelled. Default 24h. */
+  /**
+   * How long a pause waits for the human before `expirePausedRuns` cancels it.
+   *
+   * > A run that nobody answers must not hold its thread for ever.
+   *
+   * @example 86_400_000 - a day: an approval inbox read once a day
+   * @example 900_000 - fifteen minutes: a question to the user in a live chat
+   *
+   * @default 86_400_000
+   */
   timeoutMs?: number;
   /** The built-in `ask_user_question` tool (D62): the model asks the user instead of guessing, and the run pauses with the questions. */
   userQuestions: {
@@ -20,6 +29,7 @@ export interface IHumanGateConfig {
 
 /** Shared instances HumanGate needs; created once by AIGateway and passed as the second constructor argument. */
 export interface IHumanGateDeps {
+  /** Where the paused runs live; `transition` is the atomic step of every decision. */
   runStore: IRunStore;
 }
 
@@ -30,8 +40,21 @@ export interface IHumanGateDeps {
  */
 export interface IHumanGate {
   /**
-   * Persists the run as PAUSED with its envelopes (runId, a fresh pauseId and one expiresAt added to each) and returns them for the UI.
-   * One envelope per tool call of the step that waits for a human (D102), or the one envelope of a result review (D99).
+   * pause -- stores the run as PAUSED with the cards of its pause
+   *
+   * # About
+   *
+   * > The run stops here; these are the cards the UI shows.
+   *
+   * Stamps every draft with the run's id, one fresh `pauseId` and one `expiresAt` (now + `timeoutMs`), saves the run as
+   * PAUSED with them as `pending` and returns them. One envelope per tool call of the step that waits for a human (D102),
+   * or the one envelope of a result review (D99). An empty list is a 500 (error 5376634521017): a pause without a card
+   * could never be answered.
+   *
+   * # Who needs it
+   *
+   * `settleRun`, when the loop stopped on tool calls that need a human; `settleReviewPause`, when the answer waits for a
+   * reviewer.
    */
   pause(args: {
     tenantId: string;
@@ -119,13 +142,19 @@ export interface IHumanGate {
     decisions: IResumeDecision[];
   }): Array<{envelope: TPauseEnvelope; decision: IResumeDecision}>;
 
-  /** The current envelopes of a paused run, for reloading the UI; null when the run is not paused. */
-  getPending(args: {
-    tenantId: string;
-    runId: string;
-  }): Promise<TPauseEnvelope[] | null>;
-
-  /** Paused runs of a tenant (optionally one user), for the inbox UI. */
+  /**
+   * listPaused -- the paused runs of a tenant
+   *
+   * # About
+   *
+   * > The inbox, as the store has it.
+   *
+   * `RunStore.listPaused`: the tenant's PAUSED runs, one user's when `userId` is given.
+   *
+   * # Who needs it
+   *
+   * `AIGateway.listPausedRuns`, which strips the reviewer's draft before the asker sees the list (D111).
+   */
   listPaused(args: {
     tenantId: string;
     userId?: string;
@@ -172,6 +201,7 @@ export interface IHumanGate {
 
 /** What every pause carries; HumanGate adds `runId`, `pauseId` and `expiresAt` (one of each for every envelope of a pause). */
 interface IPauseEnvelopeBase {
+  /** The run that paused; what `resume`, `cancelRun` and `getPausedRun` take. */
   runId: string;
   /**
    * Names this pause of the run: `resume` must pass it, and a decision for an earlier pause of the same run is refused.
@@ -196,9 +226,11 @@ export type TPauseEnvelope =
 
 /** A tool call awaits a human before it runs. */
 export interface IToolApprovalEnvelope extends IPauseEnvelopeBase {
+  /** The discriminator: a tool call waits. */
   kind: EPauseKind.TOOL_APPROVAL;
   /** The call this card is about, `toolCall.callId` repeated: the key a decision names (`IResumeDecision.callId`). */
   callId: string;
+  /** The call as the model asked for it: the tool's name and its input; what the card shows and what EDIT replaces. */
   toolCall: IToolCallPart;
   /**
    * What the model reads if the human rejects the call, from the tool's policy for this call (D87).
@@ -225,6 +257,7 @@ export interface IToolApprovalEnvelope extends IPauseEnvelopeBase {
  * delivers the reviewer's text instead, REJECT drops it; none of them calls the model.
  */
 export interface IResultReviewEnvelope extends IPauseEnvelopeBase {
+  /** The discriminator: the answer waits. */
   kind: EPauseKind.RESULT_REVIEW;
   /**
    * The answer that waits for the reviewer.
@@ -242,6 +275,7 @@ export interface IResultReviewEnvelope extends IPauseEnvelopeBase {
  * Carried by `IResultReviewEnvelope`; built by the gateway from the checked answer of the run.
  */
 export interface IReviewedAnswer {
+  /** The answer's text as the end user would read it; EDIT replaces it. */
   text: string;
   /** The parsed, schema-checked answer; present when the run had an `outputSchema`. */
   structured?: unknown;
@@ -253,21 +287,27 @@ export interface IReviewedAnswer {
 
 /** The model asks the user (D62): the questions are the input of its `ask_user_question` call, the answers come back with ANSWER. */
 export interface IUserQuestionEnvelope extends IPauseEnvelopeBase {
+  /** The discriminator: the user is asked. */
   kind: EPauseKind.USER_QUESTION;
   /** The `ask_user_question` call this card is about: the key a decision names (`IResumeDecision.callId`). */
   callId: string;
+  /** The form, as the model filled the tool's input; the UI renders it, `validateAnswers` checks the answers against it. */
   userQuestions: IUserQuestions;
 }
 
 /** What the model asks the user, as the UI renders it: a titled form of one or more questions. */
 export interface IUserQuestions {
+  /** Short title of what is missing, in the user's language. */
   title: string;
+  /** Why the answers are needed, one or two sentences. */
   description?: string;
+  /** The questions, in the order the answers come back; at least one. */
   questions: IUserQuestion[];
 }
 
 /** One question of a user-question form; `mode` says how the UI renders it and what the answer carries. */
 export interface IUserQuestion {
+  /** The question, in the user's language; repeated in the answer so the model reads both together. */
   text: string;
   /** One option (RADIO), several (CHECK) or a typed answer (FREE_TEXT). */
   mode: EUserQuestionMode;
@@ -315,8 +355,11 @@ export type TPauseEnvelopeDraft = TPauseEnvelope extends infer E
 
 /** Why a run paused. */
 export enum EPauseKind {
+  /** A tool call waits for a human's APPROVE, EDIT or REJECT (`IToolApprovalEnvelope`). */
   TOOL_APPROVAL = "TOOL_APPROVAL",
+  /** The final answer waits for a reviewer's APPROVE, EDIT or REJECT (`IResultReviewEnvelope`, D99). */
   RESULT_REVIEW = "RESULT_REVIEW",
+  /** The model asked the user; the run waits for ANSWER (`IUserQuestionEnvelope`, D62). */
   USER_QUESTION = "USER_QUESTION",
 }
 
@@ -337,6 +380,7 @@ export enum EResumeAction {
 
 /** The human's decision. */
 export interface IResumeDecision {
+  /** What the human decided; must be among the envelope's `allowed`. */
   action: EResumeAction;
   /**
    * The tool call this decision is for: the `callId` of its envelope.

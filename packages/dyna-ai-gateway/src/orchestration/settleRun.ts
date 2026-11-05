@@ -561,7 +561,10 @@ const settleAbortedRun = async (
   return response;
 };
 
-/** The produced messages without the text of the final assistant message: a blocked answer leaves the tool turns only. */
+/**
+ * The produced messages without the text of the final assistant message.
+ * A blocked or withheld answer leaves the tool turns only.
+ */
 const withoutFinalAnswer = (messages: IMessage[]): IMessage[] => {
   const last = messages[messages.length - 1];
   if (!last || last.role !== EMessageRole.ASSISTANT) return messages;
@@ -576,13 +579,20 @@ const withoutFinalAnswer = (messages: IMessage[]): IMessage[] => {
 
 /** What a stored run keeps of its first step, so a resumed run is not poorer than a fresh one (D36); `skills` when the call brought any (D124). */
 export interface IRunMemory {
+  /** The thread's turn count before the run's question was stored: how far back its turns reach. */
   startTurnCount: number;
+  /** The knowledge-base chunks of the first step's request: the citations of the answer, whenever it comes. */
   chunkIds: string[];
+  /** The version of CHAT_MAIN the request was rendered from; annotated on every trace of the run. */
   templateVersion: number;
+  /** The skills the call brought (D124); absent when it brought none. */
   skills?: ISkill[];
 }
 
-/** A fresh run must bring its turn count and template version: a settlement without them is a gateway bug, not a resume. */
+/**
+ * A fresh run must bring its turn count and template version.
+ * A settlement without them is a gateway bug (500), not a resume.
+ */
 const requireRunMemory = (
   {
     threadId,

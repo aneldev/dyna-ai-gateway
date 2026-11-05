@@ -71,11 +71,6 @@ describe("ModelRegistry", () => {
       });
     });
 
-    test("getCaps returns the caps of the model", async () => {
-      const {registry} = await setup([makeModel("model-a")]);
-      expect(await registry.getCaps({modelId: "model-a"})).toEqual(makeModel("model-a").caps);
-    });
-
     test("listModels returns enabled models only, by default", async () => {
       const {registry} = await setup([makeModel("model-a"), makeModel("model-b", {enabled: false})]);
       expect((await registry.listModels()).map(model => model.id)).toEqual(["model-a"]);

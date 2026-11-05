@@ -6,9 +6,19 @@ import {
 import {IToolDef} from "../../../contracts";
 
 /**
- * Our tool definitions → SDK tools **without an executor**: the SDK can only report that the model asked for a tool;
- * running it stays with the caller (hooks, approvals). With `cacheLast` the last tool carries Anthropic's cache marker:
- * the tool definitions render before the system prompt, so a marker there is a read point for the tools alone.
+ * toSdkTools -- our tool definitions as SDK tools without an executor
+ *
+ * # About
+ *
+ * > The SDK may only report that the model asked for a tool; running it stays with the loop.
+ *
+ * One SDK `tool` per definition with its description and input schema and no `execute`, so the call returns the request and
+ * the hooks decide (approvals, denials, D87). With `cacheLast` the last tool carries Anthropic's cache marker: the tool
+ * definitions render before the system prompt, so a marker there is a read point for the tools alone.
+ *
+ * # Who needs it
+ *
+ * `LLMClient.complete`, on every call.
  */
 export const toSdkTools = (
   {

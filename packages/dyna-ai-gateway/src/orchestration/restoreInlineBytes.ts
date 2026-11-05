@@ -6,8 +6,22 @@ import {
 import {IAIGatewayDeps} from "../types";
 
 /**
- * The messages of a paused run with the bytes of their files loaded again from the FileStore (a stored run keeps none).
- * A file deleted while the run waited becomes a text note, so the model knows it is gone; any other read error is thrown.
+ * restoreInlineBytes -- loads the bytes of a paused run's files again, for its resume
+ *
+ * # About
+ *
+ * > A stored run keeps no copy of an uploaded file; the resume reads the bytes from the FileStore again.
+ *
+ * Returns the run's messages with every INLINE_FILE part carrying its bytes. A file deleted while the run waited becomes a
+ * text note, so the model knows it is gone; any other read error is thrown. Messages without a file part are returned as
+ * they are.
+ *
+ * Runs in `continueRun` before `LLMClient.run` continues the stored messages; `settleRun` strips the bytes again when it
+ * stores the run (`withoutInlineBytes`).
+ *
+ * # Who needs it
+ *
+ * `AIGateway.continueRun`.
  */
 export const restoreInlineBytes = async (
   {
@@ -49,5 +63,6 @@ export const restoreInlineBytes = async (
   };
 }));
 
+/** True for an error with `status` 404: the FileStore's "no such file". */
 const isNotFound = (error: unknown): boolean =>
   typeof error === "object" && error !== null && "status" in error && error.status === 404;

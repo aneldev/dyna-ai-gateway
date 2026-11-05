@@ -77,9 +77,14 @@ export const estimateMessagesTokens = (
   },
 ): number => messages.reduce((sum, message) => sum + countMessage(message, provider), 0);
 
+/** The token count of one message: the sum of its parts. */
 const countMessage = (message: IMessage, provider: EModelProvider | undefined): number =>
   message.parts.reduce((sum, part) => sum + countPart(part, provider), 0);
 
+/**
+ * The token count of one part.
+ * Text by its text, a tool call or result by name and JSON, a file by `countFileTokens`.
+ */
 const countPart = (part: TMessagePart, provider: EModelProvider | undefined): number => {
   switch (part.kind) {
     case EPartKind.TEXT:

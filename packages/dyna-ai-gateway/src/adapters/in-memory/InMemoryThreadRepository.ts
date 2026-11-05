@@ -16,19 +16,60 @@ import {
 import {makeTenantKey} from "./utils/makeTenantKey";
 
 /**
- * Threads and their turns in Maps. Copies in and out, like a database.
- * Turns keep insertion order; the thread list is newest first by `createdAt`, then by id (D37).
+ * InMemoryThreadRepository -- the thread repository in Maps, for tests and the sandbox
+ *
+ * # About
+ *
+ * > Behaves like a database without one: copies in and out, turns in insertion order.
+ *
+ * Implements `IThreadRepository` so the `ThreadStore` runs with no infrastructure. The threads and their turns are two
+ * Maps keyed by tenant + id; the thread list is newest first by `createdAt`, then by id (D37). `acquireLease` is atomic
+ * by construction: one synchronous read and write with no await between them.
+ *
+ * # Who needs it
+ *
+ * The gateway tests (`gatewayConfigBase`), the dev sandbox and the cookbook's first run; a host app uses its own adapter.
+ *
+ * # Pitfalls
+ *
+ * Production: nothing survives the process, nothing is shared between processes.
  */
 export class InMemoryThreadRepository implements IThreadRepository {
   private readonly threads = new Map<string, IThread>();
   private readonly turns = new Map<string, ITurn[]>();
 
+  /**
+   * saveThread -- inserts or replaces the thread
+   *
+   * # About
+   *
+   * > By `thread.id` within `thread.tenantId`; the turns are not part of it.
+   *
+   * The thread record whole: title, status, working memory, lease, dates.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.createThread`, `updateThread`, `appendTurn` (the counts), `setWorkingMemory`.
+   */
   public async saveThread(
     {thread}: {thread: IThread},
   ): Promise<void> {
     this.threads.set(makeTenantKey(thread.tenantId, thread.id), structuredClone(thread));
   }
 
+  /**
+   * loadThread -- the thread of a tenant by id
+   *
+   * # About
+   *
+   * > As stored, `deletedAt` included; null when the tenant has no thread with this id.
+   *
+   * The thread record whole, without its turns.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.getThread` and `findThread`.
+   */
   public async loadThread(
     {
       tenantId,
@@ -42,6 +83,21 @@ export class InMemoryThreadRepository implements IThreadRepository {
     return thread ? structuredClone(thread) : null;
   }
 
+  /**
+   * listThreads -- one page of a user's threads
+   *
+   * # About
+   *
+   * > Newest first by `createdAt`, the id as the tie-break (D37); the cursors are thread ids.
+   *
+   * A thread whose `deletedAt` is set is not listed. `endingBefore` reads the `limit` threads older than it, `startingAfter`
+   * the `limit` threads right after it (the page next to the cursor, not the newest). A cursor that is not a listed thread of
+   * this user is a 404. The store has validated `limit` and that only one cursor is set.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.listThreads`.
+   */
   public async listThreads(
     {
       tenantId,
@@ -89,6 +145,19 @@ export class InMemoryThreadRepository implements IThreadRepository {
     };
   }
 
+  /**
+   * appendTurn -- stores one turn at the end of the thread
+   *
+   * # About
+   *
+   * > The order of appending is the order `loadTurns` returns.
+   *
+   * The turn whole: role, parts, dates. The thread's counts are the store's, saved with `saveThread`.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.appendTurn`.
+   */
   public async appendTurn(
     {
       tenantId,
@@ -104,6 +173,19 @@ export class InMemoryThreadRepository implements IThreadRepository {
     this.turns.set(key, [...this.turns.get(key) ?? [], structuredClone(turn)]);
   }
 
+  /**
+   * loadTurns -- a slice of the thread's turns
+   *
+   * # About
+   *
+   * > In the order they were appended, reversed when `desc`; `skip` and `limit` cut it.
+   *
+   * The turns whole, as stored.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.getTurns` and `getLastTurns`.
+   */
   public async loadTurns(
     {
       tenantId,
@@ -125,6 +207,19 @@ export class InMemoryThreadRepository implements IThreadRepository {
     return structuredClone(turns.slice(skip, skip + limit));
   }
 
+  /**
+   * listThreadIds -- the ids of the tenant's threads
+   *
+   * # About
+   *
+   * > Of one user when `userId` is given; deleted threads excluded.
+   *
+   * The ids only, in any order, for a bulk operation over every thread.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.listThreadIds`, for the gateway's `delete` with `"all"`.
+   */
   public async listThreadIds(
     {
       tenantId,
@@ -139,6 +234,20 @@ export class InMemoryThreadRepository implements IThreadRepository {
       .map(thread => thread.id);
   }
 
+  /**
+   * delete -- hard-deletes threads with their turns and working memory
+   *
+   * # About
+   *
+   * > The listed ids, or every thread of the tenant for `"all"`.
+   *
+   * Narrowed to one user when `userId` is given. An unknown id or one of another tenant or user is ignored. Returns the
+   * counts of the threads and of the turns deleted.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.delete`, for the gateway's `delete` and `deleteUserData`.
+   */
   public async delete(
     {
       tenantId,
@@ -161,6 +270,20 @@ export class InMemoryThreadRepository implements IThreadRepository {
     return counts;
   }
 
+  /**
+   * anonymizeByUser -- keeps a user's threads as skeletons
+   *
+   * # About
+   *
+   * > GDPR pseudonymisation: the words go, the record stays.
+   *
+   * `userId` becomes the pseudonym, the title and the working memory are emptied, the status becomes CLOSED, the turns are
+   * deleted; id, turnCount and dates stay. Returns how many of each.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.anonymizeByUser`, for the gateway's `anonymizeUserData`.
+   */
   public async anonymizeByUser(
     {
       tenantId,
@@ -191,6 +314,21 @@ export class InMemoryThreadRepository implements IThreadRepository {
     return counts;
   }
 
+  /**
+   * acquireLease -- takes the thread's lease atomically
+   *
+   * # About
+   *
+   * > Check-and-set (D77): one caller at a time on a thread.
+   *
+   * Sets the lease to `{token, expiresAt}` and returns true only when the thread has no lease or its lease has expired at
+   * `now`; otherwise changes nothing and returns false. One database operation (Mongo: `findOneAndUpdate` with the condition
+   * in the filter), never a load followed by a save.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.acquireLease`, before every call on a thread.
+   */
   public async acquireLease(
     {
       tenantId,
@@ -220,6 +358,19 @@ export class InMemoryThreadRepository implements IThreadRepository {
     return true;
   }
 
+  /**
+   * releaseLease -- gives the thread's lease back
+   *
+   * # About
+   *
+   * > Only the holder's token clears it.
+   *
+   * Clears the lease when it carries this `token`; a lease another call took meanwhile stays.
+   *
+   * # Who needs it
+   *
+   * `ThreadStore.releaseLease`, when the call ends.
+   */
   public async releaseLease(
     {
       tenantId,
@@ -240,13 +391,14 @@ export class InMemoryThreadRepository implements IThreadRepository {
     });
   }
 
+  /** The Map keys of the user's threads. */
   private getKeysOfUser(tenantId: string, userId: string): string[] {
     return [...this.threads.entries()]
       .filter(([, thread]) => thread.tenantId === tenantId && thread.userId === userId)
       .map(([key]) => key);
   }
 
-  /** Deletes the turns of the threads under `keys`; returns the counts of the threads and of the turns deleted. */
+  /** Deletes the turns of the threads under `keys`; returns the thread and turn counts. */
   private removeTurns(keys: string[]): IThreadCounts {
     const turns = keys.reduce((sum, key) => sum + (this.turns.get(key)?.length ?? 0), 0);
     for (const key of keys) this.turns.delete(key);
@@ -257,6 +409,9 @@ export class InMemoryThreadRepository implements IThreadRepository {
   }
 }
 
-/** Newest `createdAt` first; the id breaks a tie, so a page border between two threads of one millisecond is stable. */
+/**
+ * Newest `createdAt` first; the id breaks a tie.
+ * A page border between two threads of the same millisecond is then stable.
+ */
 const compareNewestFirst = (a: IThread, b: IThread): number =>
   b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id);

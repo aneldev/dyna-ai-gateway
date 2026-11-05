@@ -19,7 +19,26 @@ export type TResolvedStrategy =
   | Required<IWorkingMemorySlidingWindow>
   | Required<IWorkingMemorySummaryBuffer>;
 
-/** The strategy of one call, defaults applied: the profile's `workingMemory`, else the config's `strategy`, else SUMMARY_BUFFER. */
+/**
+ * resolveStrategy -- the strategy of one call, every option filled
+ *
+ * # About
+ *
+ * > Profile first, then the gateway's default, then `SUMMARY_BUFFER`.
+ *
+ * Takes the profile's `workingMemory`, else the config's `strategy`, else `{type: SUMMARY_BUFFER}`, and fills the
+ * options it leaves out with the defaults: `chatHistoryRatio` 0.8 and `maxLoadedTurns` 200 for the sliding window;
+ * `recentTurns` 20, `updateEveryTurns` 1, `maxSummaryChars` 1500 and `maxFacts` 30 for the summary buffer.
+ *
+ * # Who needs it
+ *
+ * `WorkingMemory.load` and `WorkingMemory.saveContext`, once per call.
+ *
+ * # Pitfalls
+ *
+ * The profile's strategy replaces the config's as a whole, the options are not merged: a profile with
+ * `{type: SUMMARY_BUFFER}` gets the defaults, not the `recentTurns` of the gateway's config.
+ */
 export const resolveStrategy = (
   {
     config,

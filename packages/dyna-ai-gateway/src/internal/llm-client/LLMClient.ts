@@ -64,16 +64,27 @@ import {withoutRequestBody} from "./utils/withoutRequestBody";
 
 /** The options both SDK entry points take. */
 interface ISdkCallOptions {
+  /** The provider's model, from `createLanguageModel`. */
   model: LanguageModel;
+  /** The system prompt as the provider takes it: one string, or one message per block with the cache marker. */
   system: string | SystemModelMessage[];
+  /** The transcript in SDK shape. */
   messages: ModelMessage[];
+  /** The tools the model may request, without executors. */
   tools: ToolSet;
+  /** The request's output cap. */
   maxOutputTokens: number;
+  /** The request's temperature; undefined for the provider default. */
   temperature: number | undefined;
+  /** Retries on transient provider errors (`ILLMClientConfig.maxRetries`). */
   maxRetries: number;
+  /** Per call, in ms (`ILLMClientConfig.timeoutMs`). */
   timeout: number;
+  /** The caller's signal, when given. */
   abortSignal: AbortSignal | undefined;
+  /** The structured-output spec of the request's `outputSchema`; undefined for free text. */
   output: ReturnType<typeof Output.object<unknown>> | undefined;
+  /** Call-level provider options: OpenAI's prompt cache key, else undefined. */
   providerOptions: TSdkProviderOptions;
 }
 
@@ -91,15 +102,55 @@ const FINISH_REASONS: Record<FinishReason, EFinishReason> = {
 
 /** What one SDK call gives back, whether it was generated or streamed. */
 interface ISdkOutcome {
+  /** The text the model wrote; empty when it only asked for tools. */
   text: string;
+  /** The tool requests of the call, unexecuted. */
   toolCalls: Array<{toolCallId: string; toolName: string; input: unknown}>;
+  /** The SDK's finish reason, mapped by `FINISH_REASONS`. */
   finishReason: FinishReason;
+  /** The provider's usage; undefined when it reported none. */
   usage: LanguageModelUsage | undefined;
   /** The parsed structured output; undefined when none was asked for or it could not be parsed. */
   output: unknown;
 }
 
-/** The only class that imports the AI SDK. Three doors; decisions live in hooks. */
+/**
+ * LLMClient -- the one door to every model provider
+ *
+ * # About
+ *
+ * > Three doors; the decisions live in hooks.
+ *
+ * The only class that imports the AI SDK: `complete` makes one model call and may return tool requests it never
+ * executes, `run` is the agent loop (`runAgentLoop`) with one `complete` per step and every decision outsourced to
+ * `ILLMClientHooks`, `embed` turns texts into vectors. The `modelId` is resolved through the `ModelRegistry`, the credentials
+ * come from the config, the provider adapters (`createLanguageModel`, `createEmbeddingModel`, one per `EModelProvider`, D84)
+ * and the mappers to the SDK's shapes live in `utils/`. Because every model call passes here, the client also asks the
+ * `UsageGuard` before and reports to it after every call (D121), and records every call in the `Trace` under the call's
+ * `ILLMClientCallMeta`; the gateway only annotates the entry afterwards. The system prompt arrives as blocks (D123): a
+ * provider with a cache marker gets one message per block, the others the texts joined.
+ *
+ * Sits between the orchestration and the helpers that call a model (`Guardrails`' judge, `QueryRewriter`, the memories,
+ * `Embedder`) and the providers behind the SDK.
+ *
+ * # Who needs it
+ *
+ * `AIGateway` for the answer and the run; `createJudge`, `QueryRewriter`, `UserMemoryStore`, `updateSummary` for their
+ * completions; `Embedder` for `embed`. Constructed once from `IAIGatewayConfig.llmClient`; the tests inject a
+ * `FakeLLMClient` through `IAIGatewayDeps.llmClient`.
+ *
+ * # What needs
+ *
+ * `ILLMClientConfig`: the credentials per provider, the timeout and the retries. `ILLMClientDeps`: the `ModelRegistry`,
+ * the `UsageGuard` and the `Trace`.
+ *
+ * # Pitfalls
+ *
+ * The SDK's own loop (`stopWhen`, `ToolLoopAgent`) is not used: a run must pause mid-loop, be stored and continue in another
+ * process, so the loop is ours and the SDK sees one call per step. A provider failure is a 502 with the provider's error as
+ * `parentError`, stripped of the request body (`withoutRequestBody`): a logger never writes the prompt. An aborted call
+ * rejects with the signal's reason, is reported with zero usage and is not traced (D90).
+ */
 export class LLMClient implements ILLMClient {
   constructor(
     private readonly config: ILLMClientConfig,
@@ -107,13 +158,25 @@ export class LLMClient implements ILLMClient {
   ) {}
 
   /**
-   * One model call. May return tool requests; never executes them. Streams text via hooks.onEvent when given.
-   * A request with a temperature on a model without caps.temperature is refused (400) before the provider is called (D82).
-   * Before the provider is called the UsageGuard asks the app (`check`); a no rejects with the usage-denied error
-   * (`isUsageDeniedError`, 429) and the provider is not called. After the call the app is told what it used (`addUsage`), also
-   * when the call failed or was aborted — then with zero usage and no trace entry, so an adapter that reserved can settle.
-   * A provider failure is thrown as a 502 with the provider's error as parentError.
-   * An aborted `abortSignal` rejects with its reason, not a 502: the partial stream is neither returned nor traced (D90).
+   * complete -- one model call
+   *
+   * # About
+   *
+   * > Checked before, reported and traced after; tool requests come back unexecuted.
+   *
+   * Resolves the model, refuses a temperature on a model without `caps.temperature` (400, D82), asks the `UsageGuard`
+   * (a no rejects with the usage-denied error, 429, and the provider is not called), then makes the SDK call: streamed
+   * through `hooks.onEvent` (TEXT_DELTA, then DONE) when hooks are given, generated otherwise. Returns the text, the parsed
+   * structured output when the request had a schema, the tool requests as the model made them, the finish reason, the usage
+   * and the trace id. After the call the app is told what it used and the entry is recorded, also for a failed or aborted
+   * call (then with zero usage and no entry). A provider failure is a 502; an aborted signal rejects with its reason, the
+   * partial stream is neither returned nor traced (D90). An answer that does not parse against the schema is returned as
+   * text, for the `Guardrails` to report.
+   *
+   * # Who needs it
+   *
+   * `AIGateway` for an `ask`; `run`, once per step; `createJudge`, `QueryRewriter`, `UserMemoryStore.extract` and
+   * `updateSummary` for their one completion.
    */
   public async complete(
     {
@@ -268,11 +331,23 @@ export class LLMClient implements ILLMClient {
   }
 
   /**
-   * The agent loop (`runAgentLoop`), with one `complete` call per step: tools are executed through hooks, the run pauses when
-   * decideToolCall says so, writes a denied result when it denies a call (D87), and stops at limits.maxSteps.
-   * The tools of each step are the ones `hooks.prepareStep` returns; `tools` is the set the run starts with.
-   * `abortSignal` ends the loop between steps, in a model call or in a tool (a policy predicate runs to its end): the outcome is
-   * ABORTED with the steps that completed (D90).
+   * run -- the agent loop
+   *
+   * # About
+   *
+   * > One `complete` per step; every decision is a hook the gateway implements.
+   *
+   * Runs `runAgentLoop` with `complete` as its model call. Each step offers the tools `hooks.prepareStep` returns; a tool
+   * request is decided by `hooks.decideToolCall` (ALLOW runs it through `hooks.executeTool`, DENY writes a denied result the
+   * model reads, NEEDS_APPROVAL pauses the run, D87), `hooks.endsRun` may end the run after the step with one final step
+   * without tools (D86), and `limits.maxSteps` ends it with finishReason LENGTH. A `resume` continues a paused run from its
+   * stored messages with the human's decisions. The steps stream through `hooks.onEvent` with their `stepIndex`; DONE is sent
+   * once, at the end. The signal ends the loop between steps, in a model call or in a tool: the outcome is ABORTED with the
+   * steps that completed (D90).
+   *
+   * # Who needs it
+   *
+   * `AIGateway` for a `run` and for a `resume`; `tools` is the set the run starts with, as `prepareCall` resolved it.
    */
   public async run(
     {
@@ -302,12 +377,12 @@ export class LLMClient implements ILLMClient {
         messages: IMessage[];
         /** One per pending call the human decided on; a single decision without `callId` is for the first unresolved call. */
         decisions: IResumeDecision[];
-        /** The policy's text for a rejection, per `callId` (D87); a call without one gets `DEFAULT_TOOL_REJECTION_TEXT`. */
+        /** The policy's text for a rejection, per `callId` (D87), as the pause carried it; a call without one gets `DEFAULT_TOOL_REJECTION_TEXT`. */
         rejectionTexts?: Record<string, string>;
       };
       /**
-       * The call's signal; every step's model call and tool runs under it.
-       * Aborted: the outcome is ABORTED.
+       * The call's signal: aborts the model call in flight and the tool in flight.
+       * The loop then returns ABORTED with the steps that completed.
        */
       abortSignal?: AbortSignal;
     },
@@ -348,10 +423,20 @@ export class LLMClient implements ILLMClient {
   }
 
   /**
-   * Text → vectors with an embedding model: one vector per text, in the order of the texts.
-   * The model must have caps.embeddings (400 otherwise). The call is checked with the UsageGuard, reported to it and traced like every
-   * other (no request or result in the trace entry: the usage is what matters). A provider failure is thrown as a 502, after the
-   * usage adapter was told the call used nothing.
+   * embed -- texts to vectors
+   *
+   * # About
+   *
+   * > One vector per text, in order; checked, reported and traced like a completion.
+   *
+   * Refuses a model without `caps.embeddings` (400), asks the `UsageGuard` with the token count of the texts, embeds them in
+   * one SDK call under the client's timeout and retries, then reports the usage and records the entry (kind EMBED, no
+   * request and no result: the usage is what matters). A provider failure is a 502, after the app was told the call used
+   * nothing. An empty list returns an empty list without a call.
+   *
+   * # Who needs it
+   *
+   * `Embedder`, for the KB ingestion and the KB search.
    */
   public async embed(
     {
@@ -422,11 +507,25 @@ export class LLMClient implements ILLMClient {
     return embedded.embeddings;
   }
 
-  /** Providers with credentials configured. */
+  /**
+   * providers -- the providers with credentials
+   *
+   * # About
+   *
+   * > Which of `EModelProvider` this client can call.
+   *
+   * The providers that have an entry in `ILLMClientConfig.providers`, in enum order. A model of any other provider is a 400
+   * when it is called.
+   *
+   * # Who needs it
+   *
+   * The real-provider tests, to skip a provider without a key; a host that lists what its gateway can reach.
+   */
   public get providers(): EModelProvider[] {
     return Object.values(EModelProvider).filter(provider => this.config.providers[provider] !== undefined);
   }
 
+  /** The config's credentials of the model's provider; a provider without an entry is a 400. */
   private getCredentials(model: IModelInfo): IProviderCredentials {
     const credentials = this.config.providers[model.provider];
     if (!credentials) {
@@ -443,6 +542,7 @@ export class LLMClient implements ILLMClient {
     return credentials;
   }
 
+  /** The SDK call without streaming (`generateText`), as one outcome. */
   private async generate(options: ISdkCallOptions): Promise<ISdkOutcome> {
     const result = await generateText(options);
     return {
@@ -454,6 +554,10 @@ export class LLMClient implements ILLMClient {
     };
   }
 
+  /**
+   * The SDK call streamed (`streamText`): every text delta goes to `hooks.onEvent`, then the outcome is assembled.
+   * An error the stream reported on the way is thrown after the stream ended.
+   */
   private async stream(options: ISdkCallOptions, hooks: Pick<ILLMClientHooks, "onEvent">): Promise<ISdkOutcome> {
     let streamError: unknown;
     const result = streamText({
@@ -550,7 +654,10 @@ export class LLMClient implements ILLMClient {
     });
   }
 
-  /** Asks the app through the UsageGuard; a no throws the usage-denied error, so the provider is never called. */
+  /**
+   * Asks the app through the UsageGuard.
+   * A no throws the usage-denied error: the provider is not called.
+   */
   private async askUsageGuard(
     {
       meta,
@@ -577,7 +684,10 @@ export class LLMClient implements ILLMClient {
     }
   }
 
-  /** A call that was approved but failed or was aborted: the app is told it used nothing, so a reservation can be settled. */
+  /**
+   * An approved call that failed or was aborted.
+   * The app is told it used nothing, so a reservation can settle.
+   */
   private reportNoUsage(
     {
       meta,
@@ -600,6 +710,7 @@ export class LLMClient implements ILLMClient {
     });
   }
 
+  /** The provider's failure as a 502, the SDK error as `parentError` without the request body. */
   private toProviderError(error: unknown, model: IModelInfo): Error {
     return dynaError({
       code: 5372567786196,
@@ -615,7 +726,7 @@ export class LLMClient implements ILLMClient {
   }
 }
 
-/** The factors of a call as the UsageGuard wants them: the meta plus the ids the LLMClient knows. */
+/** The factors of a call as the UsageGuard wants them: the meta plus the trace and model ids. */
 const toUsageCall = (meta: ILLMClientCallMeta, traceId: string, modelId: string): IUsageCall => ({
   traceId,
   tenantId: meta.tenantId,

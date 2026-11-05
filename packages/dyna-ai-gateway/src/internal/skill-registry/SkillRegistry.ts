@@ -245,7 +245,7 @@ export class SkillRegistry implements ISkillRegistry {
     });
   }
 
-  /** The tool's result for a skill: `name` and `body`, nothing else (the description is already in the prompt). */
+  /** The tool's result for a skill: `name` and `body`; the description is already in the prompt. */
   private toResult(skill: ISkill): ILoadSkillResult {
     return {
       name: skill.name,

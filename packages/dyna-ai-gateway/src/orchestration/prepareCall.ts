@@ -28,11 +28,13 @@ import {makeFailedResponse} from "./makeFailedResponse";
 
 /** What steps 1–6 produce for ask() and run(). */
 export interface IPreparedCall {
+  /** The profile of the call (`input.profileId`), as the AIProfileStore returned it. */
   profile: IAIProfile;
   /** The thread as it was before this call added its user turn: its turnCount is the count before the call. */
   thread: IThread;
   /** The tools of the call and which of them need approval; empty for ask(). */
   resolved: IResolvedTools;
+  /** The model request the ContextAssembler built, with the ids of the chunks it kept and its own issues. */
   context: IAssembledContext;
   /** What the call reports before the model ran: the input rules' WARNINGs, then the assembler's (files dropped, turns trimmed). */
   issues: IIssue[];
@@ -40,16 +42,56 @@ export interface IPreparedCall {
   chunks: IChunk[];
 }
 
+/**
+ * isFailedResponse -- tells a FAILED response from a prepared call
+ *
+ * # About
+ *
+ * > `prepareCall` returns one or the other; the caller answers or goes on.
+ *
+ * A response carries `kind`, a prepared call never does. `AIGateway.executeAsk` and `executeRun` return the response as it
+ * is when this is true, and run the model otherwise.
+ */
 export const isFailedResponse = (prepared: IPreparedCall | IFailedResponse): prepared is IFailedResponse =>
   "kind" in prepared;
 
 /**
- * Steps 1–6, shared by ask() and run(): profile and model (and the skills of the call, D124), input check, thread and the user turn,
- * the knowledge-base search inside the caller's kbFilters, the tools (with `load_skill` when a run has skills), the request
- * (the ContextAssembler asks the working memory for the thread's window; a run lists the skills, an ask inlines them).
- * Returns FAILED for a rejected prompt (nothing is created then) and for a call seen aborted between the steps: before the thread
- * nothing is stored, after it the user turn is (`makeAbortedResponse`); an abort inside the input check is thrown as the signal's
- * reason, as the rules do. A model call the usage adapter refuses (the query rewrite, the search's embedding) is thrown too.
+ * prepareCall -- everything a call does before the model runs, for `ask` and `run` alike
+ *
+ * # About
+ *
+ * > From the input to the model request: six steps, nothing stored before the prompt passed.
+ *
+ * The steps, in order: 1. the profile and its model (and the skills of the call, D124); 2. the input check (`Guardrails.checkInput`),
+ * then the tools of a run (`ToolPolicy.resolve`, with `load_skill` when the run has skills) — still before anything is
+ * stored; 3. the thread (read under the lease, or created) and the user turn; 4. the user's facts and the thread's memory
+ * state; 5. the knowledge-base search inside the caller's `kbFilters`; 6. the request (`ContextAssembler.build`: the working
+ * memory hands it the thread's window; a run lists the skills, an ask inlines them).
+ *
+ * - Returns FAILED for a rejected prompt: nothing was created.
+ * - Returns FAILED for a call seen aborted between the steps (`makeAbortedResponse`, D90): before step 3 nothing is stored,
+ *   after it the user turn is. An abort inside the input check is thrown as the signal's reason, as the rules do.
+ * - Refuses, before anything is stored: an `ask` on a profile that reviews its answers (400, D99), a temperature the model
+ *   does not take (400, D82), a tool name the profile does not allow (400, D48), a thread that waits for a human (409).
+ * - Throws a model call the usage adapter refused (the query rewrite, the search's embedding) and a search that failed:
+ *   the question is not answered without its knowledge base.
+ *
+ * Runs under the thread's lease, right after `withThreadLease` took it; `LLMClient.complete` or `LLMClient.run` comes next,
+ * with what it returns.
+ *
+ * # Who needs it
+ *
+ * `AIGateway.executeAsk` (without tools) and `AIGateway.executeRun` (with them). A resume has a stored request and skips it.
+ *
+ * # What needs
+ *
+ * `callSignal` built by `makeCallSignal` and not yet aborted; with a `threadId`, the thread checked as the caller's own
+ * (`getOwnThread`, D32) and leased.
+ *
+ * # Pitfalls
+ *
+ * The order is the contract: a step that stores (3) comes after every step that can refuse the call for free (1, 2, the
+ * tools). A new check belongs before step 3 when it needs no thread.
  */
 export const prepareCall = async <TStructured>(
   {
@@ -257,6 +299,8 @@ export const prepareCall = async <TStructured>(
       threadId: thread.id,
     },
     filters: input.kbFilters,
+    ...input.kbRetrieval?.k === undefined ? {} : {k: input.kbRetrieval.k},
+    ...input.kbRetrieval?.minScore === undefined ? {} : {minScore: input.kbRetrieval.minScore},
   });
   // 6. The request
   const context = await deps.contextAssembler.build({

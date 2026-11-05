@@ -12,9 +12,19 @@ const CACHE_MARKERS: Partial<Record<EModelProvider, SystemModelMessage["provider
 };
 
 /**
- * Our system blocks → the SDK's `system`. A provider that takes a cache marker (Anthropic: `cache_control: ephemeral`, the
- * 5-minute cache; Amazon Bedrock: a `cachePoint`), with a `cache` block: one system message per block, the `cache` block
- * carrying the marker. Every other case: the texts joined as one string, byte-for-byte the prompt before the blocks existed.
+ * toSdkSystem -- the system prompt as the provider takes it
+ *
+ * # About
+ *
+ * > One message per block with the cache marker where the provider has one; one string otherwise.
+ *
+ * A provider in `CACHE_MARKERS` (Anthropic: `cache_control: ephemeral`, the 5-minute cache; Amazon Bedrock: a `cachePoint`),
+ * with a `cache` block: one system message per block, the `cache` block carrying the marker. Every other case: the texts
+ * joined (`joinSystem`), byte-for-byte the prompt before the blocks existed (D123).
+ *
+ * # Who needs it
+ *
+ * `LLMClient.complete`, on every call.
  */
 export const toSdkSystem = (
   {

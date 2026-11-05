@@ -8,8 +8,22 @@ import {IInlineFilePart} from "../internal";
 import {IAIGatewayDeps} from "../types";
 
 /**
- * The bytes of the files of a question, for the model. Throws a 400 for a pointer of another tenant or of another user
- * (the pointer comes from the client, its `userId` is not trusted) and the FileStore's 404 for a file that is not there.
+ * loadInlineFiles -- the bytes of the files of a question, for the model
+ *
+ * # About
+ *
+ * > The client sends pointers; the gateway loads the bytes, for the caller's own files only.
+ *
+ * Checks every pointer before any read: a file of another tenant or of another user is a 400 (the pointer comes from the
+ * client, its `userId` is not trusted). Then reads the bytes through `FileStore.getBytes`; a file that is not there is the
+ * store's 404.
+ *
+ * Runs in `prepareCall` before the input check and before anything is stored: the rules' judge sends the files to the
+ * model, and a pointer that cannot be loaded creates nothing.
+ *
+ * # Who needs it
+ *
+ * `prepareCall`.
  */
 export const loadInlineFiles = async (
   {

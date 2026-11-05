@@ -120,21 +120,59 @@ import {
   IKbIngestorDeps,
 } from "./internal/kb-ingestor";
 
-/** Everything the gateway needs. Settings and persistence seams only; class instances are created and injected by the gateway. */
+/**
+ * Everything the gateway needs: one config per child, settings and persistence seams only. No class instance is in it;
+ * the gateway creates and injects its children itself.
+ *
+ * Written by the host application and passed to the `AIGateway` constructor; `createGatewayDeps` hands each member to the
+ * child of the same name. A member that is optional has a runtime default of `{}`: the child runs with its own defaults.
+ */
 export interface IAIGatewayConfig {
+  /** The models a profile may name, with their caps and prices: the repository of the `ModelRegistry`. */
   modelRegistry: IModelRegistryConfig;
+  /** Where the profiles live: the repository of the `AIProfileStore`. */
   aiProfileStore: IAIProfileStoreConfig;
+  /** Where the prompt templates live, and the templates seeded on the first run: the `PromptTemplateStore`. */
   promptTemplateStore: IPromptTemplateStoreConfig;
+  /** Where threads and turns live, and how long a call's lease on a thread holds: the `ThreadStore`. */
   threadStore: IThreadStoreConfig;
+  /** Where uploaded files live, the allowed MIME types and the size cap: the `FileStore`. */
   fileStore: IFileStoreConfig;
+  /** The thread memory: its switch and its strategy (`WorkingMemory`). */
   workingMemory: IWorkingMemoryConfig;
+  /** The user memory: its switch, its repository, the caps of the facts and the extraction cadence (`UserMemoryStore`). */
   userMemoryStore: IUserMemoryStoreConfig;
+  /**
+   * How a Markdown document is cut into chunks (`MdChunker`): the token bounds of a chunk and the overlap.
+   *
+   * @default {}
+   */
   mdChunker?: IMdChunkerConfig;
+  /** The embedding model, its dimensions and the batch size (`Embedder`). */
   embedder: IEmbedderConfig;
+  /** Where the chunks and their vectors live (`VectorStore`). */
   vectorStore: IVectorStoreConfig;
+  /** Whether a question is rewritten before the knowledge-base search (`QueryRewriter`). */
   queryRewriter: IQueryRewriterConfig;
+  /**
+   * How many chunks a knowledge-base search returns and the minimum score (`KbRetriever`).
+   *
+   * @default {}
+   */
   kbRetriever?: IKbRetrieverConfig;
+  /**
+   * The application's tools, the tool timeout, the output cap and the error report (`ToolRegistry`). The gateway adds its
+   * built-in tools (the user-memory tools, `ask_user_question`) in front of them.
+   *
+   * @default {} - no tools of the application; the built-in ones are still there
+   */
   toolRegistry?: IToolRegistryConfig;
+  /**
+   * The rules the `ToolPolicy` applies to every run: which permission unlocks which tools, and the guarded workflows
+   * (`requires`).
+   *
+   * @default {}
+   */
   toolPolicy?: IToolPolicyConfig;
   /**
    * What the gateway applies to the skills of every profile and call (D124): the caps `maxSkills` (default 50) and
@@ -144,7 +182,9 @@ export interface IAIGatewayConfig {
    * @default {}
    */
   skillRegistry?: ISkillRegistryConfig;
+  /** Where paused runs live: the repository of the `RunStore`. */
   runStore: IRunStoreConfig;
+  /** How long a pause waits for the human, and whether the model may ask the user a question (`HumanGate`). */
   humanGate: IHumanGateConfig;
   /**
    * The app's usage adapter, asked before every model call and told after it.
@@ -155,7 +195,13 @@ export interface IAIGatewayConfig {
    * @example {adapter: new InMemoryUsageAdapter()} - tests and the sandbox: approves everything, records every call
    */
   usageGuard: IUsageGuardConfig;
+  /**
+   * The application's input and output rules, their timeout and the prompt length cap (`Guardrails`).
+   *
+   * @default {} - the built-in checks only
+   */
   guardrails?: IGuardrailsConfig;
+  /** The provider credentials, the per-call timeout and the retries of a model call (`LLMClient`). */
   llmClient: ILLMClientConfig;
   /**
    * How the system prompt is assembled: the prompt-cache switches (`promptCaching`, `sharePromptCacheAcrossTenants`) and
@@ -164,38 +210,72 @@ export interface IAIGatewayConfig {
    * @example {promptCaching: true, sharePromptCacheAcrossTenants: false} - the stable part of every call is cached, per tenant
    */
   contextAssembler: IContextAssemblerConfig;
+  /** Where the trace entries live: the repository of the `Trace`. */
   trace: ITraceConfig;
+  /**
+   * How many documents are ingested at once (`KbIngestor`).
+   *
+   * @default {}
+   */
   kbIngestor?: IKbIngestorConfig;
-  /** Platform-wide cheap model for helper calls when a profile names none. */
+  /** Platform-wide cheap model for the helper calls (memory, query rewrite, judge) when a profile names none. */
   defaultCheapModelId: string;
 }
 
-/** Every child instance of the gateway, created once by `createGatewayDeps` from the config and the `IAIGatewayOverrides` factories. */
+/**
+ * Every child instance of the gateway, each as its `I<Class>` interface: what the orchestration functions receive as `deps`.
+ *
+ * Created once by `createGatewayDeps` from `IAIGatewayConfig` and the `IAIGatewayOverrides` factories, in dependency order,
+ * and held by the `AIGateway` for its lifetime; the admin getters of the facade hand some of them out.
+ */
 export interface IAIGatewayDeps {
+  /** The models and their caps. */
   modelRegistry: IModelRegistry;
+  /** The profiles. */
   aiProfileStore: IAIProfileStore;
+  /** The prompt templates, versioned. */
   promptTemplateStore: IPromptTemplateStore;
+  /** Builds the model request of a call. */
   contextAssembler: IContextAssembler;
+  /** Threads, turns and the lease. */
   threadStore: IThreadStore;
+  /** Turns from prompts and results, messages from turns. */
   turnBuilder: ITurnBuilder;
+  /** The uploaded files. */
   fileStore: IFileStore;
   /** The thread memory; the built-in `WorkingMemory` unless the host passes its own in `overrides`. */
   workingMemory: IWorkingMemory;
+  /** The remembered facts of a user. */
   userMemoryStore: IUserMemoryStore;
+  /** Cuts a Markdown document into chunks. */
   mdChunker: IMdChunker;
+  /** Embeds texts. */
   embedder: IEmbedder;
+  /** The chunks and their vectors. */
   vectorStore: IVectorStore;
+  /** Rewrites a question before the search. */
   queryRewriter: IQueryRewriter;
+  /** Searches the knowledge base for a call. */
   kbRetriever: IKbRetriever;
+  /** Writes documents into the knowledge base; the second root the facade exposes. */
   kbIngestor: IKbIngestor;
+  /** The tools: parsing and execution. */
   toolRegistry: IToolRegistry;
+  /** Which tools a call gets and what happens to a call of them. */
   toolPolicy: IToolPolicy;
+  /** The skills of a profile and a call. */
   skillRegistry: ISkillRegistry;
+  /** The paused runs. */
   runStore: IRunStore;
+  /** Pauses and resumes a run. */
   humanGate: IHumanGate;
+  /** Asks the application's usage adapter before a model call and tells it after. */
   usageGuard: IUsageGuard;
+  /** The input and output checks. */
   guardrails: IGuardrails;
+  /** The one place that calls a model. */
   llmClient: ILLMClient;
+  /** The record of every model call. */
   trace: ITrace;
 }
 
@@ -214,29 +294,53 @@ export type TDepFactory<TConfig, TDeps, TDep> = (config: TConfig, deps: TDeps) =
  * deps receives `undefined` there.
  */
 export interface IAIGatewayOverrides {
+  /** Replaces the `ModelRegistry`; receives `IModelRegistryConfig`, no deps. */
   modelRegistry?: TDepFactory<IModelRegistryConfig, undefined, IModelRegistry>;
+  /** Replaces the `AIProfileStore`; receives its config and `IAIProfileStoreDeps`. */
   aiProfileStore?: TDepFactory<IAIProfileStoreConfig, IAIProfileStoreDeps, IAIProfileStore>;
+  /** Replaces the `PromptTemplateStore`; receives its config, no deps. */
   promptTemplateStore?: TDepFactory<IPromptTemplateStoreConfig, undefined, IPromptTemplateStore>;
+  /** Replaces the `ContextAssembler`; receives its config and `IContextAssemblerDeps`. */
   contextAssembler?: TDepFactory<IContextAssemblerConfig, IContextAssemblerDeps, IContextAssembler>;
+  /** Replaces the `ThreadStore`; receives its config, no deps. */
   threadStore?: TDepFactory<IThreadStoreConfig, undefined, IThreadStore>;
+  /** Replaces the `TurnBuilder`; it has no config and no deps. */
   turnBuilder?: TDepFactory<undefined, undefined, ITurnBuilder>;
+  /** Replaces the `FileStore`; receives its config, no deps. */
   fileStore?: TDepFactory<IFileStoreConfig, undefined, IFileStore>;
+  /** Replaces the `WorkingMemory` (a host's own thread memory, D122); receives its config and `IWorkingMemoryDeps`. */
   workingMemory?: TDepFactory<IWorkingMemoryConfig, IWorkingMemoryDeps, IWorkingMemory>;
+  /** Replaces the `UserMemoryStore`; receives its config and `IUserMemoryStoreDeps`. */
   userMemoryStore?: TDepFactory<IUserMemoryStoreConfig, IUserMemoryStoreDeps, IUserMemoryStore>;
+  /** Replaces the `MdChunker`; receives its config, no deps. */
   mdChunker?: TDepFactory<IMdChunkerConfig, undefined, IMdChunker>;
+  /** Replaces the `Embedder`; receives its config and `IEmbedderDeps`. */
   embedder?: TDepFactory<IEmbedderConfig, IEmbedderDeps, IEmbedder>;
+  /** Replaces the `VectorStore`; receives its config, no deps. */
   vectorStore?: TDepFactory<IVectorStoreConfig, undefined, IVectorStore>;
+  /** Replaces the `QueryRewriter`; receives its config and `IQueryRewriterDeps`. */
   queryRewriter?: TDepFactory<IQueryRewriterConfig, IQueryRewriterDeps, IQueryRewriter>;
+  /** Replaces the `KbRetriever`; receives its config and `IKbRetrieverDeps`. */
   kbRetriever?: TDepFactory<IKbRetrieverConfig, IKbRetrieverDeps, IKbRetriever>;
+  /** Replaces the `KbIngestor`; receives its config and `IKbIngestorDeps`. */
   kbIngestor?: TDepFactory<IKbIngestorConfig, IKbIngestorDeps, IKbIngestor>;
+  /** Replaces the `ToolRegistry`; receives its config (the built-in tools already in front of the app's), no deps. */
   toolRegistry?: TDepFactory<IToolRegistryConfig, undefined, IToolRegistry>;
+  /** Replaces the `ToolPolicy`; receives its config, no deps. */
   toolPolicy?: TDepFactory<IToolPolicyConfig, undefined, IToolPolicy>;
+  /** Replaces the `SkillRegistry`; receives its config, no deps. */
   skillRegistry?: TDepFactory<ISkillRegistryConfig, undefined, ISkillRegistry>;
+  /** Replaces the `RunStore`; receives its config, no deps. */
   runStore?: TDepFactory<IRunStoreConfig, undefined, IRunStore>;
+  /** Replaces the `HumanGate`; receives its config and `IHumanGateDeps`. */
   humanGate?: TDepFactory<IHumanGateConfig, IHumanGateDeps, IHumanGate>;
+  /** Replaces the `UsageGuard`; receives its config, no deps. */
   usageGuard?: TDepFactory<IUsageGuardConfig, undefined, IUsageGuard>;
+  /** Replaces the `Guardrails`; receives its config and `IGuardrailsDeps`. */
   guardrails?: TDepFactory<IGuardrailsConfig, IGuardrailsDeps, IGuardrails>;
+  /** Replaces the `LLMClient` (tests: a fake that answers without a provider); receives its config and `ILLMClientDeps`. */
   llmClient?: TDepFactory<ILLMClientConfig, ILLMClientDeps, ILLMClient>;
+  /** Replaces the `Trace`; receives its config, no deps. */
   trace?: TDepFactory<ITraceConfig, undefined, ITrace>;
 }
 
@@ -246,6 +350,7 @@ export interface IAIGatewayOverrides {
  * Taken by `AIGateway.delete`; raw ids, no user check (an admin surface).
  */
 export interface IDeleteArgs {
+  /** The tenant whose threads are deleted. */
   tenantId: string;
   /** `"all"` for every thread of the tenant (of the user when `userId` is given), or the ids to delete. */
   threadIds: TThreadIds;
@@ -278,10 +383,26 @@ export interface IForgetUserResult {
 }
 
 /**
- * Input of ask(): one grounded answer, no tools. TStructured is inferred from `outputSchema` and types the answer's `structured`.
- * The base of `IGatewayRunInput` too: everything here applies to run() as well.
+ * The per-call overrides of the knowledge-base retrieval: how many chunks, and from which similarity on.
+ *
+ * `IGatewayAskInput.kbRetrieval`; `prepareCall` hands the values to `KbRetriever.retrieve`, whose config holds the defaults.
+ */
+export interface IKbRetrievalOptions {
+  /** How many chunks at most, best first; the retriever's `k` (default 5) when omitted. */
+  k?: number;
+  /** The similarity below which a hit is dropped; the retriever's `minScore` (default 0.6) when omitted. */
+  minScore?: number;
+}
+
+/**
+ * Input of `ask()`: one grounded answer, no tools. `TStructured` is inferred from `outputSchema` and types the answer's
+ * `structured`.
+ *
+ * Written by the host application per call. The base of `IGatewayRunInput` too (D104): everything here applies to `run()`
+ * as well.
  */
 export interface IGatewayAskInput<TStructured = unknown> {
+  /** Who is asking; scopes every read and write of the call. */
   userContext: IUserContext;
   /** Existing thread of the calling user, or omit to create one. A thread of another user of the tenant is a 404, like an unknown one. */
   threadId?: string;
@@ -295,6 +416,7 @@ export interface IGatewayAskInput<TStructured = unknown> {
    * @example "claude" - the profile the user picked in the model menu
    */
   profileId: string;
+  /** The user's own words: the message of this turn, stored as the user turn and sent to the model. */
   prompt: string;
   /**
    * Instructions of the app for this call, placed in the system prompt after the profile's `promptAddendum`.
@@ -344,7 +466,11 @@ export interface IGatewayAskInput<TStructured = unknown> {
   files?: IFileRef[];
   /** Zod schema for a structured answer. */
   outputSchema?: ZodType<TStructured>;
-  /** How the text answer is formatted. Default MARKDOWN. Ignored when outputSchema is given: the schema fixes the shape. */
+  /**
+   * How the text answer is formatted. Ignored when `outputSchema` is given: the schema fixes the shape (D42).
+   *
+   * @default EOutputFormat.MARKDOWN
+   */
   outputFormat?: EOutputFormat;
   /**
    * Sampling temperature of the main model call; omit for the provider's default.
@@ -367,6 +493,18 @@ export interface IGatewayAskInput<TStructured = unknown> {
    * No KB for this call: `{libraryIds: [], bookIds: []}`. Every library of the tenant: `{libraryIds: "all", bookIds: []}`.
    */
   kbFilters: IChunkFilters;
+  /**
+   * Per-call overrides of the retriever's `k` and `minScore` (`IKbRetrieverConfig`), for a question that needs more or fewer
+   * chunks than the gateway's default.
+   *
+   * > `kbFilters` says where to search; this says how much of what is found reaches the prompt.
+   *
+   * Omit it for the config's values. Not read on a resume: a resumed run keeps the chunks of its first step (D36).
+   *
+   * @example {k: 10} - a question that spans several documents
+   * @example {minScore: 0.7} - a sensitive use case: a wrong chunk in the prompt is worse than "not in the knowledge base"
+   */
+  kbRetrieval?: IKbRetrievalOptions;
   /**
    * Stops the call when it is aborted: the user pressed "stop", the HTTP request closed, the app gave up.
    *
@@ -401,8 +539,10 @@ export interface IGatewayAskInput<TStructured = unknown> {
    */
   timeoutMs?: number;
   /**
-   * Attach the model-side transcript to the answer (`IAnswerResponse.debug`) for debugging. Off by default: it carries the
-   * system prompt and every tool output, so it is large and sensitive; never pass it through to an end user.
+   * Attach the model-side transcript to the answer (`IAnswerResponse.debug`) for debugging. It carries the system prompt
+   * and every tool output, so it is large and sensitive; never pass it through to an end user.
+   *
+   * @default false
    */
   debug?: boolean;
 }
@@ -445,24 +585,37 @@ export type TGatewayResponse<TStructured = unknown> =
   | IPausedResponse
   | IFailedResponse;
 
-/** Response kinds. */
+/** Response kinds: the discriminant of `TGatewayResponse`. */
 export enum EGatewayResponseKind {
+  /** The call finished with an answer (`IAnswerResponse`). */
   ANSWER = "ANSWER",
+  /** The run stopped for a human (`IPausedResponse`). */
   PAUSED = "PAUSED",
+  /** The call could not be completed (`IFailedResponse`). */
   FAILED = "FAILED",
 }
 
-/** A finished answer. */
+/**
+ * A finished answer: the text, the structured value when a schema was given, what it was grounded on, its warnings and
+ * its cost.
+ *
+ * The `response` of `ask()`, of a `run()` the model finished and of a `resume()` that finished the run; the host renders
+ * it and keeps `threadId` for the next call.
+ */
 export interface IAnswerResponse<TStructured = unknown> {
+  /** The discriminant of `TGatewayResponse`. */
   kind: EGatewayResponseKind.ANSWER;
+  /** The thread the turns were stored in: the one the call named, or the one it created. */
   threadId: string;
+  /** The answer as the model wrote it, in the call's `outputFormat`; with an `outputSchema`, the raw text `structured` was parsed from. */
   text: string;
   /** The parsed, schema-checked answer; present when the input had an outputSchema. */
   structured?: TStructured;
-  /** Chunk ids the answer was grounded on. */
+  /** The ids of the knowledge-base chunks the model was given, not of the ones the answer rests on. */
   citations: string[];
-  /** Guardrails warnings for the UI to flag. */
+  /** The WARNING issues of the call (guardrails, a refused later step, the assembler), for the UI to flag. */
   issues: IIssue[];
+  /** Tokens of the call; for a run, the sum over its steps. */
   usage: IUsage;
   /**
    * Name of the tool that ended the run (D86), when a tool did.
@@ -496,9 +649,17 @@ export interface IAnswerDebug {
   run?: IRun;
 }
 
-/** The run stopped for a human. */
+/**
+ * The run stopped for a human: a tool call waits for an approval, the model asked the user a question, or the answer waits
+ * for a review.
+ *
+ * The `response` of a `run()` or `resume()` that paused; the host shows the `envelopes` as cards and calls
+ * `AIGateway.resume` with one decision per envelope.
+ */
 export interface IPausedResponse {
+  /** The discriminant of `TGatewayResponse`. */
   kind: EGatewayResponseKind.PAUSED;
+  /** The thread of the run; it stays AWAITING_HUMAN until the run is resumed, cancelled or expired. */
   threadId: string;
   /** Names this pause of the run; `resume` must pass it (the envelopes carry it too). A later pause of the same run has another. */
   pauseId: string;
@@ -513,23 +674,42 @@ export interface IPausedResponse {
   envelopes: TPauseEnvelopes;
 }
 
-/** A run that waits for a human, as the asker's UI lists it (`AIGateway.listPausedRuns`): no request, no messages, no draft answer. */
+/**
+ * A run that waits for a human, as the asker's UI lists it: no request, no messages, no draft answer.
+ *
+ * Returned by `AIGateway.listPausedRuns`, one per paused run of the calling user; `AIGateway.getPausedRun` gives the whole
+ * stored run for the reviewer's screen.
+ */
 export interface IPausedRunSummary {
+  /** The run; `resume` and `cancelRun` take it. */
   runId: string;
+  /** The thread the run belongs to. */
   threadId: string;
+  /** The profile the run started with; a resume may name another. */
   profileId: string;
   /** The pause the run waits on; `resume` takes it. */
   pauseId: string;
   /** The cards of the pause, as in the PAUSED response: a RESULT_REVIEW without its `result`. */
   envelopes: TPauseEnvelopes;
+  /** When the run started. */
   createdAt: Date;
+  /** When the pause expires; past it `AIGateway.expirePausedRuns` cancels the run. */
   expiresAt: Date;
 }
 
-/** The call could not be completed. */
+/**
+ * The call could not be completed: a check failed it, the usage adapter refused it, it was aborted or timed out, or the
+ * reviewer rejected the answer.
+ *
+ * The `response` of any of the three calls; never thrown. The host shows `reason` or the issues' `userMessage` and decides
+ * whether to retry. What the caller got wrong (a 400, a 404) rejects `response` instead.
+ */
 export interface IFailedResponse {
+  /** The discriminant of `TGatewayResponse`. */
   kind: EGatewayResponseKind.FAILED;
+  /** The thread of the call, when it got as far as having one; absent when the call was refused before a thread existed. */
   threadId?: string;
+  /** Why, in words, for the log and the developer; the end user reads the issues' `userMessage`. */
   reason: string;
   /**
    * Why, for code: the input or output rules' issues, `USAGE_DENIED_ISSUE_CODE`, or the one issue of a

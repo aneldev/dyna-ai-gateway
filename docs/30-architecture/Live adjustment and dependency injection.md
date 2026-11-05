@@ -45,7 +45,7 @@ A child takes its config and, when it uses other children, its deps: `constructo
 |------------------------|-------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
 | A whole child class    | `overrides.<name>: (config, deps) => I<Class>`  | A host's own `IWorkingMemory` or `IThreadStore`; tests: `FakeLLMClient` (scripted model, real agent loop)      |
 | Persistence of a store | `config.<store>.repository` / `.adapter`        | In-memory adapters today; Mongo, PostgreSQL, S3, vector search later                                           |
-| Usage rules            | `config.usageGuard.adapter`                     | The app's [usage adapter](../getting-started/Usage%20adapter.md): asked before every model call, told after it |
+| Usage rules            | `config.usageGuard.adapter`                     | The app's [usage adapter](../10-getting-started/Usage%20adapter.md): asked before every model call, told after it |
 | Provider credentials   | `config.llmClient.providers`                    | Which providers the one `LLMClient` can reach                                                                  |
 | Tools                  | `config.toolRegistry.tools`                     | The app's tools, next to the built-in ones                                                                     |
 | Guardrail rules        | `config.guardrails.inputRules` / `.outputRules` | The app's checks; each rule receives a `judge`                                                                 |

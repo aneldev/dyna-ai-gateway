@@ -13,7 +13,21 @@ import {
 
 import {IProviderCredentials} from "../types";
 
-/** The SDK model of a registry entry. Throws for a provider this client has no SDK adapter for. */
+/**
+ * createLanguageModel -- the SDK language model of a registry entry
+ *
+ * # About
+ *
+ * > One `case` per `EModelProvider`; the credentials from the config (D84).
+ *
+ * Builds the provider's SDK client (OpenAI, Anthropic, Google, Mistral, Amazon Bedrock) with the key, the base URL and, for
+ * Bedrock, the region, and returns its model for the entry's `providerModelId`. A provider without a `case` is a 400; today
+ * every member of the enum has one.
+ *
+ * # Who needs it
+ *
+ * `LLMClient.complete`, on every call.
+ */
 export const createLanguageModel = (
   {
     model,

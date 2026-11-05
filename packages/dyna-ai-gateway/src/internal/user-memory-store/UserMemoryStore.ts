@@ -50,7 +50,54 @@ const factsSchema = z.object({
   })),
 });
 
-/** Cross-thread user facts, extracted by a cheap LLM, editable by the user. */
+/**
+ * UserMemoryStore -- what the gateway knows about a user across threads
+ *
+ * # About
+ *
+ * > The user says it once; every later thread knows it.
+ *
+ * Implements `IUserMemoryStore`: durable key/value facts about a user (`language`, `role`, `location`), scoped by tenant
+ * + user, kept in the host's `IUserMemoryRepository`.
+ *
+ * - `getFacts` reads them for every call; they go into the `{memory}` slot of the system prompt.
+ * - `extract` has the cheap model read the newest turns of a thread and answer with operations (`SET`, `DELETE`) that
+ *   are merged into the stored facts; `isExtractDue` says when (after the first answer of a thread, then whenever the
+ *   thread crosses a multiple of `extractEveryTurns`).
+ * - `upsertFact`, `removeFact`, `clear` are the user's own edits; the model reaches the first two through the built-in
+ *   tools of `makeUserMemoryTools`.
+ * - `deleteByUser` is the GDPR erasure: the record goes, not only the facts.
+ *
+ * The caps hold on every write: at most `maxFacts` facts (the ones updated longest ago are dropped), at most
+ * `maxFactChars` per key and value (a fact set by hand over it is a 400, an extracted one is cut).
+ *
+ * It sits next to the `WorkingMemory` (per thread) as the memory that spans threads.
+ *
+ * # Who needs it
+ *
+ * `prepareCall` and `AIGateway.getUserFacts` read; `updateMemory` runs `isExtractDue` and `extract` in the background
+ * after every answer; `AIGateway.upsertUserFact`, `removeUserFact`, `clearUserFacts` and the two built-in tools edit;
+ * `forgetUser` calls `deleteByUser`. A host replaces it with its own `IUserMemoryStore` in `overrides.userMemoryStore`.
+ *
+ * # What needs
+ *
+ * `config.repository` for the facts, `llmClient` and `promptTemplateStore` (the MEMORY_USER template) for `extract`.
+ *
+ * # Usage
+ *
+ * ## When to use it
+ *
+ * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.userMemoryStore`.
+ *
+ * ## When shouldn't use it
+ *
+ * A host with its own user profile store implements `IUserMemoryStore` over it and passes it in `overrides`.
+ *
+ * # Pitfalls
+ *
+ * `enabled: false` switches the extraction off only: the stored facts are still read into every prompt and still
+ * editable. Every fact enters every prompt of the user: keep the caps low, and never store what the user did not state.
+ */
 export class UserMemoryStore implements IUserMemoryStore {
   constructor(
     private readonly config: IUserMemoryStoreConfig,
@@ -58,7 +105,19 @@ export class UserMemoryStore implements IUserMemoryStore {
   ) {
   }
 
-  /** Returns all facts; injected into the system prompt. No LLM. */
+  /**
+   * getFacts -- the stored facts of one user
+   *
+   * # About
+   *
+   * > What every prompt of this user starts with.
+   *
+   * Reads the facts from the repository, as last saved; [] for a user without a record. No model call, no write.
+   *
+   * # Who needs it
+   *
+   * `prepareCall`, once per call, for the `{memory}` slot; `AIGateway.getUserFacts`, for a "what do you know about me" UI.
+   */
   public async getFacts(
     {
       tenantId,
@@ -75,9 +134,29 @@ export class UserMemoryStore implements IUserMemoryStore {
   }
 
   /**
-   * Extracts durable facts from turns and merges them into the stored ones (same key = replace). Cheap LLM.
-   * Returns the facts that are stored afterwards. They stay as they are when the extraction is switched off, when there
-   * is no turn, when the model call fails or when its answer is not the expected structure.
+   * extract -- learns durable facts from the newest turns of a thread
+   *
+   * # About
+   *
+   * > The cheap model reads the turns and says what to remember and what to forget.
+   *
+   * Renders the MEMORY_USER template with the known facts, sends `turns` as a plain transcript (`toTranscript`) to the
+   * cheap model and merges its operations into the stored facts: `SET` adds or replaces the key (a fact repeated
+   * unchanged keeps its date and its source), `DELETE` removes it. The result is saved under the caps and returned.
+   *
+   * The stored facts stay as they are, and are returned, when the extraction is switched off, when there is no turn,
+   * when the model call fails (a refusal of the usage adapter is silent, anything else is reported, error
+   * 5372598726156) or when the answer is not the expected structure (error 5372598726369).
+   *
+   * # Who needs it
+   *
+   * `updateMemory`, in the background after an answer, when `isExtractDue` says so; it passes the turns since the last
+   * extraction.
+   *
+   * # Pitfalls
+   *
+   * A model failure never throws; a failing repository does, the caller's background queue catches it. The facts of a
+   * run with many tool turns cost one cheap call per `extractEveryTurns` turns, not per answer.
    */
   public async extract(
     {
@@ -200,9 +279,24 @@ export class UserMemoryStore implements IUserMemoryStore {
   }
 
   /**
-   * Tells the gateway whether extraction is due: after the first answer of a thread (the opening message carries most facts:
-   * name, place, language), and then whenever the thread crossed a multiple of extractEveryTurns with its last call.
-   * Never due while the extraction is switched off.
+   * isExtractDue -- whether the thread earned an extraction with its last call
+   *
+   * # About
+   *
+   * > Early once, then on a fixed beat.
+   *
+   * Due after the first answer of a thread (`previousTurnCount` 0, `turnCount` above it: the opening message carries
+   * most facts, name, place, language), and then whenever the thread crossed a multiple of `extractEveryTurns` with its
+   * last call. Never due while the extraction is switched off. Pure: no read, no write.
+   *
+   * # Who needs it
+   *
+   * `updateMemory`, after every answer, before it calls `extract`.
+   *
+   * # Pitfalls
+   *
+   * `previousTurnCount` is the count before the whole call, not before its last step: a run adds several turns at once
+   * and may jump over a multiple.
    */
   public isExtractDue(
     {
@@ -232,7 +326,26 @@ export class UserMemoryStore implements IUserMemoryStore {
     return due;
   }
 
-  /** User or admin sets a fact by hand. Same key = replace. Throws a 400 for an empty key or value, or one over `maxFactChars`. */
+  /**
+   * upsertFact -- the user or an admin sets one fact by hand
+   *
+   * # About
+   *
+   * > "Remember that I …", stored at once.
+   *
+   * Trims the key and the value and stores the fact with no source thread and `updatedAt` now; the same key replaces the
+   * stored fact. Throws a 400 for an empty key or value (error 5372597957094) or one over `maxFactChars` (error
+   * 5377210486159, with a `userMessage`).
+   *
+   * # Who needs it
+   *
+   * `AIGateway.upsertUserFact`, and the `remember_user_fact` tool of `makeUserMemoryTools` (after the user's approval,
+   * D116).
+   *
+   * # Pitfalls
+   *
+   * Over `maxFacts`, the write drops the fact updated longest ago, never the new one.
+   */
   public async upsertFact(
     {
       tenantId,
@@ -289,7 +402,19 @@ export class UserMemoryStore implements IUserMemoryStore {
     });
   }
 
-  /** User deletes one fact. A key that is not there changes nothing. */
+  /**
+   * removeFact -- the user forgets one fact
+   *
+   * # About
+   *
+   * > "Forget my language."
+   *
+   * Removes the fact with `key`; a key that is not there changes nothing and writes nothing.
+   *
+   * # Who needs it
+   *
+   * `AIGateway.removeUserFact`, and the `forget_user_fact` tool of `makeUserMemoryTools`.
+   */
   public async removeFact(
     {
       tenantId,
@@ -314,7 +439,19 @@ export class UserMemoryStore implements IUserMemoryStore {
     });
   }
 
-  /** User deletes everything. */
+  /**
+   * clear -- the user forgets every fact
+   *
+   * # About
+   *
+   * > "Forget everything about me", by the user, for the user.
+   *
+   * Saves an empty list: the facts go, the user's record stays. The erasure that removes the record is `deleteByUser`.
+   *
+   * # Who needs it
+   *
+   * `AIGateway.clearUserFacts`, for a "forget all" action of the UI.
+   */
   public async clear(
     {
       tenantId,
@@ -331,7 +468,20 @@ export class UserMemoryStore implements IUserMemoryStore {
     });
   }
 
-  /** Removes the facts of a user and their record (GDPR erasure); `clear` is the user's own "forget my facts". Returns the number of facts removed. */
+  /**
+   * deleteByUser -- the GDPR erasure of a user's facts
+   *
+   * # About
+   *
+   * > Nothing is left, not even an empty record.
+   *
+   * Removes the facts of the user and their record through the repository and returns the number of facts removed.
+   * `clear` is the user's own "forget my facts"; this is the operator's erasure.
+   *
+   * # Who needs it
+   *
+   * `forgetUser`, behind `AIGateway.deleteUserData` and `AIGateway.anonymizeUserData`.
+   */
   public async deleteByUser(
     {
       tenantId,

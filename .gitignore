@@ -9,4 +9,4 @@ node_modules/
 temp/
 **/.claude/settings.local.json
 **/docs/plans/
-**/docs/internal/
+**/docs/internal

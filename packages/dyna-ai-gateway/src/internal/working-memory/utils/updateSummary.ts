@@ -36,9 +36,29 @@ const memorySchema = z.object({
 });
 
 /**
- * Recomputes summary + facts from `current` and `newTurns` with the cheap model, stores and returns the new state.
+ * updateSummary -- one update of the summary buffer
+ *
+ * # About
+ *
+ * > The cheap model rewrites the digest with the turns it has not seen yet.
+ *
+ * Renders the MEMORY_WORKING template with the current summary and facts (or "(nothing yet)") and the caps, sends
+ * `newTurns` as a plain transcript (`toTranscript`) to the cheap model with a structured output, cuts the summary to
+ * `maxSummaryChars` and the facts to `maxFacts`, stores the new state on the thread with `updatedAtTurn` = `upToTurn`
+ * and returns it.
+ *
  * `current` is returned untouched when there is no new turn, when the model call fails (a refusal of the usage adapter
- * is silent, anything else is reported) or when its answer is not the expected structure.
+ * is silent, anything else is reported, error 53725977158851) or when the answer is not the expected structure
+ * (error 53725977158852).
+ *
+ * # Who needs it
+ *
+ * `WorkingMemory.saveContext`, once `updateEveryTurns` turns are due.
+ *
+ * # Pitfalls
+ *
+ * The model rewrites the whole digest, it does not append: a bad answer replaces a good summary. A refused call leaves no
+ * trace in the logs; the memory just lags. A failing `setWorkingMemory` throws, the caller catches it.
  */
 export const updateSummary = async (
   {
@@ -138,6 +158,7 @@ export const updateSummary = async (
   return state;
 };
 
+/** The facts as "key: value" lines for the MEMORY_WORKING template. */
 const listFacts = (facts: IWorkingMemoryState["facts"]): string =>
   Object.entries(facts)
     .map(([key, value]) => `${key}: ${value}`)

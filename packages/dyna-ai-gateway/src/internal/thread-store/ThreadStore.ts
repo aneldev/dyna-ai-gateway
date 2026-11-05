@@ -24,11 +24,68 @@ const DEFAULT_LEASE_MS = 300_000;
 /** The most threads one `listThreads` returns (D37). */
 const MAX_PAGE_LIMIT = 200;
 
-/** Tenant-scoped storage of threads and turns. */
+/**
+ * ThreadStore -- the database owner of the conversations: threads and their turns
+ *
+ * # About
+ *
+ * > Pure storage, in the gateway's own format: any model can continue any thread.
+ *
+ * Holds the threads of every tenant and the turns of every thread, with no model and no prompt text inside. The gateway
+ * appends the user turn before the model call and the assistant turns after it, so a crash between the two leaves a
+ * visible, honest state. The working-memory fields live on the thread but are written only through the WorkingMemory.
+ *
+ * - Tenant-scoped: every method takes `tenantId`, and a thread of another tenant is a 404.
+ * - One call at a time on a thread: the lease (D77), taken before the user turn is stored and released in a `finally`.
+ * - Two reads of the same turns: `getLastTurns` is the model's window (the working memory), `getTurns` the screen's
+ *   whole history; `listThreads` pages a user's threads as the Vercel chat client does (D37).
+ * - Deletes are hard and in bulk (D119); a thread whose repository set `deletedAt` reads as gone.
+ *
+ * Created by `createGatewayDeps` early: the WorkingMemory depends on it. Read and written on every call (`prepareCall`,
+ * `settleRun`, `closeRun`) and by the thread methods of the facade.
+ *
+ * # Who needs it
+ *
+ * `prepareCall`, `withThreadLease`, `appendTurns`, `settleRun`, `settleReview`, `settleReviewPause`, `closeRun`,
+ * `updateMemory`, `forgetUser`, `deleteThreads`, `getOwnThread`; `WorkingMemory` for the window and the memory state;
+ * the facade's `listThreads`, `getTurns`, `renameThread`, `recoverStuckRuns`.
+ *
+ * # What needs
+ *
+ * `IThreadStoreConfig`: the `IThreadRepository` and the optional `leaseMs`.
+ *
+ * # Usage
+ *
+ * ## When to use it
+ *
+ * Anything that reads or writes a conversation as stored.
+ *
+ * ## When shouldn't use it
+ *
+ * The turns as the model sees them: that is `TurnBuilder.toMessages` through the WorkingMemory. The runs of a thread: the RunStore.
+ *
+ * # Pitfalls
+ *
+ * Every method but `findThread`, `listThreadIds`, `delete` and `anonymizeByUser` throws a 404 for a thread that is missing,
+ * deleted or of another tenant. `appendTurn` is two repository writes (the turn, then the thread's count); the turns of one
+ * answer are appended in order, and the repository keeps that order.
+ */
 export class ThreadStore implements IThreadStore {
   constructor(private readonly config: IThreadStoreConfig) {}
 
-  /** Creates an empty thread. */
+  /**
+   * createThread -- a new, empty conversation of a user
+   *
+   * # About
+   *
+   * > OPEN, no turns, no memory, no lease; the id is the gateway's.
+   *
+   * Saves the thread and returns a copy. The title stays empty unless given.
+   *
+   * # Who needs it
+   *
+   * `prepareCall`, for a call without a `threadId` (step 3).
+   */
   public async createThread(
     {
       tenantId,
@@ -144,7 +201,21 @@ export class ThreadStore implements IThreadStore {
     });
   }
 
-  /** Loads a thread; throws if missing, soft-deleted or not owned by the tenant. */
+  /**
+   * getThread -- one thread of a tenant, or a 404
+   *
+   * # About
+   *
+   * > The read every other method starts with.
+   *
+   * A thread that is missing, deleted (`deletedAt` set) or of another tenant is the same 404 (`5372567786151`); `findThread`
+   * is the twin that returns null instead. The ownership by the user is not checked here: that is `getOwnThread` (D32).
+   *
+   * # Who needs it
+   *
+   * `getOwnThread`, `prepareCall` (read again under the lease, for the status), `closeRun`, `updateMemory`, `WorkingMemory`,
+   * `AIGateway.continueRun` and `continueReview` (the turn count before a step).
+   */
   public async getThread(
     {
       tenantId,
@@ -233,7 +304,20 @@ export class ThreadStore implements IThreadStore {
     });
   }
 
-  /** Appends one turn and bumps turnCount/updatedAt. */
+  /**
+   * appendTurn -- stores one turn at the end of a thread
+   *
+   * # About
+   *
+   * > The turn, then the thread's `turnCount` and `updatedAt`.
+   *
+   * Two repository writes, in that order. The turns of one answer are appended one after the other by `appendTurns`, so the
+   * repository's order is the order of the conversation.
+   *
+   * # Who needs it
+   *
+   * `appendTurns`, the one writer of turns in the gateway.
+   */
   public async appendTurn(
     {
       tenantId,
@@ -263,7 +347,20 @@ export class ThreadStore implements IThreadStore {
     });
   }
 
-  /** Last N turns in chronological order; feeds the ContextAssembler. */
+  /**
+   * getLastTurns -- the newest turns of a thread, oldest first
+   *
+   * # About
+   *
+   * > The model's window on the conversation.
+   *
+   * Reads the newest `limit` turns and returns them in chronological order. The WorkingMemory reads the window of a call
+   * with it (D122); `closeRun` the turns a run could have stored; `updateMemory` the turns since the last fact extraction.
+   *
+   * # Who needs it
+   *
+   * `WorkingMemory`, `closeRun`, `updateMemory`, `deleteThreads`.
+   */
   public async getLastTurns(
     {
       tenantId,
@@ -328,7 +425,20 @@ export class ThreadStore implements IThreadStore {
     });
   }
 
-  /** Changes title and/or status (and updatedAt); what is omitted stays. */
+  /**
+   * updateThread -- changes the title or the status of a thread
+   *
+   * # About
+   *
+   * > What is omitted stays; `updatedAt` moves.
+   *
+   * The status is the gateway's: AWAITING_HUMAN when a run pauses, OPEN again when it settles or closes. The title is the
+   * user's (`AIGateway.renameThread`).
+   *
+   * # Who needs it
+   *
+   * `settleRun`, `settleReviewPause`, `settleReview`, `closeRun` (the status); `AIGateway.renameThread` (the title).
+   */
   public async updateThread(
     {
       tenantId,
@@ -356,7 +466,19 @@ export class ThreadStore implements IThreadStore {
     });
   }
 
-  /** Called by WorkingMemory only. The thread's updatedAt stays: memory is not activity of the user. */
+  /**
+   * setWorkingMemory -- stores the working memory of a thread
+   *
+   * # About
+   *
+   * > The WorkingMemory's write; the thread's `updatedAt` stays, memory is not activity of the user.
+   *
+   * Replaces the state whole (a copy of it).
+   *
+   * # Who needs it
+   *
+   * `WorkingMemory` only: its `saveContext` and `reset`.
+   */
   public async setWorkingMemory(
     {
       tenantId,
@@ -380,7 +502,19 @@ export class ThreadStore implements IThreadStore {
     });
   }
 
-  /** Loads a thread of the tenant, or null when it is missing or deleted; `getThread` is the throwing twin. */
+  /**
+   * findThread -- one thread of a tenant, or null
+   *
+   * # About
+   *
+   * > `getThread` without the 404, for a caller that asks "is it there".
+   *
+   * Null for a thread that is missing, deleted or of another tenant.
+   *
+   * # Who needs it
+   *
+   * `forgetUser` and `deleteThreads`, to read the lease of each thread before they write.
+   */
   public async findThread(
     {
       tenantId,
@@ -397,7 +531,19 @@ export class ThreadStore implements IThreadStore {
     return thread && thread.deletedAt === null ? thread : null;
   }
 
-  /** The ids of the tenant's threads, of one user when `userId` is given. */
+  /**
+   * listThreadIds -- the ids of a tenant's threads, or of one user's
+   *
+   * # About
+   *
+   * > Every live thread, by id only, for the bulk operations.
+   *
+   * Deleted threads are excluded. No paging: the bulk operations (D119, D54) walk the whole list.
+   *
+   * # Who needs it
+   *
+   * `forgetUser` and `deleteThreads`, to find the threads whose lease they must check.
+   */
   public async listThreadIds(
     {
       tenantId,
@@ -413,7 +559,20 @@ export class ThreadStore implements IThreadStore {
     });
   }
 
-  /** Hard-deletes threads with their turns and working memory: the listed ids or `"all"`, of one user when `userId` is given. Returns how many of each. */
+  /**
+   * delete -- hard-deletes threads with their turns and working memory (D119)
+   *
+   * # About
+   *
+   * > The listed ids, or every thread of the tenant for `"all"`, narrowed to one user when `userId` is given.
+   *
+   * An unknown id, or one of another tenant or user, is ignored. Returns how many threads and turns went. The runs, the
+   * trace entries and the files of the threads are the callers' business (`deleteThreads`).
+   *
+   * # Who needs it
+   *
+   * `deleteThreads` (the facade's `delete`) and `forgetUser` (the DELETE mode, D54).
+   */
   public async delete(
     {
       tenantId,
@@ -433,8 +592,18 @@ export class ThreadStore implements IThreadStore {
   }
 
   /**
-   * Keeps every thread of a user as a skeleton under the pseudonym (GDPR pseudonymisation): no title, no memory, no turns,
-   * status CLOSED; id, turnCount and dates stay for the statistics. Returns how many of each.
+   * anonymizeByUser -- keeps a user's threads as skeletons under a pseudonym (D54)
+   *
+   * # About
+   *
+   * > What identifies the person goes, what counts stays.
+   *
+   * `userId` becomes the pseudonym, the title and the working memory are emptied, the status becomes CLOSED, the turns are
+   * deleted; id, `turnCount` and the dates stay for the statistics. Returns how many threads and turns were touched.
+   *
+   * # Who needs it
+   *
+   * `forgetUser`, in the ANONYMIZE mode (`AIGateway.anonymizeUserData`).
    */
   public async anonymizeByUser(
     {

@@ -30,6 +30,7 @@ const promptNotEmpty: IInputRule = {
       ],
 };
 
+/** A prompt over `maxPromptChars` characters is rejected (`prompt_too_long`). */
 const createPromptMaxLength = (maxPromptChars: number): IInputRule => ({
   name: "prompt_max_length",
   check: async ({evidence}): Promise<IIssue[]> =>
@@ -45,6 +46,7 @@ const createPromptMaxLength = (maxPromptChars: number): IInputRule => ({
       ],
 });
 
+/** A prompt that matches an `INJECTION_PATTERNS` marker is rejected (`prompt_blocked`). */
 const promptInjection: IInputRule = {
   name: "prompt_injection",
   check: async ({evidence}): Promise<IIssue[]> => {
@@ -62,7 +64,20 @@ const promptInjection: IInputRule = {
   },
 };
 
-/** The input rules the gateway always runs, before the app's. */
+/**
+ * createBuiltInInputRules -- the input rules the gateway always runs
+ *
+ * # About
+ *
+ * > Code, not configuration: three rules, in this order, before the app's.
+ *
+ * `prompt_not_empty`, `prompt_max_length` with the config's `maxPromptChars`, `prompt_injection` with the markers of
+ * `INJECTION_PATTERNS`. None of them asks a judge: they are cheap by design, a model call here would slow and cost every call.
+ *
+ * # Who needs it
+ *
+ * The `Guardrails` constructor, once.
+ */
 export const createBuiltInInputRules = (
   {maxPromptChars}: {maxPromptChars: number},
 ): IInputRule[] => [

@@ -226,6 +226,11 @@ export class AIGatewayVercelUi {
     }
   }
 
+  /**
+   * `ask` or `run` (`config.mode`) on the last user message: its text as the prompt, its file parts resolved by
+   * `config.files.fromUi`; the config's `call` under the per-request overrides of `prepareCall`.
+   * An `ask` drops the tool fields of the call config: `IGatewayAskInput` has none.
+   */
   private async startCall(
     {
       userContext,
@@ -280,6 +285,10 @@ export class AIGatewayVercelUi {
     return this.deps.gateway.ask(input);
   }
 
+  /**
+   * `gateway.resume` on the user's own pause, with the decisions as given.
+   * `additionalTools`, `timeoutMs` and `outputSchema` come from the config, never from the request.
+   */
   private startResume(
     {
       userContext,
@@ -310,7 +319,10 @@ export class AIGatewayVercelUi {
     });
   }
 
-  /** The user's own paused run of the pause; a pause of nobody's or of another user is a 404, before the gateway is called. */
+  /**
+   * The user's own paused run of the pause, found among `listPausedRuns` of the user.
+   * A pause of nobody's or of another user is a 404, before the gateway is called.
+   */
   private async findPause(
     {
       userContext,
@@ -338,6 +350,10 @@ export class AIGatewayVercelUi {
     return pause;
   }
 
+  /**
+   * The `IFileRef` of every file part, through `config.files.fromUi`.
+   * No file parts: nothing to resolve, the hooks are not needed. File parts without the hooks: a 400.
+   */
   private async resolveFiles(
     {
       userContext,
@@ -392,7 +408,10 @@ export class AIGatewayVercelUi {
   }
 }
 
-/** The chunks of one call: the writer's opening, one batch per event, the closing of the response or of the error. */
+/**
+ * The chunks of one call: the writer's opening, one batch per event, the closing of the response.
+ * An error thrown by the events or the response closes the stream with its public text instead.
+ */
 async function* streamChunks(
   {
     writer,

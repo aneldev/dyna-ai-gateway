@@ -17,6 +17,19 @@ Documentation of the gateway: [`README.md`](README.md).
 
 - Node.js 24, pnpm 10
 
+## Private notes (`docs/internal/`)
+
+The analysis the library is built from (the Roadmap, the Classes contracts, the Blueprint) is private and lives outside
+the repo. The repo expects it at `docs/internal/`, a **symlink** that git ignores; a fresh clone has none, so create it
+once per machine, with your own path to the notes:
+
+```bash
+ln -s /path-to/docs/internal
+ls docs/internal/     # AI Gateway Roadmap.md, AI Gateway Classes.md, AI Gateway Blueprint.md, …
+```
+
+Never commit the link or write its target into a tracked file: the path names your machine.
+
 ## Commands (repo root, every package)
 
 ```bash
@@ -29,6 +42,25 @@ pnpm sandbox-cli <ask|run> / pnpm sandbox-debug   # the gateway's developer sand
 ```
 
 One package: `pnpm --filter dyna-ai-gateway <script> [args]`, or run the script inside `packages/<name>/`.
+
+## Release
+
+```bash
+npm login                       # once per machine; the release aborts when the npm token is missing or expired
+pnpm release [package-name]     # default: dyna-ai-gateway
+```
+
+`pnpm release` (`scripts/release.mjs`) runs the whole release of one package and aborts at the first failing step:
+
+1. Guards: logged in to npm, clean working tree, entries present under `## [Unreleased]` in the package's `CHANGELOG.md`.
+2. Bumps the version: the prerelease while the version has a prerelease suffix (`0.0.1-beta.4` → `0.0.1-beta.5`),
+   the patch otherwise (`0.1.2` → `0.1.3`). A minor or major bump is done by hand in `package.json` before the release.
+3. Moves the `[Unreleased]` entries under the new version with today's date.
+4. Commits `Release <package> v<version>` and tags it `<package>@<version>`.
+5. Publishes: the package's `prepublishOnly` builds it, its `publishConfig.tag` picks the npm dist-tag (`beta` while in beta).
+6. Pushes the branch and the tag.
+
+A failure after the commit leaves the commit and the tag local: `git reset --hard HEAD~1 && git tag -d <tag>` undoes them.
 
 ## Shared configuration
 

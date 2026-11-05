@@ -16,8 +16,18 @@ import {
 const SAMPLE_DOCUMENTS = [nordwindReturnsDocument];
 
 /**
- * A config has a knowledge base when its embedding model is registered: then the sample documents are ingested
- * (an embedding call per document) and every call searches every library. Otherwise nothing is ingested and no call searches.
+ * ingestSampleKb -- the sample knowledge base, when the config can embed
+ *
+ * # About
+ *
+ * > Registered embedding model: the samples are ingested and every call searches every library. Otherwise nothing, and no call searches.
+ *
+ * One embedding call per sample document; a line per document on the `INGEST_SAMPLE_KB` channel. Returns the `kbFilters`
+ * every call of the session passes: `libraryIds: "all"` after an ingestion, an empty list without one.
+ *
+ * # Who needs it
+ *
+ * `createSandboxAIGateway`, right after the gateway is built.
  */
 export const ingestSampleKb = async (
   {

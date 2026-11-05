@@ -39,10 +39,11 @@ export interface ICallSignal {
  * - Neither: `undefined`, and nothing is checked.
  *
  * Called once per call by `AIGateway.ask`, `run` and `resume`, before the thread's lease is taken and before anything is stored.
+ * `AIGateway.shutdown` builds the deadline of its grace period with it, for the same validation of `timeoutMs`.
  *
  * # Who needs it
  *
- * `AIGateway.ask`, `run` and `executeResume`.
+ * `AIGateway.ask`, `run` and `executeResume`; `AIGateway.shutdown` for its `deadline` only.
  *
  * # Pitfalls
  *

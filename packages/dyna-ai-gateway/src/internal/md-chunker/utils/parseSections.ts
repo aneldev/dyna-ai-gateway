@@ -13,8 +13,25 @@ const HEADING = /^(#{1,6})[ \t]+(.*)$/;
 const FENCE = /^\s*(```|~~~)/;
 
 /**
- * Splits markdown at its ATX headings (# … ######). A "#" line inside a fenced code block is code, not a heading.
- * A heading with no text of its own gives no section, but stays in the path of the headings below it.
+ * parseSections -- the heading sections of a Markdown document
+ *
+ * # About
+ *
+ * > Every heading opens a section; the text under it, up to the next heading, is the body.
+ *
+ * Splits at the ATX headings (`#` … `######`) and keeps the stack of open headings as each section's path, outermost
+ * first. A `#` line inside a fenced code block (``` or ~~~) is code, not a heading. A heading with no text of its own
+ * gives no section but stays in the path of the headings below it; text before the first heading is a section with an
+ * empty path. Bodies are trimmed, an empty body gives no section.
+ *
+ * # Who needs it
+ *
+ * `MdChunker.chunk`, as the first cut of the document.
+ *
+ * # Pitfalls
+ *
+ * Setext headings (underlined with `===` or `---`) are not recognised: their text stays in the body of the section
+ * above.
  */
 export const parseSections = (
   {markdown}: {markdown: string},
@@ -62,7 +79,10 @@ export const parseSections = (
   return sections;
 };
 
-/** The text of a heading without its closing sequence ("Time limits ##" → "Time limits"); a "#" that ends a word stays ("C#"). */
+/**
+ * The heading text without its closing sequence ("Time limits ##" → "Time limits").
+ * A "#" that ends a word stays ("C#").
+ */
 const getHeadingText = (rest: string): string => {
   const trimmed = rest.trim();
   let end = trimmed.length;

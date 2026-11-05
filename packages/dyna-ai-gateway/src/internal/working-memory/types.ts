@@ -232,6 +232,7 @@ export enum EWorkingMemoryStrategy {
  * Read by `WorkingMemory.load`.
  */
 export interface IWorkingMemorySlidingWindow {
+  /** The discriminator of `TWorkingMemoryStrategy`: this one is the sliding window. */
   type: EWorkingMemoryStrategy.SLIDING_WINDOW;
   /**
    * Share of the history budget the turns may fill.
@@ -268,6 +269,7 @@ export interface IWorkingMemorySlidingWindow {
  * Read by `WorkingMemory.load` and `saveContext`.
  */
 export interface IWorkingMemorySummaryBuffer {
+  /** The discriminator of `TWorkingMemoryStrategy`: this one is the summary buffer. */
   type: EWorkingMemoryStrategy.SUMMARY_BUFFER;
   /**
    * Verbatim turns sent after the summary, newest last.
@@ -332,9 +334,13 @@ export interface IWorkingMemoryConfig {
 
 /** Shared instances WorkingMemory needs; created once by AIGateway and passed as the second constructor argument. */
 export interface IWorkingMemoryDeps {
+  /** The cheap-model call of the SUMMARY_BUFFER update. */
   llmClient: ILLMClient;
+  /** Renders the MEMORY_WORKING template of the update. */
   promptTemplateStore: IPromptTemplateStore;
+  /** The turns of the window and the stored state (`IThread.workingMemory`). */
   threadStore: IThreadStore;
+  /** Turns → messages for the window. */
   turnBuilder: ITurnBuilder;
 }
 

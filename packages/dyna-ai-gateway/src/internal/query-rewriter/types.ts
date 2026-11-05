@@ -12,7 +12,9 @@ export interface IQueryRewriterConfig {
 
 /** Shared instances QueryRewriter needs; created once by AIGateway and passed as the second constructor argument. */
 export interface IQueryRewriterDeps {
+  /** The cheap-model call. */
   llmClient: ILLMClient;
+  /** Renders the KB_QUERY_REWRITE template. */
   promptTemplateStore: IPromptTemplateStore;
 }
 
@@ -23,9 +25,25 @@ export interface IQueryRewriterDeps {
  */
 export interface IQueryRewriter {
   /**
-   * Returns the query to embed: one standalone line the cheap model makes of the prompt and the thread's memory.
-   * Returns the prompt itself, without a model call, when the rewriting is switched off or the thread has no memory yet
-   * (nothing to resolve "it" with); and when the model call fails or answers with nothing.
+   * rewrite -- the query to embed for one prompt
+   *
+   * # About
+   *
+   * > One standalone line, or the prompt itself.
+   *
+   * Renders the KB_QUERY_REWRITE template with the thread's summary and facts (or "(nothing yet)"), sends the prompt
+   * as the user message to the cheap model and returns the first line of the answer, unquoted, cut at 500 characters.
+   * Returns the prompt itself, without a model call, when the rewriting is switched off or the thread has no memory yet;
+   * and when the model call fails or answers with nothing.
+   *
+   * # Who needs it
+   *
+   * `KbRetriever.retrieve`, before it embeds.
+   *
+   * # Pitfalls
+   *
+   * The output limit is 1000 tokens although a query is one line: a reasoning model spends tokens on thinking first,
+   * and with a small limit returns nothing.
    */
   rewrite(
     {

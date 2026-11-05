@@ -4,7 +4,20 @@ import {
   EMessageRole,
 } from "../internal";
 
-/** The user's question of a request: the text of its last user message (tool results come in TOOL messages). */
+/**
+ * findPrompt -- the user's question out of the messages of a request
+ *
+ * # About
+ *
+ * > The text parts of the last USER message, joined; tool results live in TOOL messages and are never mistaken for it.
+ *
+ * The output rules judge the answer against the question; this is how `executeAsk` and `settleRun` find it in the request
+ * they sent.
+ *
+ * # Who needs it
+ *
+ * `AIGateway.executeAsk` and `settleRun`, for `checkOutput`.
+ */
 export const findPrompt = (
   {messages}: {messages: IMessage[]},
 ): string => {

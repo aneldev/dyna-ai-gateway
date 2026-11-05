@@ -59,5 +59,6 @@ export const formatToolError = (error: unknown): string => {
   return dyna?.canRetry === false ? `${line} ${TOOL_NO_RETRY_TEXT}` : line;
 };
 
+/** The text cut at MAX_TOOL_ERROR_USER_MESSAGE_CHARS and marked, or as it is. */
 const cut = (text: string): string =>
   text.length > MAX_TOOL_ERROR_USER_MESSAGE_CHARS ? `${text.slice(0, MAX_TOOL_ERROR_USER_MESSAGE_CHARS)}${CUT_MARKER}` : text;

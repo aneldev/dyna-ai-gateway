@@ -11,9 +11,19 @@ import {
 import {toPrintableError} from "./toPrintableError";
 
 /**
- * Prints one failed guardrail rule on the TRACE channel, as the sandbox's `onRuleError`: the label names the rule, the stage and
- * how it failed, the payload is the report with the error as JSON can show it and the evidence without the file bytes and the
- * profile (the profile's id stays). What a developer wires `onRuleError` to in an app, shown at once in the chat.
+ * printRuleErrorReport -- one failed guardrail rule on the `TRACE` channel
+ *
+ * # About
+ *
+ * > What a host wires `onRuleError` to, shown at once in the chat.
+ *
+ * The label names the rule, the stage and how it failed; the payload is the `IRuleErrorReport` with the error as JSON can
+ * show it and the evidence without the file bytes and the profile (its id stays). DEBUG mode prints the report object
+ * itself; CLI mode the label and the colourised JSON.
+ *
+ * # Who needs it
+ *
+ * `createSandboxAIGateway`, as the `onRuleError` it puts in front of the config's own handler.
  */
 export const printRuleErrorReport = (
   {
@@ -40,7 +50,10 @@ export const printRuleErrorReport = (
   }
 };
 
-/** The report as JSON can show it: the error through `toPrintableError`, the evidence without file bytes and profile. */
+/**
+ * The report as JSON can show it: the error through `toPrintableError`;
+ * the evidence with the inline files as their count and the profile as its id.
+ */
 const toPrintableReport = (report: IRuleErrorReport): unknown => {
   const {
     profile,
