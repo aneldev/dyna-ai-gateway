@@ -46,7 +46,7 @@ ESLint 8, webpack 5 (from `dyna-ts-module-boilerplate`), pnpm workspace.
 ## Documentation — two audiences, one flow
 
 - `docs/internal/`, `docs/plans/` (`active/` ongoing, `archived/` completed or rejected) and `docs/implementation/` are **private working docs** (Roadmap, Classes, Blueprint,
-  plans, the backlog): the source of truth of the analysis and of how the library is built. `docs/internal/` (a symlink, Workspace layout) and `docs/plans/` are gitignored (`**/docs/plans/`, `**/docs/internal`); `docs/implementation/` leaves the repo before it is published.
+  plans): the source of truth of the analysis and of how the library is built. `docs/internal/` (a symlink, Workspace layout) and `docs/plans/` are gitignored (`**/docs/plans/`, `**/docs/internal`); `docs/implementation/` leaves the repo before it is published.
 - Everything else under `docs/` is **for the users of the library**, written per the `write-user-docs` skill
   (`.claude/skills/write-user-docs/SKILL.md`): the final product only, no process, no fluff, no reference to the private docs.
 - Flow of every change: 1. update `docs/internal` (the truth) → 2. update the user docs it affects →

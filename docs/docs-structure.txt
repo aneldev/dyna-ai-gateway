@@ -210,7 +210,8 @@
 
   80-roadmap.md
   85-terminology.md
-  90-workspace.md                             # for the library's developers; stays in the site as the last page
+  87-backlog.md                               # public in the repo, excluded from the site
+  90-workspace.md                             # for developers who fork the repo; public in the repo, excluded from the site
 
   /internal                                   # private — a gitignored symlink to the docs/internal, outside the repo (90-workspace.md § Private notes)
   /plans                                      # private — excluded, gitignored
