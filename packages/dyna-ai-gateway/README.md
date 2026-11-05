@@ -14,7 +14,7 @@ import {AIGatewayVercelUi} from "dyna-ai-gateway/vercel-ui"; // the endpoints of
 
 ## Requirements
 
-- Node.js 24, pnpm 10
+- Node.js 24 or newer, pnpm 10
 - Peer dependency: `zod` 4
 
 ## Development

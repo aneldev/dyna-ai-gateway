@@ -15,7 +15,7 @@ Documentation of the gateway: [`README.md`](README.md).
 
 ## Requirements
 
-- Node.js 24, pnpm 10
+- Node.js 24 or newer, pnpm 10
 
 ## Private notes (`docs/internal/`)
 

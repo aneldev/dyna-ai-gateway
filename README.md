@@ -67,7 +67,7 @@ The seams: [Live adjustment and dependency injection](docs/30-architecture/Live%
 pnpm add dyna-ai-gateway zod
 ```
 
-Node.js 24. `zod` 4 is a peer dependency: the tools and the structured answers are typed with it.
+Node.js 24 or newer. `zod` 4 is a peer dependency: the tools and the structured answers are typed with it.
 
 ## Ask: an answer on the application's data
 

@@ -6,6 +6,10 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+### Fixed
+
+- `npm install dyna-ai-gateway` no longer fails with `ETARGET` on npm 11. `engines` no longer limits the npm version, and requires Node.js `>=24`.
+
 ## [0.0.1-beta.5] - 2026-11-05
 
 ### Breaking changes
