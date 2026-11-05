@@ -6,6 +6,65 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+### Breaking changes
+
+- **Four members that the gateway never used are removed.** A host that only calls `ask()` / `run()` is not affected, and
+  a host's own implementation of these interfaces keeps working. Affected, each only when it does this:
+
+  - `IModelRegistry.getCaps`: a host that calls it, for example on `gateway.modelRegistry`.
+  - `IHumanGate.getPending`: a host that calls it on an `IHumanGate`.
+  - `IContextAssembler.estimateTokens`: a host that calls it on an `IContextAssembler`.
+  - `IContextAssemblerDeps.turnBuilder`: a host whose `overrides.contextAssembler` factory reads it.
+
+  Migration:
+
+  ```ts
+  // before
+  const caps = await gateway.modelRegistry.getCaps({modelId});
+  const pending = await humanGate.getPending({tenantId, runId});
+  const tokens = contextAssembler.estimateTokens({request});
+
+  // after
+  const caps = (await gateway.modelRegistry.getModel({modelId})).caps;
+  const run = await gateway.getPausedRun({tenantId, runId});
+  const pending = run.status === ERunStatus.PAUSED ? run.pending ?? null : null;
+  const tokens = (await contextAssembler.build({input})).estimatedInputTokens;
+  ```
+
+  `estimateTokens` has no direct replacement: the count comes with the assembled context. A factory that read
+  `deps.turnBuilder` keeps its own `ITurnBuilder`.
+
+  AI prompt that performs the migration:
+
+  ```text
+  Migrate this codebase to dyna-ai-gateway 0.0.1-beta.5, which removes four members. Search for `getCaps`,
+  `getPending`, `estimateTokens` and `turnBuilder`, and change only the uses on objects of dyna-ai-gateway.
+  1. `registry.getCaps({modelId})` on an `IModelRegistry` becomes `(await registry.getModel({modelId})).caps`.
+  2. `humanGate.getPending({tenantId, runId})` on an `IHumanGate` becomes a read of the run:
+     `const run = await gateway.getPausedRun({tenantId, runId});` then
+     `run.status === ERunStatus.PAUSED ? run.pending ?? null : null`. `ERunStatus` is exported by the package.
+  3. `assembler.estimateTokens({request})` on an `IContextAssembler` has no direct replacement. Where the request
+     comes from `assembler.build({input})`, read `estimatedInputTokens` of the result. Otherwise stop and report the
+     call, do not invent a count.
+  4. In an `overrides.contextAssembler` factory, stop reading `deps.turnBuilder`: create the `ITurnBuilder` it needs
+     itself. Keep the `overrides.turnBuilder` option of `AIGateway` and the `turnBuilder` of `IWorkingMemoryDeps`:
+     they are unchanged.
+  Verify: `tsc` passes and the tests pass.
+  ```
+
+### Added
+
+- `AIGateway.getFileUrl({userContext, fileId, ttlSec?})`: a short-lived signed URL of the calling user's uploaded file
+  (`ttlSec` defaults to 900), so a screen can show an image or open a PDF. Another user's file or an unknown id is a 404.
+- `IGatewayAskInput.kbRetrieval` (`IKbRetrievalOptions`: `k?`, `minScore?`): how many knowledge-base chunks reach the
+  prompt on this call and how close they must be; omitted, the retriever's config applies. It also works on `run()` and
+  in the Vercel UI's call config, and is not read on a `resume()`.
+
+### Changed
+
+- The JSDoc of the whole public API is curated: every class, method, interface and config option says what it does, who
+  needs it and its pitfalls, in the editor and in the `.d.ts`.
+
 ## [0.0.1-beta.4] - 2026-10-31
 
 ### Added
