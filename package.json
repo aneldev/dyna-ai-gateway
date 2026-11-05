@@ -18,7 +18,10 @@
     "sandbox-cli": "pnpm --filter dyna-ai-gateway sandbox-cli",
     "sandbox-debug": "pnpm --filter dyna-ai-gateway sandbox-debug",
     "update-deps": "rimraf pnpm-lock.yaml && pnpm -r update --latest",
-    "release": "node scripts/release.mjs"
+    "release": "node scripts/release.mjs",
+    "docs:install": "pnpm --dir website --ignore-workspace install",
+    "docs:start": "pnpm --dir website start",
+    "docs:build": "pnpm --dir website build"
   },
   "author": "Anel dev",
   "license": "MIT",
