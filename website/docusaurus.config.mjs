@@ -1,7 +1,12 @@
-const landingPageFirst = async ({defaultSidebarItemsGenerator, ...args}) => {
+import apiSidebar from "./api-sidebar.mjs";
+
+const arrangeSidebar = async ({defaultSidebarItemsGenerator, ...args}) => {
   const items = await defaultSidebarItemsGenerator(args);
   const isLandingPage = (item) => item.type === "doc" && item.id === "README";
-  return [...items.filter(isLandingPage), ...items.filter((item) => !isLandingPage(item))];
+  const arranged = [...items.filter(isLandingPage), ...items.filter((item) => !isLandingPage(item))];
+  return arranged.map((item) => (item.link?.id?.startsWith("api/")
+    ? {type: "category", label: "API", items: apiSidebar}
+    : item));
 };
 
 const config = {
@@ -14,6 +19,19 @@ const config = {
     format: "detect",
     hooks: {onBrokenMarkdownLinks: "throw"},
   },
+  plugins: [
+    ["docusaurus-plugin-typedoc", {
+      entryPoints: [
+        "../packages/dyna-ai-gateway/src",
+        "../packages/dyna-ai-gateway/src/entries/vercel-ui",
+      ],
+      entryPointStrategy: "resolve",
+      tsconfig: "../packages/dyna-ai-gateway/tsconfig.json",
+      out: "../docs/40-api",
+      skipErrorChecking: true,
+      readme: "none",
+    }],
+  ],
   presets: [
     ["classic", {
       blog: false,
@@ -21,7 +39,7 @@ const config = {
         path: "../docs",
         routeBasePath: "/",
         sidebarPath: "./sidebars.mjs",
-        sidebarItemsGenerator: landingPageFirst,
+        sidebarItemsGenerator: arrangeSidebar,
         exclude: [
           "internal/**",
           "plans/**",
