@@ -30,6 +30,7 @@ const config = {
       out: "../docs/40-api",
       skipErrorChecking: true,
       readme: "none",
+      plugin: ["./typedoc/shift-headings.mjs"],
     }],
   ],
   presets: [
