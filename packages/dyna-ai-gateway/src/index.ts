@@ -23,6 +23,7 @@ export * from "./internal/model-registry/types";
 export * from "./internal/ai-profile-store/types";
 export * from "./internal/prompt-template-store/types";
 export * from "./internal/thread-store/types";
+export * from "./internal/turn-builder/types";
 export * from "./internal/file-store/types";
 export * from "./internal/working-memory/types";
 export * from "./internal/user-memory-store/types";

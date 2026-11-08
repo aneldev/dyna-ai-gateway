@@ -41,6 +41,7 @@ const apiSidebar = [
     items: [
       "ILLMClient",
       "IContextAssembler",
+      "ITurnBuilder",
       "IModelRegistry",
       "IAIProfileStore",
       "IPromptTemplateStore",
