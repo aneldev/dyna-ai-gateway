@@ -6,6 +6,13 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+### Added
+
+- `ITurnBuilder` is exported from the package root, so a host that replaces the turn builder through
+  `overrides.turnBuilder` can import the interface it implements.
+- The documentation site: https://aneldev.github.io/dyna-ai-gateway/ (getting started, API reference, architecture),
+  linked as the package `homepage` and from the README.
+
 ## [0.0.1-beta.6] - 2026-11-05
 
 ### Fixed
