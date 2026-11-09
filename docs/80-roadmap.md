@@ -1,6 +1,6 @@
 # AI Gateway — Roadmap
 
-Status: 2026-11-04. What the library does today, what is planned, and what is deliberately not planned. The reasons behind the behaviours are in [Decisions](30-architecture/Decisions.md).
+Status: 2026-11-08. What the library does today, what is planned, and what is deliberately not planned. The reasons behind the behaviours are in [Decisions](30-architecture/Decisions.md).
 
 ## Available today
 
@@ -28,6 +28,7 @@ Status: 2026-11-04. What the library does today, what is planned, and what is de
 | Data protection           | Delete or anonymise everything the gateway holds about a user                                                                                                                                                                                                                                                                                                                                                                                                               |
 | Persistence               | A repository or adapter interface behind every store, with in-memory implementations of all of them                                                                                                                                                                                                                                                                                                                                                                         |
 | Providers                 | OpenAI, Anthropic, Google, Mistral and Amazon Bedrock for chat and tools; OpenAI for embeddings                                                                                                                                                                                                                                                                                                                                                                             |
+| Documentation             | The guides and the API reference generated from the JSDoc, on the [docs site](https://aneldev.github.io/dyna-ai-gateway/)                                                                                                                                                                                                                                                                                                                                                   |
 
 ## Planned
 

@@ -263,14 +263,15 @@ The reasons behind each behaviour: [Decisions](docs/30-architecture/Decisions.md
 
 ## Documentation
 
-|                                                |                                                                                                                                                                                                        |
-|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Getting started](docs/10-getting-started/FAQ.md) | first steps, the FAQ, the [usage adapter](docs/10-getting-started/Usage%20adapter.md), [skills](docs/10-getting-started/Skills.md), the [Vercel chat client](docs/10-getting-started/Vercel%20chat%20client.md) |
-| [Roadmap](docs/80-roadmap.md)                     | what works today, what is planned, what is not                                                                                                                                                         |
-| [Terminology](docs/85-terminology.md)             | the terms of the docs and where they come from                                                                                                                                                         |
-| [Architecture](docs/30-architecture/Decisions.md) | the composition, the trade-offs, one chapter of decisions per class                                                                                                                                    |
-| [Practices](docs/70-ai-best-practices/index.md)       | how to apply the library well                                                                                                                                                                          |
-| [Workspace](docs/90-workspace.md)                 | building and testing the packages of this repository                                                                                                                                                   |
+|                                                         |                                                                                                                                                                                                                 |
+|---------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [Docs site](https://aneldev.github.io/dyna-ai-gateway/) | these docs and the API reference from the JSDoc, with navigation                                                                                                                                                |
+| [Getting started](docs/10-getting-started/FAQ.md)       | first steps, the FAQ, the [usage adapter](docs/10-getting-started/Usage%20adapter.md), [skills](docs/10-getting-started/Skills.md), the [Vercel chat client](docs/10-getting-started/Vercel%20chat%20client.md) |
+| [Roadmap](docs/80-roadmap.md)                           | what works today, what is planned, what is not                                                                                                                                                                  |
+| [Terminology](docs/85-terminology.md)                   | the terms of the docs and where they come from                                                                                                                                                                  |
+| [Architecture](docs/30-architecture/Decisions.md)       | the composition, the trade-offs, one chapter of decisions per class                                                                                                                                             |
+| [Practices](docs/70-ai-best-practices/index.md)         | how to apply the library well                                                                                                                                                                                   |
+| [Workspace](docs/90-workspace.md)                       | building and testing the packages of this repository                                                                                                                                                            |
 
 ## Packages
 

@@ -2,6 +2,7 @@
   "name": "dyna-ai-gateway",
   "version": "0.0.1-beta.6",
   "description": "AI Gateway (beta): provider-agnostic LLM orchestration (ask/run, tools, human gate, KB/RAG, memory, usage control, traces) behind repository/adapter contracts",
+  "homepage": "https://aneldev.github.io/dyna-ai-gateway/",
   "repository": {
     "type": "git",
     "url": "https://github.com/aneldev/dyna-ai-gateway",
