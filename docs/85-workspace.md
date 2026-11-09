@@ -11,7 +11,8 @@ tooling (TypeScript, ESLint, Jest, webpack) is installed and configured once, at
 | [`dyna-ai-gateway-postgres`](../packages/dyna-ai-gateway-postgres/README.md) | PostgreSQL repositories                                                                                                            | planned   |
 | [`dyna-ai-gateway-s3`](../packages/dyna-ai-gateway-s3/README.md)             | S3 blob store for the files                                                                                                        | planned   |
 
-Documentation of the gateway: [`README.md`](README.md).
+Documentation of the gateway: [Getting started](10-getting-started/00-README.md), and the site at
+[aneldev.github.io/dyna-ai-gateway](https://aneldev.github.io/dyna-ai-gateway/).
 
 ## Requirements
 

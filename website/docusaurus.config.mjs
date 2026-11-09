@@ -5,9 +5,7 @@ const NPM_URL = "https://www.npmjs.com/package/dyna-ai-gateway";
 
 const arrangeSidebar = async ({defaultSidebarItemsGenerator, ...args}) => {
   const items = await defaultSidebarItemsGenerator(args);
-  const isLandingPage = (item) => item.type === "doc" && item.id === "README";
-  const arranged = [...items.filter(isLandingPage), ...items.filter((item) => !isLandingPage(item))];
-  return arranged.map((item) => (item.link?.id?.startsWith("api/")
+  return items.map((item) => (item.link?.id?.startsWith("api/")
     ? {type: "category", label: "API", items: apiSidebar}
     : item));
 };

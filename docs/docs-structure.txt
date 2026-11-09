@@ -1,8 +1,6 @@
 # Indented tree: "/name" is a folder, plain name is a file, "#" starts a comment. Order = the number prefix.
 
 /docs
-  README.md                                   # landing page of the site (what the gateway is, where to start)
-
   /10-getting-started
     # These file will show to stranger developers the simplicity of this lib, that can start and work with minimal code
     # consider these files as the teaser
