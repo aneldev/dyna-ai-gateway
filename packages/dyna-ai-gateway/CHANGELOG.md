@@ -6,6 +6,8 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+## [0.0.1-beta.7] - 2026-11-09
+
 ### Added
 
 - `ITurnBuilder` is exported from the package root, so a host that replaces the turn builder through
