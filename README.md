@@ -1,5 +1,21 @@
 ![dyna AI Gateway logo](assets/dyna-ai-gateway%20banner.png)
 
+<p align="center">
+  <a href="https://aneldev.github.io/dyna-ai-gateway/"><strong>Documentation</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://aneldev.github.io/dyna-ai-gateway/docs/getting-started/README">Getting started</a>
+  &nbsp;·&nbsp;
+  <a href="https://aneldev.github.io/dyna-ai-gateway/docs/api/">API reference</a>
+  &nbsp;·&nbsp;
+  <a href="https://www.npmjs.com/package/dyna-ai-gateway">npm</a>
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/dyna-ai-gateway"><img alt="npm version" src="https://img.shields.io/npm/v/dyna-ai-gateway"></a>
+  <a href="https://aneldev.github.io/dyna-ai-gateway/"><img alt="docs" src="https://img.shields.io/badge/docs-aneldev.github.io-blue"></a>
+  <a href="https://github.com/aneldev/dyna-ai-gateway/blob/main/LICENSE"><img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
+</p>
+
 
 # dyna-ai-gateway
 
@@ -277,7 +293,7 @@ The reasons behind each behaviour: [Decisions](docs/60-architecture/90-decisions
 
 | Package                                                                   | What                                                   | Status  |
 |---------------------------------------------------------------------------|--------------------------------------------------------|---------|
-| [`dyna-ai-gateway`](packages/dyna-ai-gateway/README.md)                   | the gateway, in-memory stores included                 | beta    |
+| [`dyna-ai-gateway`](packages/dyna-ai-gateway)                             | the gateway, in-memory stores included                 | beta    |
 | [`dyna-ai-gateway-mongodb`](packages/dyna-ai-gateway-mongodb/README.md)   | MongoDB repositories and the Atlas Vector Search index | planned |
 | [`dyna-ai-gateway-postgres`](packages/dyna-ai-gateway-postgres/README.md) | PostgreSQL repositories                                | planned |
 | [`dyna-ai-gateway-s3`](packages/dyna-ai-gateway-s3/README.md)             | S3 blob store for the files                            | planned |

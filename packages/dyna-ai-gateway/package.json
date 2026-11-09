@@ -36,6 +36,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
+    "prepack": "node ../../scripts/package-readme.mjs",
     "prepublishOnly": "pnpm build",
     "build": "pnpm lint && pnpm typecheck && rimraf ./dist && webpack --config webpack.dist.config.js",
     "build-watch": "rimraf ./dist && webpack --watch --config webpack.dist.config.js",

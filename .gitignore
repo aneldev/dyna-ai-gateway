@@ -11,3 +11,5 @@ temp/
 **/docs/plans/
 **/docs/internal
 docs/30-api/
+# Generated at pack time from the root README (scripts/package-readme.mjs)
+packages/dyna-ai-gateway/README.md

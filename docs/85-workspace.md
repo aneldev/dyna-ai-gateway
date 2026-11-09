@@ -6,7 +6,7 @@ tooling (TypeScript, ESLint, Jest, webpack) is installed and configured once, at
 
 | Package                                                                      | What                                                                                                                               | Status    |
 |------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| [`dyna-ai-gateway`](../packages/dyna-ai-gateway/README.md)                   | the gateway: `ask` / `run`, tools, human gate, KB, memory, usage control, traces, the Vercel UI entry; in-memory adapters included | published |
+| [`dyna-ai-gateway`](../packages/dyna-ai-gateway)                             | the gateway: `ask` / `run`, tools, human gate, KB, memory, usage control, traces, the Vercel UI entry; in-memory adapters included | published |
 | [`dyna-ai-gateway-mongodb`](../packages/dyna-ai-gateway-mongodb/README.md)   | MongoDB repositories and the Atlas Vector Search index                                                                             | planned   |
 | [`dyna-ai-gateway-postgres`](../packages/dyna-ai-gateway-postgres/README.md) | PostgreSQL repositories                                                                                                            | planned   |
 | [`dyna-ai-gateway-s3`](../packages/dyna-ai-gateway-s3/README.md)             | S3 blob store for the files                                                                                                        | planned   |
@@ -43,6 +43,13 @@ pnpm sandbox-cli <ask|run> / pnpm sandbox-debug   # the gateway's developer sand
 ```
 
 One package: `pnpm --filter dyna-ai-gateway <script> [args]`, or run the script inside `packages/<name>/`.
+
+- **Tests** of the gateway: their layout and the real-provider keys are in `packages/dyna-ai-gateway/src/tests/README.md`.
+- **The developer sandbox** (a chat and a debugger on a test's config): `packages/dyna-ai-gateway/src/dev-sandbox/README.md`.
+- **The boilerplate** every package is built from: `README.boilerplate.md`.
+- **The npm README** of `dyna-ai-gateway` is the repo-root `README.md`: the package's `prepack` copies it with
+  `scripts/package-readme.mjs`, its relative links made absolute so they resolve on npm. Edit the root README only; the
+  copy in the package folder is generated and gitignored.
 
 ## Docs site
 
