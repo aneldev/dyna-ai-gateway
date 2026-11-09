@@ -7,4 +7,4 @@ The library follows industry standards for communicating with an LLM. Building a
 > 🚧 **Work in progress.** This section is being written. It will collect practical advice on steering language models
 > well: prompts, context, tools and the checks around them.
 >
-> ✉️ Contributions are welcome: write to info(at)anel.co.
+> ✉️ Contributions are welcome: write to info@anel.co.
