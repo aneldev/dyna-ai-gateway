@@ -63,8 +63,9 @@ pnpm docs:build      # the site into website/build, then the output check
   `src/entries/vercel-ui` on every build. It is gitignored and never edited by hand; the JSDoc is its source.
 - **What the API navigation shows** is the list in `website/api-sidebar.mjs`. A symbol that is not listed still has a
   page, so links to it resolve.
-- **The output check** (`website/scripts/check-output.mjs`) fails the build on an API page without exactly one `h1` and
-  on any excluded document in the output.
+- **The output check** (`website/scripts/check-output.mjs`) fails the build on an API page without exactly one `h1`, on
+  any excluded document in the output, and on a Mermaid diagram of a published doc that does not parse. Mermaid renders in
+  the browser, so without this check a broken diagram only shows on the live page.
 - **Deploy:** `.github/workflows/docs.yml` builds and publishes the site to GitHub Pages on a push to `main` that touches
   `docs/`, `website/` or the gateway's `src/`, and on demand from the Actions tab.
 
