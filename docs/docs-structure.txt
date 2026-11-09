@@ -6,11 +6,12 @@
   /10-getting-started
     # These file will show to stranger developers the simplicity of this lib, that can start and work with minimal code
     # consider these files as the teaser
-    README.md                                 # the chapter: install, first ask(), where next
-    10-what-is-the-ai-gateway.md
+    00-README.md                              # Welcome, short desc of this library, important, "You don't need to know everything, just what you need"
+    10-what-is-the-ai-gateway.md              # Where this lib sits (between app/agent and LLM)
     20-installation.md
     30-example-ask.md                         # simple example like intro
-    40-example-run.md                         # simple example like intro (run() is the agent loop)
+    40-example-run.md                         # simple example like intro
+    45-example-HITL.md                        # simple example like intro
     50-vercel-chat-client.md
     90-faq.md
 

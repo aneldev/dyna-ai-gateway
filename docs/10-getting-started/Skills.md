@@ -63,7 +63,7 @@ list). Its result is a tool result like any other: in the thread, in the events,
 ## 3. What a skill costs
 
 - **The description is paid on every call** of the profile, as one line of the system prompt. The list sits in the cached
-  block of the prompt ([prompt caching](FAQ.md#is-the-system-prompt-cached-and-what-does-it-cost)), so on a provider that
+  block of the prompt ([prompt caching](90-faq.md#is-the-system-prompt-cached-and-what-does-it-cost)), so on a provider that
   caches it is read from the cache.
 - **The body is paid only by the calls that load it**: one model step for the load, then the body in the context of every
   later step of that run. In an `ask()` the body is paid on the call.
@@ -92,7 +92,7 @@ const config: IAIGatewayConfig = {
 
 A run that pauses for a human stores the skills its call brought. On `resume()` the model can load them again, together with
 the skills of the profile the run continues on, the one it started with or
-[another one](FAQ.md#how-can-the-user-change-the-model). The system prompt of a run is fixed at its first step, so its list
+[another one](90-faq.md#how-can-the-user-change-the-model). The system prompt of a run is fixed at its first step, so its list
 stays the one of the start: a name listed there but no longer offered is an invalid-input tool result the model reads and
 goes on from, not an error of the call.
 

@@ -112,6 +112,6 @@ the file parts of a stored thread are left out of `history`.
 ## 6. What stays the gateway's
 
 The thread list of the sidebar, renaming and deleting (`listThreads`, `renameThread`, see
-[the FAQ](FAQ.md#how-do-i-show-the-users-conversations-and-open-one)), the uploads and the reviewer's screen are the gateway's own
+[the FAQ](90-faq.md#how-do-i-show-the-users-conversations-and-open-one)), the uploads and the reviewer's screen are the gateway's own
 methods: a chat screen calls both. On another transport than HTTP (a WebSocket, a resumable stream after a reload), compose
 `UiMapper`, the pure translation the module is built on, with the gateway's `events` yourself.

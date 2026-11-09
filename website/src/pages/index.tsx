@@ -66,7 +66,7 @@ const Home = (): ReactNode => (
           the gateway does the rest.
         </p>
         <div className={styles.actions}>
-          <Link className="button button--primary button--lg" to="/docs/getting-started/FAQ">Get started</Link>
+          <Link className="button button--primary button--lg" to="/docs/getting-started/README">Get started</Link>
           <Link className="button button--secondary button--lg" to="/docs/api/index/classes/AIGateway">API reference</Link>
         </div>
         <pre className={styles.install}>pnpm add dyna-ai-gateway zod</pre>

@@ -79,7 +79,7 @@ const config = {
         {
           title: "Docs",
           items: [
-            {label: "Getting started", to: "/docs/getting-started/FAQ"},
+            {label: "Getting started", to: "/docs/getting-started/README"},
             {label: "Architecture", to: "/docs/architecture/Decisions"},
             {label: "API", to: "/docs/api/index/classes/AIGateway"},
           ],
