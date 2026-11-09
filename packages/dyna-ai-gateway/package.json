@@ -64,7 +64,7 @@
     "openai",
     "anthropic"
   ],
-  "author": "Anel dev",
+  "author": "Anel Invent",
   "license": "MIT",
   "peerDependencies": {
     "zod": "^4.6.5"
