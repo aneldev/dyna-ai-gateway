@@ -6,6 +6,8 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+## [0.0.13-beta.8] - 2026-11-09
+
 
 ### Fixed
 
