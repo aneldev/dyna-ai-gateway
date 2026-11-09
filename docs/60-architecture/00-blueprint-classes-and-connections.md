@@ -324,7 +324,7 @@ sequenceDiagram
   GW->>GR: check output (schema, then app output rules)
   GW->>TB: build turn parts
   GW->>TS: append assistant turn
-  GW->>WM: saveContext(request, result) (async; SUMMARY_BUFFER updates, SLIDING_WINDOW does nothing)
+  GW->>WM: saveContext(request, result) (async — SUMMARY_BUFFER updates, SLIDING_WINDOW does nothing)
   GW->>TRC: record
   GW->>App: response settles, events end
 ```
