@@ -12,7 +12,9 @@ import {
  */
 test("deny decides per call: true denies with the test code, a result is returned as given, otherwise approved", async () => {
   const adapter = new InMemoryUsageAdapter({
-    deny: ({userId, kind}) => {
+    deny: ({
+      userId, kind,
+    }) => {
       if (userId === "user-b") return true;
       if (kind === ETraceKind.GUARDRAIL_JUDGE) {
         return {
