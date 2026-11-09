@@ -54,7 +54,7 @@ const gateway = new AIGateway(config);
 
 The switches (`enabled`, `promptCaching`, `sharePromptCacheAcrossTenants`) are required on purpose: each one changes what
 the model sees or what a tenant shares, so the configuration states it. `InMemoryUsageAdapter` allows every call; in
-production your own [usage adapter](Usage%20adapter.md) decides.
+production your own usage adapter decides.
 
 ## 2. A model
 

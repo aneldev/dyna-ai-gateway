@@ -70,7 +70,7 @@ const ABORTED: unique symbol = Symbol("aborted");
  * The `abortSignal` a tool receives is advisory: a tool that ignores it keeps running after the 504 was reported or the
  * call was aborted, and its late result is dropped. An abort never undoes what a tool already did.
  *
- * See docs/architecture "Decisions.md" § ToolRegistry.
+ * See docs/60-architecture/90-decisions.md § ToolRegistry.
  */
 export class ToolRegistry implements IToolRegistry {
   private readonly tools = new Map<string, IToolDef>();

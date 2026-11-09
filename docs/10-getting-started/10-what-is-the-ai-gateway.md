@@ -38,7 +38,7 @@ interfaces you implement or take in-memory.
   [Vercel chat client](50-vercel-chat-client.md) is one ready-made transport.
 - **The data.** Every store is an interface (`IAIGatewayConfig.<store>.repository` or `.adapter`). In-memory
   implementations ship with the package for tests and small deployments.
-- **The spend.** The gateway holds no budget, plan or quota; your [usage adapter](Usage%20adapter.md) decides every call.
+- **The spend.** The gateway holds no budget, plan or quota; your usage adapter decides every call.
 
 ## How it is built
 
@@ -49,7 +49,7 @@ own instance in place of any of them; the rest of the gateway does not notice th
 const gateway = new AIGateway(config, {kbRetriever: new MyKbRetriever()});
 ```
 
-Not needed to start. The details: [Live adjustment and dependency injection](../30-architecture/Live%20adjustment%20and%20dependency%20injection.md),
-the reasons behind each behaviour: [Decisions](../30-architecture/Decisions.md).
+Not needed to start. The details: [Live adjustment and dependency injection](../60-architecture/50-live-adjustment-and-dependency-injection.md),
+the reasons behind each behaviour: [Decisions](../60-architecture/90-decisions.md).
 
 Next: [Installation](20-installation.md).

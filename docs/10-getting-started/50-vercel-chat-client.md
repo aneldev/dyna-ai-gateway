@@ -3,7 +3,7 @@
 A chat screen built on the Vercel AI SDK's `useChat` talks to the gateway through `dyna-ai-gateway/vercel-ui`: a server-only
 module that takes your `AIGateway` instance and a configuration per chat use case, and speaks the SDK's UI message protocol.
 Each endpoint of your application becomes one call. The gateway itself knows nothing of the chat client
-([D40](../30-architecture/Decisions.md#d40-the-gateway-knows-no-ui)).
+([D40](../60-architecture/90-decisions.md#d40-the-gateway-knows-no-ui)).
 
 ## 1. One instance per use case
 
@@ -25,7 +25,7 @@ const supportChat = new AIGatewayVercelUi({
 ```
 
 `userContext` is the trust boundary of the endpoint: the request body never names the tenant or the user
-([D118](../30-architecture/Decisions.md#d118-the-gateway-checks-what-a-user-could-forge-and-trusts-what-the-host-sets)).
+([D118](../60-architecture/90-decisions.md#d118-the-gateway-checks-what-a-user-could-forge-and-trusts-what-the-host-sets)).
 `call` holds what every call of the use case shares (the same fields as `run()`, minus what each request brings); `prepareCall`
 overrides it per request, for example the `context` of the record the user is looking at, carried in the request's `body`.
 A second use case, an invoice assistant on another profile and another knowledge base, is a second instance.
@@ -73,7 +73,7 @@ its message to the browser.
 
 `metadata.withdrawn` says the text that streamed was not kept (an output rule failed; the issues are next to it): grey it or
 drop it, the protocol cannot take text back. In `history`, one answer is one assistant message with a `step-start` part per
-model step ([D34](../30-architecture/Decisions.md#d34-one-answer-is-one-message)); a call the human rejected is a `dynamic-tool`
+model step ([D34](../60-architecture/90-decisions.md#d34-one-answer-is-one-message)); a call the human rejected is a `dynamic-tool`
 part in state `output-denied` with the reason, a call that failed is `output-error`.
 
 ## 4. Approvals and the other decisions
@@ -82,7 +82,7 @@ A run that pauses for a tool streams a `tool-approval-request` and `metadata.pau
 `approval-requested`. The SDK's card does the rest: `addToolApprovalResponse({id, approved, reason})` and, with
 `sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses`, `useChat` posts the messages to the same `chat`
 endpoint, which resumes the run and streams the continuation
-([D35](../30-architecture/Decisions.md#d35-the-approval-card-is-the-sdks-own)). Every card of the pause is answered in that one
+([D35](../60-architecture/90-decisions.md#d35-the-approval-card-is-the-sdks-own)). Every card of the pause is answered in that one
 request.
 
 What the card cannot express goes through `resume`: the answers of a user question (the `ask_user_question` call is a
@@ -99,7 +99,7 @@ export const POST = async (request: Request): Promise<Response> => {
 ```
 
 The pause must be one of the calling user's own paused runs; anything else is a 404. A review of the answer before the user
-sees it ([D99](../30-architecture/Decisions.md#d99-the-answer-waits-for-a-human)) streams no text and sets `metadata.pause`
+sees it ([D99](../60-architecture/90-decisions.md#d99-the-answer-waits-for-a-human)) streams no text and sets `metadata.pause`
 with the kind `RESULT_REVIEW`; the reviewer's screen is `AIGateway.getPausedRun`, not this module.
 
 ## 5. Files

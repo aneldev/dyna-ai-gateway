@@ -6,7 +6,7 @@ The design decisions that shape how the gateway behaves, one chapter per class, 
 
 A decision has an id, `D46`; the JSDoc of the code cites the id where a behaviour comes from a decision (`… chosen per call, not stored on the thread (D46)`). The ids are not contiguous: the numbers in between are implementation decisions that do not change what the application sees. An entry without an id is a design principle, not a single decision.
 
-The composition of the classes is in [Architecture and trade-offs](Architecture%20and%20trade-offs.md); how a change takes effect while the service runs is in [Live adjustment and dependency injection](Live%20adjustment%20and%20dependency%20injection.md); where a sentence of the system prompt comes from is in [System prompt layers](System%20prompt%20production%20layers.md).
+The composition of the classes is in [Architecture and trade-offs](10-architecture-and-trade-offs.md); how a change takes effect while the service runs is in [Live adjustment and dependency injection](50-live-adjustment-and-dependency-injection.md); where a sentence of the system prompt comes from is in [System prompt layers](40-system-prompt-production-layers.md).
 
 ---
 
@@ -50,7 +50,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** The internals are constructed by the gateway, never by the application; a class or a helper that is importable is a class that gets called, and its signature then becomes a contract the library did not mean to give. The types stay public because the application implements the repositories and reads what the gateway returns.
 
-**Consequence.** `gateway.modelRegistry`, `gateway.trace` and the other exposed children can be named as types (`const registry: IModelRegistry = gateway.modelRegistry`) but not constructed: `new ModelRegistry(...)` is a type error. The `overrides` argument of the constructor exists for tests, which pass an instance of a public interface such as `ILLMClient` ([Live adjustment and dependency injection](Live%20adjustment%20and%20dependency%20injection.md) § 2.3). An application that needs something the entry does not export asks for a facade method instead of a deep import; there is no sub path to import from.
+**Consequence.** `gateway.modelRegistry`, `gateway.trace` and the other exposed children can be named as types (`const registry: IModelRegistry = gateway.modelRegistry`) but not constructed: `new ModelRegistry(...)` is a type error. The `overrides` argument of the constructor exists for tests, which pass an instance of a public interface such as `ILLMClient` ([Live adjustment and dependency injection](50-live-adjustment-and-dependency-injection.md) § 2.3). An application that needs something the entry does not export asks for a facade method instead of a deep import; there is no sub path to import from.
 
 ### D106: An enum's value is its member name
 
@@ -82,7 +82,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** The profile's `promptAddendum` is stored once per tenant and profile; the prompt is the user's words. Nothing carried what the application knows or wants on this one call.
 
-**Consequence.** Neither is stored: a later call on the thread passes its own, a paused run keeps the prompt it started with and `resume()` takes none. Which layer to use for which text is in [System prompt layers](System%20prompt%20production%20layers.md#which-layer-to-use).
+**Consequence.** Neither is stored: a later call on the thread passes its own, a paused run keeps the prompt it started with and `resume()` takes none. Which layer to use for which text is in [System prompt layers](40-system-prompt-production-layers.md#which-layer-to-use).
 
 ### D124: Skills, instructions the model loads on demand
 
@@ -219,7 +219,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** A model choice is never only a model: tools, limits and prompt go with it.
 
-**Consequence.** Models, profiles and templates are data with a cache; their write methods invalidate it, so a change is read by the next call. The table of what changes how is in [Live adjustment](Live%20adjustment%20and%20dependency%20injection.md#3-live-adjustment).
+**Consequence.** Models, profiles and templates are data with a cache; their write methods invalidate it, so a change is read by the next call. The table of what changes how is in [Live adjustment](50-live-adjustment-and-dependency-injection.md#3-live-adjustment).
 
 ### A profile a paused run waits on cannot be removed
 
@@ -247,7 +247,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** Loading a whole table to find five active rows is wrong once a key has hundreds of versions. The trace records the version of every answer, so an old version can be inspected and activated again.
 
-**Consequence.** The seed (version 0) answers when the repository has no active version, so a fresh database works at once. The host replaces the seed of a key with `promptTemplateStore.seedTemplates`; a key not given there keeps the shipped seed, and an active version in the repository always wins. The layers of the main template are in [System prompt layers](System%20prompt%20production%20layers.md).
+**Consequence.** The seed (version 0) answers when the repository has no active version, so a fresh database works at once. The host replaces the seed of a key with `promptTemplateStore.seedTemplates`; a key not given there keeps the shipped seed, and an active version in the repository always wins. The layers of the main template are in [System prompt layers](40-system-prompt-production-layers.md).
 
 ---
 
@@ -295,7 +295,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** Memory is a quality lever, so the configuration says in one word whether it is on.
 
-**Consequence.** The thread summary and facts and the user's facts reach the model as a labelled layer of the system prompt; a stored template without the `{memory}` slot gets no memory. See [System prompt layers](System%20prompt%20production%20layers.md).
+**Consequence.** The thread summary and facts and the user's facts reach the model as a labelled layer of the system prompt; a stored template without the `{memory}` slot gets no memory. See [System prompt layers](40-system-prompt-production-layers.md).
 
 ### D122: The working memory owns the thread's window
 
@@ -529,7 +529,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ### D118: The gateway checks what a user could forge and trusts what the host sets
 
-**Decision.** The gateway checks every value an end user could forge or replay: the tenant and the user on threads, files and memory, the pause a decision is for, the answer against its card, an edited tool input against its policy, the sizes of what enters a prompt. It trusts what only the host's code sets: `userContext`, the profile and the scope of a call, who may resume or review, and the admin methods that take raw ids. [What the gateway checks and what it trusts](Architecture%20and%20trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts) lists both sides.
+**Decision.** The gateway checks every value an end user could forge or replay: the tenant and the user on threads, files and memory, the pause a decision is for, the answer against its card, an edited tool input against its policy, the sizes of what enters a prompt. It trusts what only the host's code sets: `userContext`, the profile and the scope of a call, who may resume or review, and the admin methods that take raw ids. [What the gateway checks and what it trusts](10-architecture-and-trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts) lists both sides.
 
 **Why.** The gateway sees no session or token: authentication and the roles of the host's users are the host's. Within that boundary, every input that travels through the end user's client is treated as forged until checked.
 
@@ -707,7 +707,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Decision.** Every call sends one system prompt: the `CHAT_MAIN` template with its slots filled, from the most general (the base text, the profile's addendum) to the most specific (the call's instructions and context), then the data layers (memory, knowledge base) with labels that say they are data.
 
-**Consequence.** The full table, which layer to use for which text and why the order, is in [System prompt layers](System%20prompt%20production%20layers.md).
+**Consequence.** The full table, which layer to use for which text and why the order, is in [System prompt layers](40-system-prompt-production-layers.md).
 
 ---
 
@@ -729,7 +729,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Why.** The whole gateway runs and is tested without infrastructure. Where a tenant's data lives is what tenant isolation rests on, so the developer who wires the gateway decides it: one set of names with a tenant column, a set per tenant, or a schema per tenant.
 
-**Consequence.** The real adapters are planned, see the [Roadmap](../80-roadmap.md#planned).
+**Consequence.** The real adapters are planned, see the [Roadmap](../70-roadmap.md#planned).
 
 ### D120: The real adapters are packages of their own
 

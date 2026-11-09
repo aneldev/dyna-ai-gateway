@@ -9,8 +9,8 @@ const EXCLUDED = [
   "internal",
   "plans",
   "implementation",
-  "87-backlog.md",
-  "90-workspace.md",
+  "80-backlog.md",
+  "85-workspace.md",
   "docs-structure.txt",
 ];
 const EXCLUDED_URL_PARTS = [

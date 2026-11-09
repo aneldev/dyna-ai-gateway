@@ -1,6 +1,6 @@
 # Roadmap
 
-Status: 2026-11-08. What the library does today, what is planned, and what is deliberately not planned. The reasons behind the behaviours are in [Decisions](30-architecture/Decisions.md).
+Status: 2026-11-08. What the library does today, what is planned, and what is deliberately not planned. The reasons behind the behaviours are in [Decisions](60-architecture/90-decisions.md).
 
 ## Available today
 
