@@ -48,6 +48,8 @@ One package: `pnpm --filter dyna-ai-gateway <script> [args]`, or run the script 
 The site at [aneldev.github.io/dyna-ai-gateway](https://aneldev.github.io/dyna-ai-gateway/) is built with [Docusaurus](https://docusaurus.io) from `website/`,
 a project outside the pnpm workspace with its own lockfile. It publishes `docs/` as it is, except `internal/`, `plans/`,
 `implementation/`, `87-backlog.md`, `90-workspace.md` and `docs-structure.txt`, plus the API reference.
+The landing page is `website/src/pages/index.tsx`; the docs are served under `/docs/`, the brand colors are in
+`website/src/css/custom.css`.
 
 ```bash
 pnpm install         # once: TypeDoc reads the gateway's types and their dependencies

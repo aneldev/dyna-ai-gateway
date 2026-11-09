@@ -1,0 +1,46 @@
+/* The brand of the site: the purple of the logo, as Infima variables. */
+
+:root {
+  --ifm-color-primary: #5b30d6;
+  --ifm-color-primary-dark: #522bc1;
+  --ifm-color-primary-darker: #4d29b6;
+  --ifm-color-primary-darkest: #402296;
+  --ifm-color-primary-light: #6d46db;
+  --ifm-color-primary-lighter: #7651dd;
+  --ifm-color-primary-lightest: #9172e4;
+  --ifm-code-font-size: 92%;
+  --ifm-navbar-shadow: 0 1px 0 var(--ifm-toc-border-color);
+  --docusaurus-highlighted-code-line-bg: rgba(91, 48, 214, 0.12);
+}
+
+[data-theme="dark"] {
+  --ifm-color-primary: #a78bfa;
+  --ifm-color-primary-dark: #9373f9;
+  --ifm-color-primary-darker: #8967f8;
+  --ifm-color-primary-darkest: #6a40f6;
+  --ifm-color-primary-light: #bba3fb;
+  --ifm-color-primary-lighter: #c5affc;
+  --ifm-color-primary-lightest: #e3d9fd;
+  --ifm-background-color: #15121f;
+  --ifm-navbar-background-color: #1b1728;
+  --ifm-footer-background-color: #1b1728;
+  --docusaurus-highlighted-code-line-bg: rgba(167, 139, 250, 0.18);
+}
+
+.navbar__logo {
+  height: 2.25rem;
+}
+
+/* The logo SVG stretches to its box (preserveAspectRatio="none"), so the box is the logo's square. */
+.navbar__logo img {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.navbar__title {
+  font-weight: 700;
+}
+
+.footer--dark {
+  --ifm-footer-background-color: #1e1440;
+}

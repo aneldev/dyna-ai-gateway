@@ -4,9 +4,23 @@ import {join, relative} from "node:path";
 const SITE_DIR = join(import.meta.dirname, "..");
 const BUILD_DIR = join(SITE_DIR, "build");
 const DOCS_DIR = join(SITE_DIR, "..", "docs");
-const API_BUILD_DIR = join(BUILD_DIR, "api");
-const EXCLUDED = ["internal", "plans", "implementation", "87-backlog.md", "90-workspace.md", "docs-structure.txt"];
-const EXCLUDED_URL_PARTS = ["/internal/", "/plans/", "/implementation/", "/backlog/", "/workspace/", "/docs-structure/"];
+const API_BUILD_DIR = join(BUILD_DIR, "docs", "api");
+const EXCLUDED = [
+  "internal",
+  "plans",
+  "implementation",
+  "87-backlog.md",
+  "90-workspace.md",
+  "docs-structure.txt",
+];
+const EXCLUDED_URL_PARTS = [
+  "/internal/",
+  "/plans/",
+  "/implementation/",
+  "/backlog/",
+  "/workspace/",
+  "/docs-structure/",
+];
 
 const filesUnder = (dir, extension) => {
   if (!existsSync(dir)) return [];

@@ -1,5 +1,8 @@
 import apiSidebar from "./api-sidebar.mjs";
 
+const GITHUB_URL = "https://github.com/aneldev/dyna-ai-gateway";
+const NPM_URL = "https://www.npmjs.com/package/dyna-ai-gateway";
+
 const arrangeSidebar = async ({defaultSidebarItemsGenerator, ...args}) => {
   const items = await defaultSidebarItemsGenerator(args);
   const isLandingPage = (item) => item.type === "doc" && item.id === "README";
@@ -10,7 +13,9 @@ const arrangeSidebar = async ({defaultSidebarItemsGenerator, ...args}) => {
 };
 
 const config = {
-  title: "dyna-ai-gateway",
+  title: "dyna AI Gateway",
+  tagline: "A server-side TypeScript library that puts a language model inside a business application.",
+  favicon: "img/favicon.png",
   url: "https://aneldev.github.io",
   baseUrl: "/dyna-ai-gateway/",
   onBrokenLinks: "throw",
@@ -20,25 +25,28 @@ const config = {
     hooks: {onBrokenMarkdownLinks: "throw"},
   },
   plugins: [
-    ["docusaurus-plugin-typedoc", {
-      entryPoints: [
-        "../packages/dyna-ai-gateway/src",
-        "../packages/dyna-ai-gateway/src/entries/vercel-ui",
-      ],
-      entryPointStrategy: "resolve",
-      tsconfig: "../packages/dyna-ai-gateway/tsconfig.json",
-      out: "../docs/40-api",
-      skipErrorChecking: true,
-      readme: "none",
-      plugin: ["./typedoc/shift-headings.mjs"],
-    }],
+    [
+      "docusaurus-plugin-typedoc",
+      {
+        entryPoints: [
+          "../packages/dyna-ai-gateway/src",
+          "../packages/dyna-ai-gateway/src/entries/vercel-ui",
+        ],
+        entryPointStrategy: "resolve",
+        tsconfig: "../packages/dyna-ai-gateway/tsconfig.json",
+        out: "../docs/40-api",
+        skipErrorChecking: true,
+        readme: "none",
+        plugin: ["./typedoc/shift-headings.mjs"],
+      },
+    ],
   ],
   presets: [
     ["classic", {
       blog: false,
       docs: {
         path: "../docs",
-        routeBasePath: "/",
+        routeBasePath: "/docs",
         sidebarPath: "./sidebars.mjs",
         sidebarItemsGenerator: arrangeSidebar,
         exclude: [
@@ -50,8 +58,44 @@ const config = {
           "docs-structure.txt",
         ],
       },
+      theme: {customCss: "./src/css/custom.css"},
     }],
   ],
+  themeConfig: {
+    colorMode: {respectPrefersColorScheme: true},
+    navbar: {
+      title: "dyna AI Gateway",
+      logo: {alt: "dyna AI Gateway logo", src: "img/logo.svg"},
+      items: [
+        {type: "docSidebar", sidebarId: "docs", position: "left", label: "Docs"},
+        {type: "doc", docId: "api/index/classes/AIGateway", position: "left", label: "API"},
+        {href: NPM_URL, position: "right", label: "npm"},
+        {href: GITHUB_URL, position: "right", label: "GitHub"},
+      ],
+    },
+    footer: {
+      style: "dark",
+      links: [
+        {
+          title: "Docs",
+          items: [
+            {label: "Getting started", to: "/docs/getting-started/FAQ"},
+            {label: "Architecture", to: "/docs/architecture/Decisions"},
+            {label: "API", to: "/docs/api/index/classes/AIGateway"},
+          ],
+        },
+        {
+          title: "Project",
+          items: [
+            {label: "GitHub", href: GITHUB_URL},
+            {label: "npm", href: NPM_URL},
+            {label: "Changelog", href: `${GITHUB_URL}/blob/main/packages/dyna-ai-gateway/CHANGELOG.md`},
+          ],
+        },
+      ],
+      copyright: `MIT License. © ${new Date().getFullYear()} Anel Invent`,
+    },
+  },
 };
 
 export default config;
