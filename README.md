@@ -5,7 +5,7 @@
   &nbsp;·&nbsp;
   <a href="https://aneldev.github.io/dyna-ai-gateway/docs/getting-started/README">Getting started</a>
   &nbsp;·&nbsp;
-  <a href="https://aneldev.github.io/dyna-ai-gateway/docs/api/">API reference</a>
+  <a href="https://aneldev.github.io/dyna-ai-gateway/docs/api/index/classes/AIGateway">API reference</a>
   &nbsp;·&nbsp;
   <a href="https://www.npmjs.com/package/dyna-ai-gateway">npm</a>
 </p>
