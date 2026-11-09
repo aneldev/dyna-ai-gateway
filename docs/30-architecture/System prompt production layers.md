@@ -1,4 +1,4 @@
-# AI Gateway — System prompt layers
+# System prompt layers
 
 Status: 2026-10-30. Source: `src/internal/prompt-template-store/utils/seedTemplates.ts` (the template), `src/internal/context-assembler/ContextAssembler.ts` (the slots).
 

@@ -1,4 +1,4 @@
-# AI Gateway — Live adjustment and dependency injection
+# Live adjustment and dependency injection
 
 Status: 2026-10-27. Code: `../../packages/dyna-ai-gateway/src/AIGateway.ts`, `src/orchestration/createGatewayDeps.ts`, `src/types.ts`.
 

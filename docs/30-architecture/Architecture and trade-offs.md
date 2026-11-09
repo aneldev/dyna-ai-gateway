@@ -1,4 +1,4 @@
-# AI Gateway — Architecture and trade-offs
+# Architecture and trade-offs
 
 Status: 2026-10-10.
 

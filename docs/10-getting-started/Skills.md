@@ -1,3 +1,7 @@
+---
+sidebar_label: Skills
+---
+
 # Skills: instructions the model loads when a task needs them
 
 A skill is a named block of instructions the model reads only when the task at hand calls for it: a refund policy, an

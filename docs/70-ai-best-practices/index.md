@@ -1,4 +1,4 @@
-# dev-practices
+# AI best practices
 
 This folder contains best practices for using this library.
 

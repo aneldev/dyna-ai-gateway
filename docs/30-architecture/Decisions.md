@@ -1,4 +1,4 @@
-# AI Gateway — Decisions
+# Decisions
 
 Status: 2026-10-22.
 

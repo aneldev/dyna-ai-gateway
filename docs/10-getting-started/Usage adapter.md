@@ -1,3 +1,7 @@
+---
+sidebar_label: Usage adapter
+---
+
 # Usage adapter: the application decides every model call
 
 The gateway holds no token logic: no budget, no plan, no quota, no remaining amount. Before **every** model call it asks the
