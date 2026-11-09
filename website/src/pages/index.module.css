@@ -1,0 +1,80 @@
+/* The landing page: the hero on the brand purple, the diagram, the feature cards. */
+
+.hero {
+  padding: 4rem 0 3rem;
+  text-align: center;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(61, 28, 158, 0.9) 0%, rgba(91, 48, 214, 0.9) 55%, rgba(135, 85, 241, 0.9) 100%);
+}
+
+.logo {
+  width: 9rem;
+  height: 9rem;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.tagline {
+  max-width: 44rem;
+  margin: 0 auto 2rem;
+  font-size: 1.25rem;
+  opacity: 0.92;
+}
+
+.tagline code {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.install {
+  display: inline-block;
+  margin: 0;
+  padding: 0.6rem 1.2rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 0.5rem;
+}
+
+.diagram {
+  margin: 0 auto;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.card {
+  height: 100%;
+  padding: 1.5rem;
+  border: 1px solid var(--ifm-toc-border-color);
+  border-radius: 0.75rem;
+  background: var(--ifm-card-background-color);
+}
+
+.card h3 {
+  color: var(--ifm-color-primary);
+}
+
+.card p {
+  margin: 0;
+}
+
+@media (max-width: 996px) {
+  .title {
+    font-size: 2.25rem;
+  }
+}

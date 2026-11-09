@@ -1,4 +1,4 @@
-# AI Gateway — Decisions
+# Decisions
 
 Status: 2026-10-22.
 
@@ -6,7 +6,7 @@ The design decisions that shape how the gateway behaves, one chapter per class, 
 
 A decision has an id, `D46`; the JSDoc of the code cites the id where a behaviour comes from a decision (`… chosen per call, not stored on the thread (D46)`). The ids are not contiguous: the numbers in between are implementation decisions that do not change what the application sees. An entry without an id is a design principle, not a single decision.
 
-The composition of the classes is in [Architecture and trade-offs](Architecture%20and%20trade-offs.md); how a change takes effect while the service runs is in [Live adjustment and dependency injection](Live%20adjustment%20and%20dependency%20injection.md); where a sentence of the system prompt comes from is in [System prompt layers](System%20prompt%20production%20layers.md).
+The composition of the classes is in [Architecture and trade-offs](10-architecture-and-trade-offs.md); how a change takes effect while the service runs is in [Live adjustment and dependency injection](50-live-adjustment-and-dependency-injection.md); where a sentence of the system prompt comes from is in [System prompt layers](40-system-prompt-production-layers.md).
 
 ---
 
@@ -26,7 +26,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** A profile stored on the thread was written at creation and never read. The application knows which model the user picked, and it may change between two messages of one conversation. Stored turns and memory are in the gateway's own provider-neutral shape, so any profile continues any thread.
 
-**Consequence.** There is no `switchModel`: switching is passing another `profileId` on the next call, and the application passes the user's choice on every call. A paused run keeps the profile it started with unless [resume names another one](#d65-resume-continues-a-paused-run-on-another-profile). The step by step is in the [FAQ](../10-getting-started/FAQ.md#how-can-the-user-change-the-model).
+**Consequence.** There is no `switchModel`: switching is passing another `profileId` on the next call, and the application passes the user's choice on every call. A paused run keeps the profile it started with unless [resume names another one](#d65-resume-continues-a-paused-run-on-another-profile). The step by step is in the [FAQ](../10-getting-started/90-faq.md#how-can-the-user-change-the-model).
 
 ### D103: A call always names its profile
 
@@ -50,7 +50,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** The internals are constructed by the gateway, never by the application; a class or a helper that is importable is a class that gets called, and its signature then becomes a contract the library did not mean to give. The types stay public because the application implements the repositories and reads what the gateway returns.
 
-**Consequence.** `gateway.modelRegistry`, `gateway.trace` and the other exposed children can be named as types (`const registry: IModelRegistry = gateway.modelRegistry`) but not constructed: `new ModelRegistry(...)` is a type error. The `overrides` argument of the constructor exists for tests, which pass an instance of a public interface such as `ILLMClient` ([Live adjustment and dependency injection](Live%20adjustment%20and%20dependency%20injection.md) § 2.3). An application that needs something the entry does not export asks for a facade method instead of a deep import; there is no sub path to import from.
+**Consequence.** `gateway.modelRegistry`, `gateway.trace` and the other exposed children can be named as types (`const registry: IModelRegistry = gateway.modelRegistry`) but not constructed: `new ModelRegistry(...)` is a type error. The `overrides` argument of the constructor exists for tests, which pass an instance of a public interface such as `ILLMClient` ([Live adjustment and dependency injection](50-live-adjustment-and-dependency-injection.md) § 2.3). An application that needs something the entry does not export asks for a facade method instead of a deep import; there is no sub path to import from.
 
 ### D106: An enum's value is its member name
 
@@ -82,7 +82,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** The profile's `promptAddendum` is stored once per tenant and profile; the prompt is the user's words. Nothing carried what the application knows or wants on this one call.
 
-**Consequence.** Neither is stored: a later call on the thread passes its own, a paused run keeps the prompt it started with and `resume()` takes none. Which layer to use for which text is in [System prompt layers](System%20prompt%20production%20layers.md#which-layer-to-use).
+**Consequence.** Neither is stored: a later call on the thread passes its own, a paused run keeps the prompt it started with and `resume()` takes none. Which layer to use for which text is in [System prompt layers](40-system-prompt-production-layers.md#which-layer-to-use).
 
 ### D124: Skills, instructions the model loads on demand
 
@@ -144,7 +144,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** A stored failed answer would be sent back to the model on the next call. Streaming cannot be undone, so the client needs a signal.
 
-**Consequence.** A client that renders deltas drops or greys the text of the call on `ANSWER_WITHDRAWN` and shows the issues; a client that reads only `response` is unaffected. The choice between live deltas and showing only the final response is in the [FAQ](../10-getting-started/FAQ.md#how-do-i-add-moderation-or-other-safety-checks).
+**Consequence.** A client that renders deltas drops or greys the text of the call on `ANSWER_WITHDRAWN` and shows the issues; a client that reads only `response` is unaffected. The choice between live deltas and showing only the final response is in the [FAQ](../10-getting-started/90-faq.md#how-do-i-add-moderation-or-other-safety-checks).
 
 ### D54: Forgetting a user is two methods
 
@@ -191,7 +191,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** A server stopped in the middle of a call leaves the thread leased until the lease expires, the run running with nobody to close it, and the user turn stored without an answer. `whenIdle()` waits for the memory updates only, not for the calls. Stopping is the standard order of a Node server: stop taking work, drain within a grace period, abort the rest.
 
-**Consequence.** The refusal is a 503, not a 4xx: the client did nothing wrong and may retry on another instance. An aborted call answers `FAILED` with `call_aborted` and the reason "The call was aborted: the gateway is shutting down"; its run is closed, its thread lease released and its turns kept. A paused run is stored, so it is untouched and resumes on the next instance. A crash skips all of it. A gateway that was shut down takes no call again. The SIGTERM handler is in the [FAQ](../10-getting-started/FAQ.md#how-do-i-stop-the-server-cleanly).
+**Consequence.** The refusal is a 503, not a 4xx: the client did nothing wrong and may retry on another instance. An aborted call answers `FAILED` with `call_aborted` and the reason "The call was aborted: the gateway is shutting down"; its run is closed, its thread lease released and its turns kept. A paused run is stored, so it is untouched and resumes on the next instance. A crash skips all of it. A gateway that was shut down takes no call again. The SIGTERM handler is in the [FAQ](../10-getting-started/90-faq.md#how-do-i-stop-the-server-cleanly).
 
 ### D40: The gateway knows no UI
 
@@ -219,7 +219,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** A model choice is never only a model: tools, limits and prompt go with it.
 
-**Consequence.** Models, profiles and templates are data with a cache; their write methods invalidate it, so a change is read by the next call. The table of what changes how is in [Live adjustment](Live%20adjustment%20and%20dependency%20injection.md#3-live-adjustment).
+**Consequence.** Models, profiles and templates are data with a cache; their write methods invalidate it, so a change is read by the next call. The table of what changes how is in [Live adjustment](50-live-adjustment-and-dependency-injection.md#3-live-adjustment).
 
 ### A profile a paused run waits on cannot be removed
 
@@ -247,7 +247,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** Loading a whole table to find five active rows is wrong once a key has hundreds of versions. The trace records the version of every answer, so an old version can be inspected and activated again.
 
-**Consequence.** The seed (version 0) answers when the repository has no active version, so a fresh database works at once. The host replaces the seed of a key with `promptTemplateStore.seedTemplates`; a key not given there keeps the shipped seed, and an active version in the repository always wins. The layers of the main template are in [System prompt layers](System%20prompt%20production%20layers.md).
+**Consequence.** The seed (version 0) answers when the repository has no active version, so a fresh database works at once. The host replaces the seed of a key with `promptTemplateStore.seedTemplates`; a key not given there keeps the shipped seed, and an active version in the repository always wins. The layers of the main template are in [System prompt layers](40-system-prompt-production-layers.md).
 
 ---
 
@@ -295,7 +295,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** Memory is a quality lever, so the configuration says in one word whether it is on.
 
-**Consequence.** The thread summary and facts and the user's facts reach the model as a labelled layer of the system prompt; a stored template without the `{memory}` slot gets no memory. See [System prompt layers](System%20prompt%20production%20layers.md).
+**Consequence.** The thread summary and facts and the user's facts reach the model as a labelled layer of the system prompt; a stored template without the `{memory}` slot gets no memory. See [System prompt layers](40-system-prompt-production-layers.md).
 
 ### D122: The working memory owns the thread's window
 
@@ -303,7 +303,7 @@ The composition of the classes is in [Architecture and trade-offs](Architecture%
 
 **Why.** A chat assistant and a long-running support agent need different memories, and a tenant often runs both. One raw interface (the idiom of LangChain's `saveContext` / `loadMemoryVariables`) lets each strategy, built-in or the host's, decide for itself, with the one number it needs: the budget. A ratio instead of a priority between history and knowledge base is what LlamaIndex does (`chat_history_token_ratio`); it is one knob and it reads as what it does.
 
-**Consequence.** `IContextAssemblerConfig.maxTurns` is gone; the window is sized in tokens, by the strategy. A stored summary survives a switch to `SLIDING_WINDOW` unused and is resumed after the switch back; `getThreadMemory` shows it meanwhile and returns the empty state for a thread that never ran `SUMMARY_BUFFER`. Every window opens on a user turn, so a tool result never arrives without its call. The token count is a real tokenizer (exact for OpenAI, a safety factor for the other providers; images and PDFs by size), the same count the usage adapter is asked with ([D121](#d121-the-application-decides-every-model-call)). How to choose and configure a strategy is in the [FAQ](../10-getting-started/FAQ.md#how-much-of-the-conversation-does-the-model-see-and-how-do-i-choose).
+**Consequence.** `IContextAssemblerConfig.maxTurns` is gone; the window is sized in tokens, by the strategy. A stored summary survives a switch to `SLIDING_WINDOW` unused and is resumed after the switch back; `getThreadMemory` shows it meanwhile and returns the empty state for a thread that never ran `SUMMARY_BUFFER`. Every window opens on a user turn, so a tool result never arrives without its call. The token count is a real tokenizer (exact for OpenAI, a safety factor for the other providers; images and PDFs by size), the same count the usage adapter is asked with ([D121](#d121-the-application-decides-every-model-call)). How to choose and configure a strategy is in the [FAQ](../10-getting-started/90-faq.md#how-much-of-the-conversation-does-the-model-see-and-how-do-i-choose).
 
 ### D56: The user-facts extractor returns operations
 
@@ -529,7 +529,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ### D118: The gateway checks what a user could forge and trusts what the host sets
 
-**Decision.** The gateway checks every value an end user could forge or replay: the tenant and the user on threads, files and memory, the pause a decision is for, the answer against its card, an edited tool input against its policy, the sizes of what enters a prompt. It trusts what only the host's code sets: `userContext`, the profile and the scope of a call, who may resume or review, and the admin methods that take raw ids. [What the gateway checks and what it trusts](Architecture%20and%20trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts) lists both sides.
+**Decision.** The gateway checks every value an end user could forge or replay: the tenant and the user on threads, files and memory, the pause a decision is for, the answer against its card, an edited tool input against its policy, the sizes of what enters a prompt. It trusts what only the host's code sets: `userContext`, the profile and the scope of a call, who may resume or review, and the admin methods that take raw ids. [What the gateway checks and what it trusts](10-architecture-and-trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts) lists both sides.
 
 **Why.** The gateway sees no session or token: authentication and the roles of the host's users are the host's. Within that boundary, every input that travels through the end user's client is treated as forged until checked.
 
@@ -633,7 +633,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Why.** The libraries of the field (OpenAI Agents SDK, Mastra, NeMo) call every check a guardrail, built-in or custom. One vocabulary, one place.
 
-**Consequence.** The application's rules run only when the built-in ones passed, so a rejected prompt pays no moderation call. How to write a rule, what it receives and what happens on each severity is in the [FAQ](../10-getting-started/FAQ.md#how-do-i-add-moderation-or-other-safety-checks).
+**Consequence.** The application's rules run only when the built-in ones passed, so a rejected prompt pays no moderation call. How to write a rule, what it receives and what happens on each severity is in the [FAQ](../10-getting-started/90-faq.md#how-do-i-add-moderation-or-other-safety-checks).
 
 ### D57, D59: A rule gets a judge
 
@@ -707,7 +707,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Decision.** Every call sends one system prompt: the `CHAT_MAIN` template with its slots filled, from the most general (the base text, the profile's addendum) to the most specific (the call's instructions and context), then the data layers (memory, knowledge base) with labels that say they are data.
 
-**Consequence.** The full table, which layer to use for which text and why the order, is in [System prompt layers](System%20prompt%20production%20layers.md).
+**Consequence.** The full table, which layer to use for which text and why the order, is in [System prompt layers](40-system-prompt-production-layers.md).
 
 ---
 
@@ -729,7 +729,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Why.** The whole gateway runs and is tested without infrastructure. Where a tenant's data lives is what tenant isolation rests on, so the developer who wires the gateway decides it: one set of names with a tenant column, a set per tenant, or a schema per tenant.
 
-**Consequence.** The real adapters are planned, see the [Roadmap](../80-roadmap.md#planned).
+**Consequence.** The real adapters are planned, see the [Roadmap](../70-roadmap.md#planned).
 
 ### D120: The real adapters are packages of their own
 
@@ -751,7 +751,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ## 17. AIGatewayVercelUi
 
-The server-only module `dyna-ai-gateway/vercel-ui` that speaks the Vercel UI message protocol for a chat client on `useChat` (D40). How to use it: [Vercel chat client](../10-getting-started/Vercel%20chat%20client.md).
+The server-only module `dyna-ai-gateway/vercel-ui` that speaks the Vercel UI message protocol for a chat client on `useChat` (D40). How to use it: [Vercel chat client](../10-getting-started/50-vercel-chat-client.md).
 
 ### D34: One answer is one message
 

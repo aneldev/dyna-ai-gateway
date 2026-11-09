@@ -10,3 +10,4 @@ temp/
 **/.claude/settings.local.json
 **/docs/plans/
 **/docs/internal
+docs/30-api/

@@ -49,7 +49,7 @@ interface IActiveCache {
  *   the host overrides it per key with `seedTemplates`.
  *
  * Global: one copy for all tenants; tenant flavour comes only through the profile's addendum slot.
- * See docs/architecture "Decisions.md" § PromptTemplateStore.
+ * See docs/60-architecture/90-decisions.md § PromptTemplateStore.
  *
  * # Who needs it
  *

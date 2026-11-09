@@ -1,0 +1,42 @@
+{
+  "name": "dyna-ai-gateway-docs-site",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "docusaurus start",
+    "build": "docusaurus build && node scripts/check-output.mjs",
+    "serve": "docusaurus serve",
+    "clear": "docusaurus clear"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/preset-classic": "3.10.2",
+    "@docusaurus/theme-mermaid": "3.10.2",
+    "docusaurus-plugin-typedoc": "1.4.3",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "typedoc": "0.28.20",
+    "typedoc-plugin-markdown": "4.14.1",
+    "typescript": "5.9.3"
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 3 chrome version",
+      "last 3 firefox version",
+      "last 5 safari version"
+    ]
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "core-js"
+    ]
+  }
+}

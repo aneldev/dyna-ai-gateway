@@ -430,7 +430,7 @@ export interface IGatewayAskInput<TStructured = unknown> {
    * @example "Summarise the invoice in three bullet points." - the "Summarise" button of the invoice screen
    * @example "The user is an administrator: you may mention internal notes." - the same screen, opened by an admin
    *
-   * @see docs/architecture "System prompt production layers.md"
+   * @see docs/60-architecture/40-system-prompt-production-layers.md
    */
   instructions?: string;
   /**
@@ -445,7 +445,7 @@ export interface IGatewayAskInput<TStructured = unknown> {
    * @example "Invoice 4711, customer Nordwind GmbH, status OVERDUE, due 2026-09-30, open amount 1 250 EUR" - the invoice on screen
    * @example "Wizard 'New order', step 2 of 4: delivery address" - where the user is in a flow
    *
-   * @see docs/architecture "System prompt production layers.md"
+   * @see docs/60-architecture/40-system-prompt-production-layers.md
    */
   context?: string;
   /**

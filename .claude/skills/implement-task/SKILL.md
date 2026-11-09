@@ -40,7 +40,7 @@ The unit is exactly what the developer asked for in that message: one plan step,
 - Nothing "while I'm here". A pre-existing problem found on the way is reported in the handoff (and in the plan's
   **Findings** when there is a plan), fixed only if it blocks the unit.
 - **Backlog.** A problem found on the way that this unit does not fix (bug or improvement): tell the developer, in
-  the handoff or as soon as it matters, and propose a backlog entry for `../../../docs/87-backlog.md` (the heading
+  the handoff or as soon as it matters, and propose a backlog entry for `../../../docs/80-backlog.md` (the heading
   `### [ ] [(security)] (<severity>) #INT<next free number> <bug|impr> <title>`, `(security)` only for a security issue, then the `####` sections **Short**, **Description**, **Repro**, as the
   file's Conventions say). Add it only after he agrees; the entry is part of this unit's files.
 - Non-trivial and no plan? Say so and offer `stepwise-plan` instead of silently growing the unit.
@@ -85,7 +85,7 @@ The developer reviews docs as code. Update, in the same unit, whatever the chang
   is not done while a user doc or a JSDoc contradicts the code.
 - The plan file (`docs/plans/…`) when under a stepwise plan: mark `[x]`, add the `Done <date>:` line, findings,
   deviations — the `stepwise-plan` skill says what goes where.
-- `../../../docs/87-backlog.md` — go through the open entries (`[ ]`, `[~]`) and check whether this unit solves one,
+- `../../../docs/80-backlog.md` — go through the open entries (`[ ]`, `[~]`) and check whether this unit solves one,
   on purpose or on the way. Solved: mark it `[x]` and name the commit subject or plan step, as the file's Lifecycle says.
   Partly solved: keep it open and add what remains to its **Description**. Say in the handoff which entries you closed.
 - `CLAUDE.md` when a command, rule or version it states changed.

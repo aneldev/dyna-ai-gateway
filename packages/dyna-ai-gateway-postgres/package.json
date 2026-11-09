@@ -42,7 +42,7 @@
     "publish-push": "pnpm version patch && pnpm publish --no-git-checks && git push && git push --tags"
   },
   "keywords": [],
-  "author": "Anel dev",
+  "author": "Anel Invent",
   "license": "MIT",
   "peerDependencies": {},
   "dependencies": {},

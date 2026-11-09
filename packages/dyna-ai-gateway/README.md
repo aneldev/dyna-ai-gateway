@@ -9,7 +9,7 @@ import {AIGateway} from "dyna-ai-gateway";
 import {AIGatewayVercelUi} from "dyna-ai-gateway/vercel-ui"; // the endpoints of a Vercel chat client (useChat)
 ```
 
-- Documentation: `docs/README.md` (getting started, architecture, practices)
+- Documentation: https://aneldev.github.io/dyna-ai-gateway/ (getting started, API reference, architecture)
 - Tests: `src/tests/README.md` · Sandbox for developers (chat and debugger on a test's config): `src/dev-sandbox/README.md`
 
 ## Requirements
