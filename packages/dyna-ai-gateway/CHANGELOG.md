@@ -6,6 +6,11 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+
+### Fixed
+
+- Fix readme links
+
 ## [0.0.1-beta.7] - 2026-11-09
 
 ### Added
