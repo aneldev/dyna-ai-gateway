@@ -29,7 +29,6 @@ Two rules shape every class:
 Solid arrow = holds an instance (constructor injection). Shared instances appear more than once; the composition root creates each once.
 
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 flowchart LR
   App([App]) --> GW[AIGateway]
 
@@ -133,7 +132,6 @@ No cycles: `LLMClient` holds only `ModelRegistry`, `UsageGuard` and `Trace`; the
 The agent loop runs inside the `LLMClient`; every decision in it is a hook the gateway implements (dashed = callback).
 
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 flowchart TB
   GW[AIGateway] -->|"request + tools + hooks"| DR[LLMClient]
   DR -->|"result or paused"| GW
@@ -150,7 +148,6 @@ The `LLMClient` never calls the `HumanGate`: a verdict of NEEDS_APPROVAL returns
 One `run()` with a pause:
 
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 sequenceDiagram
   participant App
   participant GW as AIGateway

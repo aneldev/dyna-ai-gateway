@@ -78,7 +78,6 @@ second root, exposed as `gateway.kbIngestor` for the KB write endpoints; a promp
 Context
 
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 flowchart TB
   CA[ContextAssembler] --> PT[PromptTemplateStore]
   CA --> SR0[SkillRegistry]
@@ -88,7 +87,6 @@ flowchart TB
 KB — read side (per prompt)
 
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 flowchart TB
   KR[KbRetriever] --> QR[QueryRewriter]
   KR --> EM[Embedder]
@@ -101,7 +99,6 @@ flowchart TB
 KB — ingestion side (second root; on KB save, not part of a chat call)
 
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 flowchart TB
   KI[KbIngestor] --> MC[MdChunker]
   KI --> EM[Embedder]
@@ -112,7 +109,6 @@ flowchart TB
 Memory helpers (cheap model through the LLMClient's `complete` door)
 
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 flowchart TB
   WM[WorkingMemory] --> PT[PromptTemplateStore]
   WM --> DR[LLMClient]
@@ -125,7 +121,6 @@ flowchart TB
 Tools, control, config validation
 
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 flowchart TB
   TP[ToolPolicy] --> TR[ToolRegistry]
   HG[HumanGate] --> RS[RunStore]
@@ -137,7 +132,6 @@ flowchart TB
 LLMClient (one class; every LLM call passes here, so it asks the UsageGuard, reports to it and traces)
 
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 flowchart TB
   DR[LLMClient] --> MR[ModelRegistry]
   DR --> UG[UsageGuard]
@@ -147,7 +141,6 @@ flowchart TB
 ### 2.3 Full composition — tree (root left, leaves stack downwards)
 
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 flowchart LR
   App([App]) --> GW[AIGateway]
 
@@ -272,7 +265,6 @@ Notes
 ## 3. Execution — LLMClient hooks (dashed = callback supplied by AIGateway)
 
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 flowchart TB
   GW[AIGateway] -->|"request + tools + hooks"| DR[LLMClient]
   DR -->|"result or paused"| GW
@@ -298,7 +290,6 @@ flowchart TB
 ## 4. Flow — one user prompt (`run`)
 
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 sequenceDiagram
   participant App
   participant GW as AIGateway

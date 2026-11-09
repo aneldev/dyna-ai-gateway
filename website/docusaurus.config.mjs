@@ -20,8 +20,10 @@ const config = {
   onBrokenAnchors: "throw",
   markdown: {
     format: "detect",
+    mermaid: true,
     hooks: {onBrokenMarkdownLinks: "throw"},
   },
+  themes: ["@docusaurus/theme-mermaid"],
   plugins: [
     [
       "docusaurus-plugin-typedoc",
@@ -61,6 +63,7 @@ const config = {
   ],
   themeConfig: {
     colorMode: {respectPrefersColorScheme: true},
+    mermaid: {theme: {light: "neutral", dark: "dark"}},
     navbar: {
       title: "dyna AI Gateway",
       logo: {alt: "dyna AI Gateway logo", src: "img/logo.svg"},
