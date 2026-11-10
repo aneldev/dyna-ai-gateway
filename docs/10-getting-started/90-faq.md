@@ -451,7 +451,7 @@ const config: IAIGatewayConfig = {
     enabled: true,
     strategy: {
       type: EWorkingMemoryStrategy.SLIDING_WINDOW,
-      chatHistoryRatio: 0.5, // half of the room stays for the knowledge-base chunks (default 0.8)
+      chatHistoryRatio: 0.5, // the turns fill at most half of the free room (default 0.8)
     },
   },
 };
@@ -469,7 +469,7 @@ await gateway.aiProfileStore.upsertProfile({
 });
 ```
 
-The window is sized in tokens, from what the rendered system prompt leaves of the model's context after the answer's reserve (`contextAssembler.reserveOutputTokens`, default: the call's `maxOutputTokens`). Under `SLIDING_WINDOW` the turns take at most `chatHistoryRatio` of it; the rest is for the knowledge-base chunks. Turns that were left out are reported as the WARNING issue `turns_trimmed` on the response.
+The window is sized in tokens, from what the rendered system prompt leaves of the model's context after the answer's reserve (`contextAssembler.reserveOutputTokens`, default: the call's `maxOutputTokens`). The knowledge-base chunks and the user's facts are part of that system prompt, so they are counted first and the history never pushes them out. Under `SLIDING_WINDOW` the turns take at most `chatHistoryRatio` of what is left; the rest stays unused. Turns that were left out are reported as the WARNING issue `turns_trimmed` on the response.
 
 - `workingMemory: {enabled: false}` sends the last 20 turns and remembers nothing; no helper model is ever called.
 - `getThreadMemory` shows the stored summary and facts; under `SLIDING_WINDOW` it is the empty state, or the summary an earlier `SUMMARY_BUFFER` period left: a switch never wipes it, a switch back resumes from it. `resetThreadMemory` clears it.
@@ -672,7 +672,7 @@ const turns = await gateway.getTurns({userContext, threadId: first.items[0].id})
 
 `startingAfter` reads the other way: the threads newer than the one given. Both cursors at once, or a `limit` outside 1–200,
 is a 400; a cursor that is not one of the user's threads is a 404. The list is ordered by creation, so a thread used again
-keeps its place; a title the working memory wrote is replaced by `renameThread`.
+keeps its place. A thread has no title until `renameThread` sets one.
 
 ## How do I delete conversations?
 

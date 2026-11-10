@@ -34,7 +34,7 @@ if (result.kind === EGatewayResponseKind.ANSWER) {
   result.structured; // {lines: [...]}, validated against the schema
   result.citations;  // the ids of the knowledge-base chunks the model was given
   result.threadId;   // pass it on the next call to continue the conversation
-  result.usage;      // the tokens of the call and their cost
+  result.usage;      // the tokens of the call; the cost is in the trace entry and the usage adapter's report
 }
 if (result.kind === EGatewayResponseKind.FAILED) {
   result.issues;     // why: a usage adapter that refused, a guardrail, a timeout, the provider

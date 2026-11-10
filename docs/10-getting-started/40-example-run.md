@@ -40,14 +40,14 @@ if (result.kind === EGatewayResponseKind.ANSWER) {
 
 ## A tool
 
-| Field         | Why                                                                                          |
-|---------------|----------------------------------------------------------------------------------------------|
-| `name`        | what the model calls; the profile's `allowedTools` lists it                                  |
-| `description` | what the model reads to decide when to call it                                               |
-| `inputSchema` | a zod schema; the model's input is parsed against it before `execute` runs                   |
-| `tags`        | free tags, for filtering tools in a policy, e.g. `"billing"`                                 |
-| `execute`     | your function; it receives the parsed input and the caller's `userContext`                   |
-| `policy`      | optional: allow, deny or hold each call for a human (next chapter); without one, a call runs |
+| Field         | Why                                                                                                     |
+|---------------|---------------------------------------------------------------------------------------------------------|
+| `name`        | what the model calls; the profile's `allowedTools` lists it                                             |
+| `description` | what the model reads to decide when to call it                                                          |
+| `inputSchema` | a zod schema; the model's input is parsed against it before `execute` runs                              |
+| `tags`        | free tags for your own code (grouping, an admin list), e.g. `"billing"`; the gateway does not read them |
+| `execute`     | your function; it receives the parsed input and the caller's `userContext`                              |
+| `policy`      | optional: allow, deny or hold each call for a human (next chapter); without one, a call runs            |
 
 A tool that reads is safe to run on its own. A tool that changes something needs a policy:
 [Example: a human in the loop](45-example-HITL.md).

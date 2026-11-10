@@ -1518,8 +1518,8 @@ export class AIGateway {
    *
    * > The user's own name for a conversation.
    *
-   * Replaces the title, also the one the working memory wrote. The thread must be the calling user's; another user's thread
-   * is a 404, like an unknown one.
+   * Sets or replaces the title; a thread has none until this sets it. The thread must be the calling user's; another user's
+   * thread is a 404, like an unknown one.
    */
   public async renameThread(
     {

@@ -62,7 +62,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ### D65: Resume continues a paused run on another profile
 
-**Decision.** `resume({userContext, runId, decision, profileId?})` derives from the given profile what `run()` derives from its own: the model, the output cap, the tools and the limits. The system prompt and the messages so far stay.
+**Decision.** `resume({userContext, runId, pauseId, decisions, profileId?})` derives from the given profile what `run()` derives from its own: the model, the output cap, the tools and the limits. The system prompt and the messages so far stay.
 
 **Why.** A stored run froze its model at the first step, so a profile change between the pause and the approval never reached the model.
 
@@ -215,7 +215,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ### A profile bundles what goes with a model
 
-**Decision.** `IAIProfile` holds the model, the cheap helper model, the allowed tools, the tools that need approval, the prompt addendum and the limits (daily tokens, steps per run, output tokens). The models themselves are entries of the registry with provider, capabilities, cost and an `enabled` flag.
+**Decision.** `IAIProfile` holds the model, the cheap helper model, the allowed tools, the tools that need approval, the prompt addendum and the limits (steps per run, output tokens). The models themselves are entries of the registry with provider, capabilities, cost and an `enabled` flag.
 
 **Why.** A model choice is never only a model: tools, limits and prompt go with it.
 
@@ -343,9 +343,9 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 **Consequence.** Headings are ATX headings (`#` … `######`); a closing sequence of `#`s is stripped only after a space, as in CommonMark, so `## Using C#` keeps its `#`. Splitting a document takes time linear in its length, whatever its lines contain.
 
-### D27: Embeddings come from OpenAI
+### D27: Embeddings come from a provider that has embedding models
 
-**Decision.** The embedding model of `IEmbedderConfig` must be an OpenAI model. A provider without embeddings is refused with a 400.
+**Decision.** The embedding model of `IEmbedderConfig` is a registry model with `caps.embeddings` on OpenAI, Google, Mistral or Bedrock. A model without `caps.embeddings`, or on a provider without embeddings, is refused with a 400.
 
 **Why.** The Anthropic provider of the SDK has no embeddings.
 

@@ -349,7 +349,13 @@ export interface IRun {
    * Cleared when the run leaves the review. The reviewer's copy is the envelope's `result`.
    */
   answer?: IStoredAnswer;
-  /** Model calls done so far; the profile's `maxStepsPerRun` caps it. */
+  /**
+   * Model calls done so far, over the `run()` and every `resume()` of the run.
+   *
+   * > A running total, for the trace and the admin; no limit reads it.
+   *
+   * The profile's `maxStepsPerRun` caps the steps of one invocation: the `run()`, then each `resume()` again from zero.
+   */
   steps: number;
   /** When the run was first stored. */
   createdAt: Date;

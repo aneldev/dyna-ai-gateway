@@ -393,7 +393,7 @@ export interface IToolDef<TInput = unknown, TOutput = unknown> {
   description: string;
   /** Zod schema of the input; ToolRegistry parses the model's input with it before execute. */
   inputSchema: ZodType<TInput>;
-  /** Free tags for policy filtering, e.g. "billing". */
+  /** Free tags for the application's own code (grouping, an admin list), e.g. "billing"; the gateway does not read them. */
   tags: string[];
   /**
    * What happens to a call of this tool before it runs (D87): it runs, it is refused, or a human must approve it.

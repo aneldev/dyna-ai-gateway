@@ -176,7 +176,7 @@ export enum EWorkingMemoryStrategy {
    * Cons:
    * - The input tokens grow with the thread until the window is full; every call pays for the whole tail.
    * - Hard forgetting: a turn that falls off the window is gone for the model, with nothing standing in for it.
-   * - Long threads crowd the knowledge base: `chatHistoryRatio` is the only brake.
+   * - Long threads fill the free room with old turns: `chatHistoryRatio` is the only brake on that cost.
    * - `getThreadMemory` has nothing to show the user; the query rewriter gets no thread context.
    *
    * Use it when:
@@ -187,7 +187,7 @@ export enum EWorkingMemoryStrategy {
    *
    * Do not use it when:
    * - threads run for days or hundreds of turns: every call pays for the tail, and what falls off is lost for good;
-   * - the knowledge base must dominate the prompt (RAG assistants): the history competes with the chunks;
+   * - the knowledge base matters more than the conversation (RAG assistants): every call pays for turns the answer rarely needs;
    * - a small-window or expensive model is used;
    * - the product shows or resets the thread memory.
    */
@@ -237,13 +237,15 @@ export interface IWorkingMemorySlidingWindow {
   /**
    * Share of the history budget the turns may fill.
    *
-   * > Bounds the history so it cannot starve the knowledge-base chunks and the answer.
+   * > Caps what the old turns cost on every call.
    *
-   * The budget is the model's window minus the system prompt and the output reserve. The turns are taken newest first
-   * while they fit the share, at least one; the knowledge-base chunks (capped by their own `topK`) take the rest.
+   * The budget is the model's window minus the output reserve and the rendered system prompt, which already holds the
+   * knowledge-base chunks (their number is the retriever's `k`) and the user's facts. The turns are taken newest first
+   * while they fit the share, at least one; the rest of the budget stays unused. A lower ratio never gives the chunks more
+   * room: they are counted before the turns, so the history cannot push them out.
    *
-   * @example 0.8 - a chat assistant: the conversation is the point, the knowledge base is a side dish
-   * @example 0.5 - a RAG assistant: half the room stays for the retrieved chunks
+   * @example 0.8 - a chat assistant: most of the free room goes to the conversation
+   * @example 0.5 - a cost-bound assistant: long threads send at most half of the free room as history
    *
    * @default 0.8
    */
