@@ -6,8 +6,8 @@ import {
   EPartKind,
   EResumeAction,
   ERunStatus,
+  BUILT_IN_TOOL_NAMES,
 } from "../..";
-import {ASK_USER_QUESTION_TOOL_NAME} from "../../internal";
 
 import {noFurnitureRule} from "../guardrails/input-rule-blocks-prompt.config";
 import {FakeLLMClient} from "../internal/fakes/FakeLLMClient";
@@ -33,7 +33,7 @@ test("an app input rule screens the free text of the answer; an answer it reject
     toolCall: {
       kind: EPartKind.TOOL_CALL,
       callId: "call-ask",
-      toolName: ASK_USER_QUESTION_TOOL_NAME,
+      toolName: BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION,
       input: whichInvoiceQuestions,
     },
   });

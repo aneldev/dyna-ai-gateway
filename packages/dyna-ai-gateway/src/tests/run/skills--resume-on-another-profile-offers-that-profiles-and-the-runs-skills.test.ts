@@ -23,7 +23,7 @@ import {
 } from "./skills-resume.config";
 
 /**
- * A run paused on the refund-policy profile resumes on the escalation profile (D65): `load_skill` is rebuilt from that
+ * A run paused on the refund-policy profile resumes on the escalation profile (D65): `dyna_aigw_load_skill` is rebuilt from that
  * profile's skill and the run's own call skill (D124). The skill of the profile the run started on is no longer in the enum: the
  * model that still asks for it (the stored prompt lists it) gets the registry's invalid-input 400 as a tool result and goes on.
  */
@@ -47,19 +47,19 @@ test("a run resumed on another profile offers that profile's skills and the run'
       {
         kind: EPartKind.TOOL_CALL,
         callId: "call-2",
-        toolName: "load_skill",
+        toolName: "dyna_aigw_load_skill",
         input: {name: escalationSkill.name},
       },
       {
         kind: EPartKind.TOOL_CALL,
         callId: "call-3",
-        toolName: "load_skill",
+        toolName: "dyna_aigw_load_skill",
         input: {name: exportWizardSkill.name},
       },
       {
         kind: EPartKind.TOOL_CALL,
         callId: "call-4",
-        toolName: "load_skill",
+        toolName: "dyna_aigw_load_skill",
         input: {name: refundPolicySkill.name},
       },
     ],

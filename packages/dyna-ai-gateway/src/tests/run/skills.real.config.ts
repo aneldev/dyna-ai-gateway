@@ -22,7 +22,7 @@ export const returnsPolicySkill: ISkill = {
 /**
  * Skills on Anthropic (`claude-haiku-4-5`, as the prompt-layer tests): a profile with one skill whose body plants a token,
  * and an addendum that leaves the model one path — load the skill, answer with the value only. A `run()` must call
- * `load_skill` for it; an `ask()` reads it inline.
+ * `dyna_aigw_load_skill` for it; an `ask()` reads it inline.
  */
 export const gatewayConfigSkillsReal: IAIGatewayConfig = {
   ...gatewayConfigBase,

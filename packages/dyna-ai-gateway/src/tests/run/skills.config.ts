@@ -10,7 +10,7 @@ import {
 } from "../internal/samples/skills";
 import {gatewayConfigBase} from "../internal/utils/gatewayConfigBase";
 
-/** A profile with two skills (D124), no app tools: the only tool of a run is the built-in `load_skill`. */
+/** A profile with two skills (D124), no app tools: the only tool of a run is the built-in `dyna_aigw_load_skill`. */
 export const gatewayConfigSkills: IAIGatewayConfig = {
   ...gatewayConfigBase,
   aiProfileStore: {

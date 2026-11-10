@@ -21,7 +21,7 @@ export interface IHumanGateConfig {
    * @default 86_400_000
    */
   timeoutMs?: number;
-  /** The built-in `ask_user_question` tool (D62): the model asks the user instead of guessing, and the run pauses with the questions. */
+  /** The built-in `dyna_aigw_ask_user_question` tool (D62): the model asks the user instead of guessing, and the run pauses with the questions. */
   userQuestions: {
     enabled: boolean;
   };
@@ -285,11 +285,11 @@ export interface IReviewedAnswer {
   issues: IIssue[];
 }
 
-/** The model asks the user (D62): the questions are the input of its `ask_user_question` call, the answers come back with ANSWER. */
+/** The model asks the user (D62): the questions are the input of its `dyna_aigw_ask_user_question` call, the answers come back with ANSWER. */
 export interface IUserQuestionEnvelope extends IPauseEnvelopeBase {
   /** The discriminator: the user is asked. */
   kind: EPauseKind.USER_QUESTION;
-  /** The `ask_user_question` call this card is about: the key a decision names (`IResumeDecision.callId`). */
+  /** The `dyna_aigw_ask_user_question` call this card is about: the key a decision names (`IResumeDecision.callId`). */
   callId: string;
   /** The form, as the model filled the tool's input; the UI renders it, `validateAnswers` checks the answers against it. */
   userQuestions: IUserQuestions;

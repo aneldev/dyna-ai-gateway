@@ -660,7 +660,7 @@ export class AIGateway {
    * - The run continues on its profile as it is now, or on `profileId` (D65): the model, the output cap, the tools and the
    *   limits come from that profile; the system prompt and the messages so far stay. The review of the answer and the
    *   approvals are those of both profiles (D113): a switch never skips a guard the run started under. The skills the run
-   *   kept (D124) and the profile's are offered again through a rebuilt `load_skill`; the system prompt keeps the list of
+   *   kept (D124) and the profile's are offered again through a rebuilt `dyna_aigw_load_skill`; the system prompt keeps the list of
    *   the start.
    * - The free text of an ANSWER goes through the input rules like a prompt (D71): an ERROR returns FAILED and the run
    *   stays paused, so the user can answer again; WARNINGs travel on the response.
@@ -913,7 +913,7 @@ export class AIGateway {
       }
       const model = await this.deps.modelRegistry.getModel({modelId: profile.modelId});
       // The skills follow this resume's profile like its tools (D65), the run's own come with it (D124); a duplicate between the two is a 400 and the run stays paused.
-      // `load_skill` is rebuilt from them: the stored prompt still lists the skills of the start, the enum offers these
+      // `dyna_aigw_load_skill` is rebuilt from them: the stored prompt still lists the skills of the start, the enum offers these
       const skills = this.deps.skillRegistry.resolve({
         profile,
         skills: paused.skills,

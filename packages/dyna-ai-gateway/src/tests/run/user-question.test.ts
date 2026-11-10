@@ -11,8 +11,8 @@ import {
   EPauseKind,
   EResumeAction,
   ERunStatus,
+  BUILT_IN_TOOL_NAMES,
 } from "../..";
-import {ASK_USER_QUESTION_TOOL_NAME} from "../../internal";
 
 import {
   IGatewaySetup,
@@ -22,7 +22,7 @@ import {
 } from "../internal/utils/makeGateway";
 
 /**
- * The user-question pause by example (D62): the model calls the built-in `ask_user_question` tool with its questions, the run pauses with a
+ * The user-question pause by example (D62): the model calls the built-in `dyna_aigw_ask_user_question` tool with its questions, the run pauses with a
  * USER_QUESTION envelope, the user's answers go in through `resume` with ANSWER and reach the model as the tool's result.
  */
 
@@ -45,7 +45,7 @@ const answers: IUserAnswer[] = [{
 const askUserCall: IToolCallPart = {
   kind: EPartKind.TOOL_CALL,
   callId: "call-ask",
-  toolName: ASK_USER_QUESTION_TOOL_NAME,
+  toolName: BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION,
   input: userQuestions,
 };
 
@@ -77,13 +77,13 @@ const pauseForUserQuestion = async (setup: IGatewaySetup): Promise<IPausedRespon
 };
 
 describe("AIGateway — user-question pause (D62)", () => {
-  test("ask_user_question is offered to the model without being in the profile's allowedTools", async () => {
+  test("dyna_aigw_ask_user_question is offered to the model without being in the profile's allowedTools", async () => {
     const setup = await makeUserQuestionGateway();
     await askWhichInvoice(setup);
-    expect(setup.llmClient.runCalls[0]?.tools.map(tool => tool.name)).toContain(ASK_USER_QUESTION_TOOL_NAME);
+    expect(setup.llmClient.runCalls[0]?.tools.map(tool => tool.name)).toContain(BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION);
   });
 
-  test("an ask_user_question call pauses the run with a USER_QUESTION envelope that allows ANSWER only", async () => {
+  test("an dyna_aigw_ask_user_question call pauses the run with a USER_QUESTION envelope that allows ANSWER only", async () => {
     const setup = await makeUserQuestionGateway();
     const {envelopes: [envelope]} = await pauseForUserQuestion(setup);
     expect(envelope).toMatchObject({
@@ -137,7 +137,7 @@ describe("AIGateway — user-question pause (D62)", () => {
     expect([run?.status, run?.pending?.[0]?.kind]).toEqual([ERunStatus.PAUSED, EPauseKind.USER_QUESTION]);
   });
 
-  test("ask_user_question is absent when the userQuestions switch is off", async () => {
+  test("dyna_aigw_ask_user_question is absent when the userQuestions switch is off", async () => {
     const setup = await makeUserQuestionGateway(false);
     setup.llmClient.enqueueRunStep({text: "Done."});
     await setup.gateway.run({
@@ -146,6 +146,6 @@ describe("AIGateway — user-question pause (D62)", () => {
       prompt: "send the overdue invoice",
       kbFilters: noKb,
     }).response;
-    expect(setup.llmClient.runCalls[0]?.tools.map(tool => tool.name)).not.toContain(ASK_USER_QUESTION_TOOL_NAME);
+    expect(setup.llmClient.runCalls[0]?.tools.map(tool => tool.name)).not.toContain(BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION);
   });
 });

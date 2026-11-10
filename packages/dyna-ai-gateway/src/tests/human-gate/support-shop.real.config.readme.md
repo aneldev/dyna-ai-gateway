@@ -17,34 +17,34 @@ The customer's orders, an in-memory array (`ordersDb`). A refund changes the ord
 delivered to the postcode `CUSTOMER_POSTCODE` (1010), the one thing the customer is asked to prove it is them; `list_orders` never
 returns it.
 
-| Order | Item | Total | Status | Postcode |
-| --- | --- | --- | --- | --- |
-| 1001 | Wireless headphones | 89 EUR | delivered | 1010 |
-| 1002 | Phone case | 19 EUR | delivered | 1010 |
-| 1003 | 27-inch monitor | 349 EUR | shipped | 1010 |
+| Order | Item                | Total   | Status    | Postcode |
+|-------|---------------------|---------|-----------|----------|
+| 1001  | Wireless headphones | 89 EUR  | delivered | 1010     |
+| 1002  | Phone case          | 19 EUR  | delivered | 1010     |
+| 1003  | 27-inch monitor     | 349 EUR | shipped   | 1010     |
 
 ### The tools
 
-| Tool | Kind | Gate |
-| --- | --- | --- |
-| `list_orders` | read-only, no input | none: runs as soon as the model calls it |
-| `verify_customer` | read-only: `orderId`, `postcode` | none; compares the postcode with the order's delivery address and marks the thread verified on a match |
-| `refund_order` | side effect: `orderId`, `amount`, `reason` | above `CUSTOMER_VERIFICATION_THRESHOLD` (10 EUR) it refuses a thread `verify_customer` has not verified (a 403 the model reads as a tool error); `policy` predicate: above `REFUND_APPROVAL_THRESHOLD` (50 EUR) the run pauses for a human; 10 or less runs with no gate at all |
-| `handover_to_agent` | side effect: `reason` | none to run; `endsRun: true`: the run ends after its step, the model gets one last step without tools to say a colleague takes over, the answer carries `endedByTool` |
-| `ask_user_question` | built-in of the gateway (`humanGate.userQuestions.enabled`) | the model asks the customer; the run pauses until the answer arrives |
+| Tool                          | Kind                                                        | Gate                                                                                                                                                                                                                                                                            |
+|-------------------------------|-------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `list_orders`                 | read-only, no input                                         | none: runs as soon as the model calls it                                                                                                                                                                                                                                        |
+| `verify_customer`             | read-only: `orderId`, `postcode`                            | none; compares the postcode with the order's delivery address and marks the thread verified on a match                                                                                                                                                                          |
+| `refund_order`                | side effect: `orderId`, `amount`, `reason`                  | above `CUSTOMER_VERIFICATION_THRESHOLD` (10 EUR) it refuses a thread `verify_customer` has not verified (a 403 the model reads as a tool error); `policy` predicate: above `REFUND_APPROVAL_THRESHOLD` (50 EUR) the run pauses for a human; 10 or less runs with no gate at all |
+| `handover_to_agent`           | side effect: `reason`                                       | none to run; `endsRun: true`: the run ends after its step, the model gets one last step without tools to say a colleague takes over, the answer carries `endedByTool`                                                                                                           |
+| `dyna_aigw_ask_user_question` | built-in of the gateway (`humanGate.userQuestions.enabled`) | the model asks the customer; the run pauses until the answer arrives                                                                                                                                                                                                            |
 
 `refund_order`'s policy gives a `rejectionText` with the pause: what the model is told when a human declines the call ("nothing was refunded, tell the
 customer, pass on the reason, offer to escalate, do not retry"). Without it the model only knows the call "was declined".
 
 The customer verification is a chain of three things the config already has: the model asks the postcode through
-`ask_user_question` (the question gate), checks it with the read-only `verify_customer`, then calls `refund_order`. The prompt tells
+`dyna_aigw_ask_user_question` (the question gate), checks it with the read-only `verify_customer`, then calls `refund_order`. The prompt tells
 the model to do so; the refund tool enforces it, so a model that skips the step gets a failed tool result that tells it to verify
 first. One verification per thread: a second refund in the same conversation asks nothing.
 
 ### The guardrail
 
-| Rule | Kind | What it does |
-| --- | --- | --- |
+| Rule              | Kind                                      | What it does                                                                                                                                       |
+|-------------------|-------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
 | `no_payment_data` | input rule, deterministic (no model call) | refuses a prompt that carries a card number (13 to 19 digits that pass the Luhn check) or an IBAN, before any model call; the prompt is not stored |
 
 A support chat must never hold card data: refunds go to the payment method of the order, so there is nothing a card number could be
@@ -72,9 +72,9 @@ The prompt addendum leaves the model one path for each situation, so the behavio
 - list the orders before answering about them or refunding;
 - every refund goes through `refund_order`, never a confirmation in text ("the system handles approvals");
 - an order named by its id or by its item is identified; when the request fits more than one order or none, ask through
-  `ask_user_question` with the orders as options, never guess and never ask in plain text; ask only which order, refund the full total;
+  `dyna_aigw_ask_user_question` with the orders as options, never guess and never ask in plain text; ask only which order, refund the full total;
 - before a refund above 10 EUR, verify the customer once per conversation: ask the postcode of the delivery address through
-  `ask_user_question` (one free-text question), call `verify_customer`, refund only on `verified: true`, never reveal the postcode;
+  `dyna_aigw_ask_user_question` (one free-text question), call `verify_customer`, refund only on `verified: true`, never reveal the postcode;
 - the result of `refund_order` is final: report what it returned, never refund the difference or ask about it;
 - when the customer asks for a human, call `handover_to_agent` with the reason, then only say that a colleague takes over.
 
@@ -84,10 +84,10 @@ The config registers two models and two profiles with the same addendum, tools a
 profile with `profileId`; nothing is stored on the thread, so the next call on the same thread may pick the other one (D46), and a
 paused run may `resume` on the other profile, which swaps the model mid-run (D65).
 
-| Profile id | Model | Provider | Key in `.env` |
-| --- | --- | --- | --- |
-| `default` (the one the tests and the sandbox name on every call) | `gpt-5-mini` | OpenAI | `AIGATEWAY_TEST_OPENAI_API_KEY` |
-| `anthropic` | `claude-haiku-4-5` | Anthropic | `AIGATEWAY_TEST_ANTHROPIC_API_KEY` |
+| Profile id                                                       | Model              | Provider  | Key in `.env`                      |
+|------------------------------------------------------------------|--------------------|-----------|------------------------------------|
+| `default` (the one the tests and the sandbox name on every call) | `gpt-5-mini`       | OpenAI    | `AIGATEWAY_TEST_OPENAI_API_KEY`    |
+| `anthropic`                                                      | `claude-haiku-4-5` | Anthropic | `AIGATEWAY_TEST_ANTHROPIC_API_KEY` |
 
 The tests run on the profile `default`. In the sandbox, `useProfile("anthropic")` makes every following helper call pass that id;
 `useProfile("default")` names the default one, which is what a `resume` needs to swap the model (a resume without a `profileId`
@@ -112,7 +112,7 @@ The monitor (349 EUR) meets all of them in one run: the postcode question, the v
 
 ### How the model asks the user
 
-`ask_user_question` is not a tool of this config; it is a built-in of the gateway, offered to the model in every run of a config
+`dyna_aigw_ask_user_question` is not a tool of this config; it is a built-in of the gateway, offered to the model in every run of a config
 with `humanGate: {userQuestions: {enabled: true}}`. No profile has to allow it and `activeTools` cannot hide it. To the model it
 is an ordinary tool: it sees the name, a description that says when to use it ("when the task cannot proceed without the user:
 a missing value, an ambiguous reference, a choice only they can make; put every open question into one call; prefer options over
@@ -166,15 +166,15 @@ ask about anything else.
 So the trigger is a request that **misses exactly the piece only the customer has**. Here there are two such pieces, the order and
 the postcode:
 
-| Prompt | Asks? | What | Why |
-| --- | --- | --- | --- |
-| `I want a refund.` | yes | which order, then the postcode | three orders, none named: a choice only the customer can make; then the verification |
-| `My item arrived broken, refund it.` | yes | which order, then the postcode | "my item" fits two delivered orders |
-| `Refund the monitor.` | yes | the postcode only | the order is resolved from `list_orders`; 349 EUR needs the customer verified |
-| `Refund order 1002.` | yes | the postcode only | the order is named; 19 EUR needs the customer verified |
-| `Refund 8 EUR on order 1002.` | no | | the order is named and 8 EUR needs no verification |
-| `And refund the headphones too.` right after a verified refund, on the same thread | no | | the thread is verified; 89 EUR goes to the approval pause |
-| `What did I order?` | no | | nothing is missing; a read-only lookup answers |
+| Prompt                                                                             | Asks? | What                           | Why                                                                                  |
+|------------------------------------------------------------------------------------|-------|--------------------------------|--------------------------------------------------------------------------------------|
+| `I want a refund.`                                                                 | yes   | which order, then the postcode | three orders, none named: a choice only the customer can make; then the verification |
+| `My item arrived broken, refund it.`                                               | yes   | which order, then the postcode | "my item" fits two delivered orders                                                  |
+| `Refund the monitor.`                                                              | yes   | the postcode only              | the order is resolved from `list_orders`; 349 EUR needs the customer verified        |
+| `Refund order 1002.`                                                               | yes   | the postcode only              | the order is named; 19 EUR needs the customer verified                               |
+| `Refund 8 EUR on order 1002.`                                                      | no    |                                | the order is named and 8 EUR needs no verification                                   |
+| `And refund the headphones too.` right after a verified refund, on the same thread | no    |                                | the thread is verified; 89 EUR goes to the approval pause                            |
+| `What did I order?`                                                                | no    |                                | nothing is missing; a read-only lookup answers                                       |
 
 Two ways to see the model **not** ask through the gate: type one of the "no" prompts, or set `humanGate.userQuestions.enabled`
 to `false` in the config and `dynaEnv.newAIGateway()`: the tool is gone, so nothing can pause for a question. The model is left with
@@ -185,37 +185,37 @@ order and refund it (which the refund tool refuses above 10 EUR, unverified). Th
 
 What the config lets you show or test, the prompt that triggers each, and what happens:
 
-| Use case | Prompt | What happens |
-| --- | --- | --- |
-| Read-only tool, no gate | `What did I order recently?` | `list_orders` runs directly, the answer lists the three orders |
-| Refund with no gate | `Refund 8 EUR on order 1002, the phone case has a scratch.` | `refund_order` with 8 EUR runs directly |
-| Customer verification | `The phone case arrived broken, please refund it.` | 19 EUR is above 10: pauses with a question for the postcode; `answer 1010` → `verify_customer` verified, `refund_order` runs directly |
-| Wrong postcode | the same, then `answer 9999` | `verify_customer → verified: false`, no refund; the model says it did not match and asks again |
-| Verified thread | `And refund the headphones too.` on the same thread | no postcode question; 89 EUR goes straight to the approval pause |
-| Approval gate | `Also refund the monitor, it never arrived.` | after the verification, pauses with `refund_order {orderId: "1003", amount: 349}` |
-| Human approves | `approve` on the pause | the tool runs with the model's input |
-| Human edits the input | `edit {"orderId":"1003","amount":300,"reason":"…"}` | the tool runs with 300; the model is not told, it reports what the tool returned |
-| Human rejects with a reason | `reject Outside the 30-day return window` | the model tells the customer it was not done and why, offers to escalate |
-| Model asks the customer | `I want a refund.` | pauses with one question, the orders as options; `answer 1002`, then the postcode question, `answer 1010`, the 19 EUR refund runs |
-| Verification cannot be skipped | a model that calls `refund_order` above 10 EUR on an unverified thread (the scripted test) | the tool refuses with a 403; the model reads a failed result telling it to verify first; the order is untouched |
-| Nothing to gate | `What are your opening hours?` | no tool, no gate, a plain answer |
-| Guardrail on the prompt | `Refund order 1002 to my card 4111 1111 1111 1111 please.` | `FAILED` with `payment_data_in_chat` before any model call, no thread created |
-| Guardrail on a typed answer | `I want a refund.` then `answer The phone case, card 4111 1111 1111 1111` | the resume fails with the same issue, the run stays paused; a clean answer continues it |
+| Use case                       | Prompt                                                                                     | What happens                                                                                                                          |
+|--------------------------------|--------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| Read-only tool, no gate        | `What did I order recently?`                                                               | `list_orders` runs directly, the answer lists the three orders                                                                        |
+| Refund with no gate            | `Refund 8 EUR on order 1002, the phone case has a scratch.`                                | `refund_order` with 8 EUR runs directly                                                                                               |
+| Customer verification          | `The phone case arrived broken, please refund it.`                                         | 19 EUR is above 10: pauses with a question for the postcode; `answer 1010` → `verify_customer` verified, `refund_order` runs directly |
+| Wrong postcode                 | the same, then `answer 9999`                                                               | `verify_customer → verified: false`, no refund; the model says it did not match and asks again                                        |
+| Verified thread                | `And refund the headphones too.` on the same thread                                        | no postcode question; 89 EUR goes straight to the approval pause                                                                      |
+| Approval gate                  | `Also refund the monitor, it never arrived.`                                               | after the verification, pauses with `refund_order {orderId: "1003", amount: 349}`                                                     |
+| Human approves                 | `approve` on the pause                                                                     | the tool runs with the model's input                                                                                                  |
+| Human edits the input          | `edit {"orderId":"1003","amount":300,"reason":"…"}`                                        | the tool runs with 300; the model is not told, it reports what the tool returned                                                      |
+| Human rejects with a reason    | `reject Outside the 30-day return window`                                                  | the model tells the customer it was not done and why, offers to escalate                                                              |
+| Model asks the customer        | `I want a refund.`                                                                         | pauses with one question, the orders as options; `answer 1002`, then the postcode question, `answer 1010`, the 19 EUR refund runs     |
+| Verification cannot be skipped | a model that calls `refund_order` above 10 EUR on an unverified thread (the scripted test) | the tool refuses with a 403; the model reads a failed result telling it to verify first; the order is untouched                       |
+| Nothing to gate                | `What are your opening hours?`                                                             | no tool, no gate, a plain answer                                                                                                      |
+| Guardrail on the prompt        | `Refund order 1002 to my card 4111 1111 1111 1111 please.`                                 | `FAILED` with `payment_data_in_chat` before any model call, no thread created                                                         |
+| Guardrail on a typed answer    | `I want a refund.` then `answer The phone case, card 4111 1111 1111 1111`                  | the resume fails with the same issue, the run stays paused; a clean answer continues it                                               |
 
 ## The tests on this config
 
 One behaviour each; the JSDoc of the test says what it pins and why the path is stable. `.real` runs on OpenAI (skipped without the
 key); the others script the model with `FakeLLMClient` and need no key.
 
-| Test | Pins |
-| --- | --- |
-| `support-shop--refund-at-or-below-10-runs-without-any-gate.real.test.ts` | 8 EUR: no question, no verification, no pause; the run answers in one go |
+| Test                                                                                               | Pins                                                                                                                      |
+|----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| `support-shop--refund-at-or-below-10-runs-without-any-gate.real.test.ts`                           | 8 EUR: no question, no verification, no pause; the run answers in one go                                                  |
 | `support-shop--refund-above-10-asks-the-customer-for-the-postcode-and-verifies-first.real.test.ts` | 19 EUR: the postcode question pauses the run; answered, `verify_customer` passes, then `refund_order` runs, in that order |
-| `support-shop--refund-above-10-without-verification-is-refused-by-the-tool.test.ts` | a model that skips the verification gets a failed tool result naming `verify_customer`; the order is untouched |
-| `support-shop--refund-above-50-pauses-and-the-edited-input-is-what-runs.real.test.ts` | 349 EUR pauses for approval; resumed with an edited input of 300, the tool refunds 300 |
-| `support-shop--refund-without-an-order-asks-the-customer-which-one.real.test.ts` | "I want a refund." pauses with the orders as options; answered, the postcode is asked, then the refund runs |
-| `support-shop--prompt-with-a-card-number-is-refused-before-the-model-runs.test.ts` | the guardrail: FAILED with the issue, no thread, the model never called |
-| `support-shop--question-answered-with-a-card-number-keeps-the-run-paused.test.ts` | the guardrail on a typed answer: the resume fails, the run stays paused, a clean answer continues it |
+| `support-shop--refund-above-10-without-verification-is-refused-by-the-tool.test.ts`                | a model that skips the verification gets a failed tool result naming `verify_customer`; the order is untouched            |
+| `support-shop--refund-above-50-pauses-and-the-edited-input-is-what-runs.real.test.ts`              | 349 EUR pauses for approval; resumed with an edited input of 300, the tool refunds 300                                    |
+| `support-shop--refund-without-an-order-asks-the-customer-which-one.real.test.ts`                   | "I want a refund." pauses with the orders as options; answered, the postcode is asked, then the refund runs               |
+| `support-shop--prompt-with-a-card-number-is-refused-before-the-model-runs.test.ts`                 | the guardrail: FAILED with the issue, no thread, the model never called                                                   |
+| `support-shop--question-answered-with-a-card-number-keeps-the-run-paused.test.ts`                  | the guardrail on a typed answer: the resume fails, the run stays paused, a clean answer continues it                      |
 
 ```
 pnpm test-no-coverage src/tests/human-gate/support-shop--

@@ -63,18 +63,34 @@ its message to the browser.
 
 ## 3. What the client receives
 
-| In the stream | Meaning |
-| --- | --- |
-| `text-start` / `text-delta` / `text-end` | The answer's text, one text per model step |
-| `tool-input-available`, `tool-output-available`, `tool-output-error` | A tool call of the run and its result; `dynamic: true`, render it by `toolName` |
-| `tool-approval-request` | A tool call that waits for a human: the SDK's approval card, see § 4 |
-| `message-metadata` | The gateway's results on the message: `threadId`, `usage`, `citations`, `issues`, `structured` (a use case with an `outputSchema`), `endedByTool`, `withdrawn`, `pause` |
-| `error` | The call failed: the reason |
+| In the stream                                                        | Meaning                                                                                                                                                                 |
+|----------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `text-start` / `text-delta` / `text-end`                             | The answer's text, one text per model step                                                                                                                              |
+| `tool-input-available`, `tool-output-available`, `tool-output-error` | A tool call of the run and its result; `dynamic: true`, render it by `toolName`                                                                                         |
+| `tool-approval-request`                                              | A tool call that waits for a human: the SDK's approval card, see § 4                                                                                                    |
+| `message-metadata`                                                   | The gateway's results on the message: `threadId`, `usage`, `citations`, `issues`, `structured` (a use case with an `outputSchema`), `endedByTool`, `withdrawn`, `pause` |
+| `error`                                                              | The call failed: the reason                                                                                                                                             |
 
 `metadata.withdrawn` says the text that streamed was not kept (an output rule failed; the issues are next to it): grey it or
 drop it, the protocol cannot take text back. In `history`, one answer is one assistant message with a `step-start` part per
 model step ([D34](../60-architecture/90-decisions.md#d34-one-answer-is-one-message)); a call the human rejected is a `dynamic-tool`
 part in state `output-denied` with the reason, a call that failed is `output-error`.
+
+The gateway's own tools are parts like any other, named `dyna_aigw_<name>`
+([D125](../60-architecture/90-decisions.md#d125-built-in-tools-carry-the-dyna_aigw_-prefix)). A client needs no name to find a
+user question: the envelope of kind `USER_QUESTION` in `metadata.pause` carries the `callId` of its part (`toolCallId`). A client
+that does match a built-in by `toolName` (to show a badge for `dyna_aigw_remember_user_fact`, to hide `dyna_aigw_load_skill`)
+checks its literals against the package's types. `dyna-ai-gateway` is server-only, so the browser imports the constant as a type,
+and the import leaves nothing in the bundle:
+
+```ts
+import type {BUILT_IN_TOOL_NAMES} from "dyna-ai-gateway";
+
+type TBuiltInToolName = (typeof BUILT_IN_TOOL_NAMES)[keyof typeof BUILT_IN_TOOL_NAMES];
+
+// A renamed built-in fails to compile here instead of silently matching nothing
+const REMEMBER_USER_FACT: TBuiltInToolName = "dyna_aigw_remember_user_fact";
+```
 
 ## 4. Approvals and the other decisions
 
@@ -85,7 +101,7 @@ endpoint, which resumes the run and streams the continuation
 ([D35](../60-architecture/90-decisions.md#d35-the-approval-card-is-the-sdks-own)). Every card of the pause is answered in that one
 request.
 
-What the card cannot express goes through `resume`: the answers of a user question (the `ask_user_question` call is a
+What the card cannot express goes through `resume`: the answers of a user question (the `dyna_aigw_ask_user_question` call is a
 `dynamic-tool` part in state `input-available`, its `input` the form to render), an `EDIT` of the tool's input, a `REJECT` with
 the user's own text. The application builds the decisions from `metadata.pause` (the `runId`, the `pauseId`, the envelopes with
 their `allowed` actions) and calls:

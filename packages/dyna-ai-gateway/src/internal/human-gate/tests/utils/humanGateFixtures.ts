@@ -32,7 +32,7 @@ export const makeRun = (id = ids.runId): IRun => ({
     system: [{text: "You are a test"}],
     maxOutputTokens: 500,
   },
-  toolNames: ["refund", "ask_user_question"],
+  toolNames: ["refund", "dyna_aigw_ask_user_question"],
   startTurnCount: 0,
   chunkIds: [],
   templateVersion: 1,
@@ -55,7 +55,7 @@ export const approvalEnvelope = (callId: string): TPauseEnvelopeDraft => ({
   allowed: [EResumeAction.APPROVE, EResumeAction.EDIT, EResumeAction.REJECT],
 });
 
-/** A user-question card (D62) for an `ask_user_question` call with this id; ANSWER is its only action. */
+/** A user-question card (D62) for an `dyna_aigw_ask_user_question` call with this id; ANSWER is its only action. */
 export const questionEnvelope = (callId: string): TPauseEnvelopeDraft => ({
   kind: EPauseKind.USER_QUESTION,
   callId,

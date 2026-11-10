@@ -4,15 +4,15 @@ import {
   IUserQuestions,
   EGatewayResponseKind,
   EPartKind,
+  BUILT_IN_TOOL_NAMES,
 } from "../../..";
-import {ASK_USER_QUESTION_TOOL_NAME} from "../../../internal";
 
 import {FakeLLMClient} from "../fakes/FakeLLMClient";
 
 import {noKb} from "./makeGateway";
 import {sampleUserContext} from "./sampleUserContext";
 
-/** A run of the sample user whose model asks `questions` through `ask_user_question`: the PAUSED response with that card. Wires the fake's accounting. */
+/** A run of the sample user whose model asks `questions` through `dyna_aigw_ask_user_question`: the PAUSED response with that card. Wires the fake's accounting. */
 export const pauseOnUserQuestion = async (
   {
     gateway,
@@ -32,7 +32,7 @@ export const pauseOnUserQuestion = async (
     toolCall: {
       kind: EPartKind.TOOL_CALL,
       callId: "call-ask",
-      toolName: ASK_USER_QUESTION_TOOL_NAME,
+      toolName: BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION,
       input: questions,
     },
   });

@@ -1,12 +1,14 @@
-import {EToolCallVerdict} from "../../../contracts";
+import {
+  EToolCallVerdict,
+  BUILT_IN_TOOL_NAMES,
+} from "../../../contracts";
 
-import {LOAD_SKILL_TOOL_NAME} from "../constants";
 import {SkillRegistry} from "../SkillRegistry";
 
 import {makeSkill} from "./utils/skillFixtures";
 
 /** Loading instructions is harmless: the tool runs without approval, never ends the run and is offered on every step. */
-test("makeLoadSkillTool is named load_skill, allowed, without endsRun or visibleWhen", () => {
+test("makeLoadSkillTool is named dyna_aigw_load_skill, allowed, without endsRun or visibleWhen", () => {
   const tool = new SkillRegistry().makeLoadSkillTool({skills: [makeSkill("refund_policy")]});
 
   expect({
@@ -16,7 +18,7 @@ test("makeLoadSkillTool is named load_skill, allowed, without endsRun or visible
     endsRun: tool.endsRun,
     visibleWhen: tool.visibleWhen,
   }).toEqual({
-    name: LOAD_SKILL_TOOL_NAME,
+    name: BUILT_IN_TOOL_NAMES.LOAD_SKILL,
     tags: ["skill"],
     policy: EToolCallVerdict.ALLOW,
     endsRun: undefined,

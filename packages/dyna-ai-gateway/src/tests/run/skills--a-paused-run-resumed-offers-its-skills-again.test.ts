@@ -20,7 +20,7 @@ import {gatewayConfigSkillsResume} from "./skills-resume.config";
 
 /**
  * A run with a profile skill and a call skill pauses on the refund; the stored run keeps the call's skill (D124). After the
- * resume the model loads the profile's skill: `load_skill` was rebuilt, and the body lands in the thread as on the first step.
+ * resume the model loads the profile's skill: `dyna_aigw_load_skill` was rebuilt, and the body lands in the thread as on the first step.
  */
 test("a paused run resumed on its profile offers its skills again and stores the call's", async () => {
   const llmClient = new FakeLLMClient();
@@ -41,7 +41,7 @@ test("a paused run resumed on its profile offers its skills again and stores the
     toolCall: {
       kind: EPartKind.TOOL_CALL,
       callId: "call-2",
-      toolName: "load_skill",
+      toolName: "dyna_aigw_load_skill",
       input: {name: refundPolicySkill.name},
     },
   });

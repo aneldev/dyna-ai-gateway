@@ -5,12 +5,12 @@ import {
   ISkill,
   IToolDef,
   EToolCallVerdict,
+  BUILT_IN_TOOL_NAMES,
 } from "../../contracts";
 
 import {IAIProfile} from "../ai-profile-store";
 import {defineTool} from "../tool-registry";
 
-import {LOAD_SKILL_TOOL_NAME} from "./constants";
 import {
   ILoadSkillInput,
   ILoadSkillResult,
@@ -21,7 +21,7 @@ import {
 const DEFAULT_MAX_SKILLS = 50;
 const DEFAULT_MAX_BODY_CHARS = 50_000;
 const SKILLS_LIST_INTRO =
-  "Skills — instructions you can load when a task needs them. Call load_skill with the name to read one; do not guess its content.";
+  "Skills — instructions you can load when a task needs them. Call dyna_aigw_load_skill with the name to read one; do not guess its content.";
 const SKILLS_INLINE_INTRO = "Skills — instructions for this call:";
 const LOAD_SKILL_DESCRIPTION = [
   "Loads the full instructions of one of the skills listed in the system prompt and returns them as {name, body}.",
@@ -40,8 +40,8 @@ const LOAD_SKILL_DESCRIPTION = [
  * profile or to one call. This class owns everything the gateway does with them that is not a store's or the assembler's job:
  *
  * - `resolve` merges the two lists and refuses duplicate or empty names, so the model never sees two skills of one name.
- * - `renderSlot` writes the `{skills}` slot of CHAT_MAIN: the list the model loads from with `load_skill`, or the bodies inline.
- * - `makeLoadSkillTool` builds the per-call built-in `load_skill`, whose input names only the skills of the call.
+ * - `renderSlot` writes the `{skills}` slot of CHAT_MAIN: the list the model loads from with `dyna_aigw_load_skill`, or the bodies inline.
+ * - `makeLoadSkillTool` builds the per-call built-in `dyna_aigw_load_skill`, whose input names only the skills of the call.
  *
  * It sits between the stores and the call: `AIProfileStore` asks it when a profile is saved, the call preparation asks it
  * before the system prompt is rendered and the tools are resolved. It holds no state beyond its config.
@@ -59,7 +59,7 @@ const LOAD_SKILL_DESCRIPTION = [
  *
  * ## When shouldn't use it
  *
- * To read a skill at run time: the model does that through the `load_skill` tool, which `makeLoadSkillTool` builds from the
+ * To read a skill at run time: the model does that through the `dyna_aigw_load_skill` tool, which `makeLoadSkillTool` builds from the
  * resolved list.
  */
 export class SkillRegistry implements ISkillRegistry {
@@ -152,14 +152,14 @@ export class SkillRegistry implements ISkillRegistry {
    *
    * > Listed when the model can load them, written out when it cannot.
    *
-   * `inline: false` (a `run()`, the `load_skill` tool is offered): a header that tells the model to call `load_skill` and
+   * `inline: false` (a `run()`, the `dyna_aigw_load_skill` tool is offered): a header that tells the model to call `dyna_aigw_load_skill` and
    * one `- name: description` line per skill, so the bodies cost nothing until a task needs one. `inline: true` (an `ask()`,
    * no tools): the header "Skills — instructions for this call:" and every skill as a `## name` section with its body.
    * No skills: an empty string, the slot renders to nothing.
    *
    * # Who needs it
    *
-   * `ContextAssembler.build`, with the resolved list of the call and whether `load_skill` is among the call's tools.
+   * `ContextAssembler.build`, with the resolved list of the call and whether `dyna_aigw_load_skill` is among the call's tools.
    */
   public renderSlot(
     {
@@ -168,7 +168,7 @@ export class SkillRegistry implements ISkillRegistry {
     }: {
       /** The resolved skills of the call (`resolve`), in order. */
       skills: ISkill[];
-      /** `true` writes the bodies into the prompt; `false` lists name and description for `load_skill`. */
+      /** `true` writes the bodies into the prompt; `false` lists name and description for `dyna_aigw_load_skill`. */
       inline: boolean;
     },
   ): string {
@@ -186,7 +186,7 @@ export class SkillRegistry implements ISkillRegistry {
   }
 
   /**
-   * makeLoadSkillTool -- the built-in `load_skill` tool of one call
+   * makeLoadSkillTool -- the built-in `dyna_aigw_load_skill` tool of one call
    *
    * # About
    *
@@ -216,12 +216,12 @@ export class SkillRegistry implements ISkillRegistry {
       throw dynaError({
         code: 5380231947521,
         status: 400,
-        message: `SkillRegistry: the [${LOAD_SKILL_TOOL_NAME}] tool needs at least one skill`,
+        message: `SkillRegistry: the [${BUILT_IN_TOOL_NAMES.LOAD_SKILL}] tool needs at least one skill`,
       });
     }
     const maxOutputChars = Math.max(...skills.map(skill => JSON.stringify(this.toResult(skill)).length));
     return defineTool<ILoadSkillInput, ILoadSkillResult>({
-      name: LOAD_SKILL_TOOL_NAME,
+      name: BUILT_IN_TOOL_NAMES.LOAD_SKILL,
       description: LOAD_SKILL_DESCRIPTION,
       inputSchema: z.object({name: z.enum([first, ...rest]).describe("The name of the skill, exactly as listed in the system prompt")}),
       tags: ["skill"],

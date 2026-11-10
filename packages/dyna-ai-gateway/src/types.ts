@@ -162,7 +162,7 @@ export interface IAIGatewayConfig {
   kbRetriever?: IKbRetrieverConfig;
   /**
    * The application's tools, the tool timeout, the output cap and the error report (`ToolRegistry`). The gateway adds its
-   * built-in tools (the user-memory tools, `ask_user_question`) in front of them.
+   * built-in tools (the user-memory tools, `dyna_aigw_ask_user_question`) in front of them.
    *
    * @default {} - no tools of the application; the built-in ones are still there
    */
@@ -454,7 +454,7 @@ export interface IGatewayAskInput<TStructured = unknown> {
    * > What one screen or flow knows and the model should read only when the task needs it.
    *
    * `run()`: listed by name and description in the system prompt with the profile's; the model loads a body with the built-in
-   * `load_skill` tool (one model step per load, under `maxStepsPerRun`). `ask()`: the bodies are inlined in the prompt; no
+   * `dyna_aigw_load_skill` tool (one model step per load, under `maxStepsPerRun`). `ask()`: the bodies are inlined in the prompt; no
    * tool. A name that is also in the profile's `skills`, or twice here, is a 400 before anything is stored. A run that pauses
    * stores them: `resume()` takes none. Not for a rule of every call (`IAIProfile.skills`, `promptAddendum`), nor for the
    * rule of this one call that the model must always read (`instructions`).

@@ -339,7 +339,7 @@ export class UserMemoryStore implements IUserMemoryStore {
    *
    * # Who needs it
    *
-   * `AIGateway.upsertUserFact`, and the `remember_user_fact` tool of `makeUserMemoryTools` (after the user's approval,
+   * `AIGateway.upsertUserFact`, and the `dyna_aigw_remember_user_fact` tool of `makeUserMemoryTools` (after the user's approval,
    * D116).
    *
    * # Pitfalls
@@ -413,7 +413,7 @@ export class UserMemoryStore implements IUserMemoryStore {
    *
    * # Who needs it
    *
-   * `AIGateway.removeUserFact`, and the `forget_user_fact` tool of `makeUserMemoryTools`.
+   * `AIGateway.removeUserFact`, and the `dyna_aigw_forget_user_fact` tool of `makeUserMemoryTools`.
    */
   public async removeFact(
     {

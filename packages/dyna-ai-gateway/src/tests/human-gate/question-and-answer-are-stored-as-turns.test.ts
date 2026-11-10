@@ -6,8 +6,8 @@ import {
   EPartKind,
   EResumeAction,
   ETurnRole,
+  BUILT_IN_TOOL_NAMES,
 } from "../..";
-import {ASK_USER_QUESTION_TOOL_NAME} from "../../internal";
 
 import {FakeLLMClient} from "../internal/fakes/FakeLLMClient";
 import {sampleUser} from "../internal/samples/profiles";
@@ -21,7 +21,7 @@ import {
 } from "./user-question.config";
 
 /**
- * A user question and its answer become thread turns like any tool round (D62): the assistant turn with the `ask_user_question`
+ * A user question and its answer become thread turns like any tool round (D62): the assistant turn with the `dyna_aigw_ask_user_question`
  * call, the tool turn with the answers as the call's result, then the assistant's answer. A chat UI renders them from there.
  */
 test("the model's question and the user's answer are stored as a tool call and its result", async () => {
@@ -35,7 +35,7 @@ test("the model's question and the user's answer are stored as a tool call and i
     toolCall: {
       kind: EPartKind.TOOL_CALL,
       callId: "call-ask",
-      toolName: ASK_USER_QUESTION_TOOL_NAME,
+      toolName: BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION,
       input: whichInvoiceQuestions,
     },
   });
@@ -74,7 +74,7 @@ test("the model's question and the user's answer are stored as a tool call and i
   expect(turns.map(turn => [turn.role, turn.parts.map(part => part.kind === EPartKind.TOOL_RESULT ? [part.toolName, part.output] : part.kind)])).toEqual([
     [ETurnRole.USER, [EPartKind.TEXT]],
     [ETurnRole.ASSISTANT, [EPartKind.TOOL_CALL]],
-    [ETurnRole.TOOL, [[ASK_USER_QUESTION_TOOL_NAME, {answers: whichInvoiceAnswers}]]],
+    [ETurnRole.TOOL, [[BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION, {answers: whichInvoiceAnswers}]]],
     [ETurnRole.ASSISTANT, [EPartKind.TEXT]],
   ]);
 });

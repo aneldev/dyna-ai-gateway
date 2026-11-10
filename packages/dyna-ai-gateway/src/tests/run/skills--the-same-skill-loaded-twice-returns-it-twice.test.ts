@@ -24,7 +24,7 @@ test("the same skill loaded twice returns its body twice", async () => {
     toolCall: {
       kind: EPartKind.TOOL_CALL,
       callId,
-      toolName: "load_skill",
+      toolName: "dyna_aigw_load_skill",
       input: {name: refundPolicySkill.name},
     },
   }));

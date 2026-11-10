@@ -23,6 +23,7 @@ import {
   ContextAssembler,
   Trace,
   KbIngestor,
+  assertAppToolNames,
   makeAskUserQuestionTool,
   makeUserMemoryTools,
 } from "../internal";
@@ -46,8 +47,8 @@ import {
  *
  * - An override's factory (`IAIGatewayOverrides`) builds the instance in place of the gateway's class, with the same config
  *   and the same deps, and everyone that depends on it gets that instance.
- * - The gateway's own tools (the user-memory tools, `ask_user_question`; D61) are registered before the host's: a host tool with the same
- *   name is the duplicate the registry rejects.
+ * - The gateway's own tools (the user-memory tools, `dyna_aigw_ask_user_question`; D61) are registered before the host's.
+ *   Their names carry `BUILT_IN_TOOL_NAME_PREFIX`, which a host tool may not take (a 400), so the two never collide.
  *
  * Runs once, in the constructor of `AIGateway`, before any call.
  *
@@ -100,7 +101,11 @@ export const createGatewayDeps = (
     llmClient,
     promptTemplateStore,
   }, (config, deps) => new UserMemoryStore(config, deps));
-  // The gateway's own tools come first; an app tool with the same name is a duplicate the registry rejects (D61)
+  // The built-in prefix is the gateway's: an app tool that takes it could collide with a built-in, present or future
+  assertAppToolNames({
+    tools: config.toolRegistry?.tools ?? [],
+    source: "toolRegistry.tools",
+  });
   const toolRegistry = make(overrides.toolRegistry, {
     ...config.toolRegistry,
     tools: [

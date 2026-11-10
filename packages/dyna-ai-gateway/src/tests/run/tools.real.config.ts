@@ -11,7 +11,7 @@ import {
 import {gatewayConfigBase} from "../internal/utils/gatewayConfigBase";
 
 /**
- * Two tools on OpenAI: `get_current_time` runs directly; `send_email` has `policy: NEEDS_APPROVAL` and pauses for approval. The model may also ask the user (`ask_user_question`). The profile makes the tool calls the only path.
+ * Two tools on OpenAI: `get_current_time` runs directly; `send_email` has `policy: NEEDS_APPROVAL` and pauses for approval. The model may also ask the user (`dyna_aigw_ask_user_question`). The profile makes the tool calls the only path.
  */
 export const gatewayConfigTools: IAIGatewayConfig = {
   ...gatewayConfigBase,

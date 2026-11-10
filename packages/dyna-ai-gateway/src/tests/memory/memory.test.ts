@@ -379,32 +379,32 @@ describe("AIGateway — M6: the memory tools (D61)", () => {
   const factList = async (setup: IGatewaySetup): Promise<Array<[string, string]>> =>
     (await setup.gateway.getUserFacts({userContext})).map(fact => [fact.key, fact.value]);
 
-  test("a run offers remember_user_fact and forget_user_fact although the profile allows no tool", async () => {
+  test("a run offers dyna_aigw_remember_user_fact and dyna_aigw_forget_user_fact although the profile allows no tool", async () => {
     const setup = await makeGateway(memoryConfig());
-    await runWithTool(setup, "remember_user_fact", {
+    await runWithTool(setup, "dyna_aigw_remember_user_fact", {
       key: "location",
       value: "Vienna",
     });
-    expect(setup.llmClient.runCalls[0].tools.map(tool => tool.name)).toEqual(["remember_user_fact", "forget_user_fact"]);
+    expect(setup.llmClient.runCalls[0].tools.map(tool => tool.name)).toEqual(["dyna_aigw_remember_user_fact", "dyna_aigw_forget_user_fact"]);
   });
 
-  test("with rememberNeedsApproval false, remember_user_fact stores the fact at once, without a pause for approval", async () => {
+  test("with rememberNeedsApproval false, dyna_aigw_remember_user_fact stores the fact at once, without a pause for approval", async () => {
     const setup = await makeGateway(memoryConfig(2, false));
-    const response = await runWithTool(setup, "remember_user_fact", {
+    const response = await runWithTool(setup, "dyna_aigw_remember_user_fact", {
       key: "location",
       value: "Vienna",
     });
     expect([response.kind, await factList(setup)]).toEqual([EGatewayResponseKind.ANSWER, [["location", "Vienna"]]]);
   });
 
-  test("forget_user_fact removes a stored fact", async () => {
+  test("dyna_aigw_forget_user_fact removes a stored fact", async () => {
     const setup = await makeGateway(memoryConfig());
     await setup.gateway.upsertUserFact({
       userContext,
       key: "location",
       value: "Vienna",
     });
-    await runWithTool(setup, "forget_user_fact", {key: "location"});
+    await runWithTool(setup, "dyna_aigw_forget_user_fact", {key: "location"});
     expect(await factList(setup)).toEqual([]);
   });
 

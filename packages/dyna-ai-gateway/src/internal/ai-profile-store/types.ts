@@ -236,7 +236,7 @@ export interface IAIProfile {
    *
    * > A profile's long rules without paying for them on every call.
    *
-   * Listed by name and description in the system prompt of a `run()`, loaded with `load_skill` when a task needs one;
+   * Listed by name and description in the system prompt of a `run()`, loaded with `dyna_aigw_load_skill` when a task needs one;
    * inlined whole in an `ask()`. Merged with the call's `skills`; a name present in both is a 400. Names must be unique
    * here too: `upsertProfile` refuses a duplicate.
    *

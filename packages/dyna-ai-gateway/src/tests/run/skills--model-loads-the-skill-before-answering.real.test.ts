@@ -16,13 +16,13 @@ import {
 } from "./skills.real.config";
 
 /**
- * A `run()` with a skill (D124): the system prompt lists it by name and description only, so the model must call `load_skill`
+ * A `run()` with a skill (D124): the system prompt lists it by name and description only, so the model must call `dyna_aigw_load_skill`
  * to learn the planted return window; the tool result is in the thread and the token is in the answer.
  *
  * Runs when AIGATEWAY_TEST_ANTHROPIC_API_KEY is in .env (see .env.sample); skipped otherwise.
  */
 describeWithProvider(EModelProvider.ANTHROPIC)("AIGateway — run with a skill, real provider", () => {
-  test("the model loads the skill with load_skill before it answers", async () => {
+  test("the model loads the skill with dyna_aigw_load_skill before it answers", async () => {
     const gateway = new AIGateway(gatewayConfigSkillsReal);
 
     const response = await gateway.run({
@@ -43,7 +43,7 @@ describeWithProvider(EModelProvider.ANTHROPIC)("AIGateway — run with a skill, 
       response.text.includes(RETURN_WINDOW_TOKEN),
     ]).toEqual([
       [[
-        "load_skill",
+        "dyna_aigw_load_skill",
         false,
         {
           name: returnsPolicySkill.name,

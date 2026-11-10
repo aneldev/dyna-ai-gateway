@@ -1,9 +1,9 @@
 import {
   IToolCallPart,
   EPartKind,
+  BUILT_IN_TOOL_NAMES,
 } from "../../../contracts";
 
-import {ASK_USER_QUESTION_TOOL_NAME} from "../makeAskUserQuestionTool";
 import {
   EUserQuestionMode,
   EPauseKind,
@@ -28,8 +28,8 @@ const makeCall = (toolName: string, input: unknown): IToolCallPart => ({
 });
 
 describe("makePauseEnvelopeDraft (D62)", () => {
-  test("an ask_user_question call becomes a USER_QUESTION with the call's id that allows ANSWER only", () => {
-    expect(makePauseEnvelopeDraft({toolCall: makeCall(ASK_USER_QUESTION_TOOL_NAME, userQuestions)})).toEqual({
+  test("an dyna_aigw_ask_user_question call becomes a USER_QUESTION with the call's id that allows ANSWER only", () => {
+    expect(makePauseEnvelopeDraft({toolCall: makeCall(BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION, userQuestions)})).toEqual({
       kind: EPauseKind.USER_QUESTION,
       callId: "call-1",
       userQuestions,
@@ -47,8 +47,8 @@ describe("makePauseEnvelopeDraft (D62)", () => {
     });
   });
 
-  test("an ask_user_question call whose input the schema rejects pauses as a TOOL_APPROVAL", () => {
-    const toolCall = makeCall(ASK_USER_QUESTION_TOOL_NAME, {title: "no questions"});
+  test("an dyna_aigw_ask_user_question call whose input the schema rejects pauses as a TOOL_APPROVAL", () => {
+    const toolCall = makeCall(BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION, {title: "no questions"});
     expect(makePauseEnvelopeDraft({toolCall}).kind).toBe(EPauseKind.TOOL_APPROVAL);
   });
 });
