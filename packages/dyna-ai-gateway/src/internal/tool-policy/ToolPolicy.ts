@@ -1,10 +1,10 @@
 import {dynaError} from "dyna-error";
 
 import {
-  EToolCallVerdict,
   IToolDef,
   IUserContext,
   TToolCallPolicyResult,
+  EToolCallVerdict,
 } from "../../contracts";
 
 import {IModelCaps} from "../model-registry";

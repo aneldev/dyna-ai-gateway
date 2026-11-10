@@ -1,13 +1,13 @@
 import {dynaError} from "dyna-error";
 
 import {
+  IUserQuestions,
   AIGateway,
   EGatewayResponseKind,
   EPartKind,
   EResumeAction,
   ERunStatus,
   EUserQuestionMode,
-  IUserQuestions,
   BUILT_IN_TOOL_NAMES,
 } from "../..";
 

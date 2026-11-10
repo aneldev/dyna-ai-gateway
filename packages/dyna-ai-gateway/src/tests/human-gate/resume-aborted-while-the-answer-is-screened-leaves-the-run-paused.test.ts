@@ -1,6 +1,7 @@
 import {dynaError} from "dyna-error";
 
 import {
+  TGatewayResponse,
   AIGateway,
   CALL_ABORTED_ISSUE_CODE,
   EGatewayResponseKind,
@@ -8,7 +9,6 @@ import {
   EResumeAction,
   ERunStatus,
   EThreadStatus,
-  TGatewayResponse,
   BUILT_IN_TOOL_NAMES,
 } from "../..";
 

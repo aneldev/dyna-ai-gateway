@@ -1,7 +1,7 @@
 import {
-  AIGateway,
   IPausedResponse,
   IUserQuestions,
+  AIGateway,
   EGatewayResponseKind,
   EPartKind,
   BUILT_IN_TOOL_NAMES,
