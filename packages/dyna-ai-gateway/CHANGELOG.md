@@ -6,6 +6,8 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+## [0.0.13-beta.9] - 2026-11-10
+
 ### Breaking changes
 
 - **The built-in tools are renamed `dyna_aigw_<name>`**: `dyna_aigw_ask_user_question`, `dyna_aigw_remember_user_fact`,
