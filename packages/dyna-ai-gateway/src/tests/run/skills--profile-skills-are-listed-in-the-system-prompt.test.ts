@@ -15,9 +15,9 @@ import {gatewayConfigSkills} from "./skills.config";
 
 /**
  * A run on a profile with skills (D124): the system prompt lists every skill by name and description and tells the model to
- * call `load_skill`; the bodies stay out of the prompt, and `load_skill` is among the tools the model is offered.
+ * call `dyna_aigw_load_skill`; the bodies stay out of the prompt, and `dyna_aigw_load_skill` is among the tools the model is offered.
  */
-test("a run lists the profile's skills by name and description and offers load_skill", async () => {
+test("a run lists the profile's skills by name and description and offers dyna_aigw_load_skill", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigSkills, {llmClient: () => llmClient});
   llmClient.accountTo({
@@ -37,10 +37,10 @@ test("a run lists the profile's skills by name and description and offers load_s
   if (response.kind !== EGatewayResponseKind.ANSWER) throw new Error(`Expected ANSWER, got ${response.kind}`);
   const system = response.debug?.system ?? "";
   expect([
-    system.includes("Call load_skill with the name to read one"),
+    system.includes("Call dyna_aigw_load_skill with the name to read one"),
     system.includes(`- ${refundPolicySkill.name}: ${refundPolicySkill.description}`),
     system.includes(`- ${escalationSkill.name}: ${escalationSkill.description}`),
     system.includes("REFUND-7731"),
     llmClient.runCalls[0]?.tools.map(tool => tool.name),
-  ]).toEqual([true, true, true, false, ["load_skill"]]);
+  ]).toEqual([true, true, true, false, ["dyna_aigw_load_skill"]]);
 });

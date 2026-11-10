@@ -164,7 +164,7 @@
       /30-output-rule                         # the answer withdrawn from the stream
       /40-rule-errors                         # onRuleError
     /50-skills
-      /10-skill-on-the-profile                # the model loads it with load_skill
+      /10-skill-on-the-profile                # the model loads it with dyna_aigw_load_skill
       /20-skill-on-the-call
       /30-skills-in-ask                       # the bodies inlined
     /60-knowledge-base

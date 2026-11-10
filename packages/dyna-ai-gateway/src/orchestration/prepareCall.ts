@@ -63,7 +63,7 @@ export const isFailedResponse = (prepared: IPreparedCall | IFailedResponse): pre
  * > From the input to the model request: six steps, nothing stored before the prompt passed.
  *
  * The steps, in order: 1. the profile and its model (and the skills of the call, D124); 2. the input check (`Guardrails.checkInput`),
- * then the tools of a run (`ToolPolicy.resolve`, with `load_skill` when the run has skills) — still before anything is
+ * then the tools of a run (`ToolPolicy.resolve`, with `dyna_aigw_load_skill` when the run has skills) — still before anything is
  * stored; 3. the thread (read under the lease, or created) and the user turn; 4. the user's facts and the thread's memory
  * state; 5. the knowledge-base search inside the caller's `kbFilters`; 6. the request (`ContextAssembler.build`: the working
  * memory hands it the thread's window; a run lists the skills, an ask inlines them).
@@ -206,7 +206,7 @@ export const prepareCall = async <TStructured>(
   }
 
   // The tools, before anything is stored: an activeTools name the profile does not allow is a 400 that creates nothing.
-  // A run with skills gets `load_skill`, a built-in of this call only: built from the call's skills, not registered (D124)
+  // A run with skills gets `dyna_aigw_load_skill`, a built-in of this call only: built from the call's skills, not registered (D124)
   const loadSkillTool =
     withTools && skills.length > 0
       ? [deps.skillRegistry.makeLoadSkillTool({skills})]

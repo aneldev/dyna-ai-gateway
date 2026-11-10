@@ -7,6 +7,7 @@ import {
   IUserContext,
   EIssueSeverity,
   EOutputFormat,
+  BUILT_IN_TOOL_NAMES,
 } from "../../contracts";
 import {countTokens} from "../../utils/tokens/countTokens";
 
@@ -15,7 +16,6 @@ import {
   IRenderedPrompt,
   EPromptTemplateKey,
 } from "../prompt-template-store";
-import {LOAD_SKILL_TOOL_NAME} from "../skill-registry";
 import {IChunkHit} from "../vector-store";
 import {
   IModelRequest,
@@ -115,7 +115,7 @@ export class ContextAssembler implements IContextAssembler {
    * (`contextTokens − reserveOutputTokens − system`); its notes are rendered into `{memory}` after the user's facts. While
    * the request would still overflow the model's window, the oldest messages are left out first (`turns_trimmed`), then the
    * lowest-ranked chunks (`kb_chunks_trimmed`); the notes and the facts are never cut. The skills are listed by name and
-   * description when `load_skill` is among the tools, written out otherwise; a stored `CHAT_MAIN` without `{skills}` drops
+   * description when `dyna_aigw_load_skill` is among the tools, written out otherwise; a stored `CHAT_MAIN` without `{skills}` drops
    * them with the WARNING `skills_slot_missing`. The files of the question go into its message when the model can read
    * their type (images, PDF); another file is left out with the WARNING `file_dropped`. Returns the request, the template
    * version, the chunk ids that are in it, the estimated input tokens and the warnings.
@@ -155,7 +155,7 @@ export class ContextAssembler implements IContextAssembler {
     await this.warnSkillsSlotMissing(issues, skills);
     const skillsSlot = this.deps.skillRegistry.renderSlot({
       skills,
-      inline: !tools.some(tool => tool.name === LOAD_SKILL_TOOL_NAME),
+      inline: !tools.some(tool => tool.name === BUILT_IN_TOOL_NAMES.LOAD_SKILL),
     });
     const toSystem = (text: string): ISystemBlock[] => this.toSystem({
       text,

@@ -1,6 +1,7 @@
 import {dynaError} from "dyna-error";
 
 import {
+  TGatewayResponse,
   AIGateway,
   CALL_ABORTED_ISSUE_CODE,
   EGatewayResponseKind,
@@ -8,9 +9,8 @@ import {
   EResumeAction,
   ERunStatus,
   EThreadStatus,
-  TGatewayResponse,
+  BUILT_IN_TOOL_NAMES,
 } from "../..";
-import {ASK_USER_QUESTION_TOOL_NAME} from "../../internal";
 
 import {FakeLLMClient} from "../internal/fakes/FakeLLMClient";
 import {noKb} from "../internal/utils/makeGateway";
@@ -37,7 +37,7 @@ test("a resume aborted while the answer is screened is FAILED and leaves the run
     toolCall: {
       kind: EPartKind.TOOL_CALL,
       callId: "call-ask",
-      toolName: ASK_USER_QUESTION_TOOL_NAME,
+      toolName: BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION,
       input: whichInvoiceQuestions,
     },
   });

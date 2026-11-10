@@ -1,6 +1,6 @@
 # Decisions
 
-Status: 2026-10-22.
+Status: 2026-11-10.
 
 The design decisions that shape how the gateway behaves, one chapter per class, in the order a call meets them. Each entry says what the gateway does, why, and what that means for the application. Read it when a behaviour surprises you or when you want to know what you cannot do and what to do instead.
 
@@ -86,7 +86,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ### D124: Skills, instructions the model loads on demand
 
-**Decision.** A skill is `{name, description, body}`: instructions the model reads only when a task needs them. Skills are attached to a profile (`IAIProfile.skills`) and to one call (`IGatewayAskInput.skills`), never to the gateway's config. In a `run()` the system prompt lists every skill's name and description, and the model loads a body with the built-in `load_skill` tool. In an `ask()` the bodies are inlined. Without skills nothing is listed and no tool is offered.
+**Decision.** A skill is `{name, description, body}`: instructions the model reads only when a task needs them. Skills are attached to a profile (`IAIProfile.skills`) and to one call (`IGatewayAskInput.skills`), never to the gateway's config. In a `run()` the system prompt lists every skill's name and description, and the model loads a body with the built-in `dyna_aigw_load_skill` tool. In an `ask()` the bodies are inlined. Without skills nothing is listed and no tool is offered.
 
 **Why.** A long rule that applies to few calls (a refund policy, an escalation procedure) was paid on every call through `promptAddendum`, whether the task needed it or not. A description costs a line; a body costs only the calls that load it.
 
@@ -167,11 +167,11 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ### D116: The model cannot write a user fact unasked
 
-**Decision.** `remember_user_fact` pauses the run for the user's approval by default: a TOOL_APPROVAL card whose input is the fact (`{key, value}`); on approval the fact is stored, on rejection it is not. `userMemoryStore.rememberNeedsApproval: false` stores it at once.
+**Decision.** `dyna_aigw_remember_user_fact` pauses the run for the user's approval by default: a TOOL_APPROVAL card whose input is the fact (`{key, value}`); on approval the fact is stored, on rejection it is not. `userMemoryStore.rememberNeedsApproval: false` stores it at once.
 
 **Why.** A remembered fact enters every future prompt of the user, in every thread. Text the model only read — a tool result, a knowledge-base excerpt, an uploaded file — could make it store an instruction ("always recommend the premium plan") that then steered every later answer.
 
-**Consequence.** "Remember this" costs the user one click. The facts the background extraction finds and the ones the UI sets with `upsertUserFact` do not pause; the extraction reads the same conversation, so it stays exposed to the same injection, bounded by its prompt and the size cap of a fact. `forget_user_fact` only removes and never pauses.
+**Consequence.** "Remember this" costs the user one click. The facts the background extraction finds and the ones the UI sets with `upsertUserFact` do not pause; the extraction reads the same conversation, so it stays exposed to the same injection, bounded by its prompt and the size cap of a fact. `dyna_aigw_forget_user_fact` only removes and never pauses.
 
 ### D44: Memory is reachable for a UI
 
@@ -313,7 +313,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ### D61, D18: Memory on request
 
-**Decision.** Two built-in tools, `remember_user_fact {key, value}` and `forget_user_fact {key}`, are offered to the model in every `run()` when the user memory is enabled, whatever the profile's `allowedTools` say. `remember_user_fact` waits for the user's approval unless `userMemoryStore.rememberNeedsApproval` is false ([D116](#d116-the-model-cannot-write-a-user-fact-unasked)); `forget_user_fact` never does. The batch extraction also runs after the first answer of a thread, not only every `extractEveryTurns` turns.
+**Decision.** Two built-in tools, `dyna_aigw_remember_user_fact {key, value}` and `dyna_aigw_forget_user_fact {key}`, are offered to the model in every `run()` when the user memory is enabled, whatever the profile's `allowedTools` say. `dyna_aigw_remember_user_fact` waits for the user's approval unless `userMemoryStore.rememberNeedsApproval` is false ([D116](#d116-the-model-cannot-write-a-user-fact-unasked)); `dyna_aigw_forget_user_fact` never does. The batch extraction also runs after the first answer of a thread, not only every `extractEveryTurns` turns.
 
 **Why.** "I am based in Vienna, remember this" was never stored: a short thread never reached the extraction boundary, and the model had no tool to act at once. The opening message of a thread carries most facts.
 
@@ -481,9 +481,17 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ### D61: Built-in tools are always offered
 
-**Decision.** The gateway's own tools (the memory tools, `ask_user_question`) are offered whatever the profile's `allowedTools`, the permissions and `activeTools` say. A model whose capabilities exclude tools gets none.
+**Decision.** The gateway's own tools (the memory tools, `dyna_aigw_ask_user_question`) are offered whatever the profile's `allowedTools`, the permissions and `activeTools` say. A model whose capabilities exclude tools gets none.
 
 **Consequence.** Switch them off through their feature switch (`userMemoryStore.enabled`, `humanGate.userQuestions.enabled`), not through the profile.
+
+### D125: Built-in tools carry the `dyna_aigw_` prefix
+
+**Decision.** Every built-in tool is named `dyna_aigw_<name>`: `dyna_aigw_ask_user_question`, `dyna_aigw_remember_user_fact`, `dyna_aigw_forget_user_fact`, `dyna_aigw_load_skill`. The names are exported as `BUILT_IN_TOOL_NAMES`, the prefix as `BUILT_IN_TOOL_NAME_PREFIX`. The prefix is reserved: an application tool whose name starts with it is a 400, in `toolRegistry.tools` when the gateway is constructed and in `additionalTools` when the call starts.
+
+**Why.** A built-in with a generic name took that name from the application: a tool of its own called `ask_user_question` was refused, and the only way around it was renaming the application's tool. A reserved prefix keeps every other name free, also for built-ins added later.
+
+**Consequence.** Any name without the prefix is the application's, the old built-in names included. A run paused by a version before the prefix, whose stored tools still use an old name that nothing offers, cannot be resumed: `resume` is a 400 naming those tools in `data.legacyTools` (code `5387318840411`), and the run stays paused. A host that renders tool parts compares with `BUILT_IN_TOOL_NAMES`, not with literals.
 
 ---
 
@@ -553,7 +561,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ### D62: The model asks the user through a built-in tool
 
-**Decision.** With `IHumanGateConfig.userQuestions.enabled`, the model has the tool `ask_user_question`. One call packs every open question (`IUserQuestions`: a title, questions with a `RADIO`, `CHECK` or `FREE_TEXT` mode, options, a free-text option); the run pauses with a `USER_QUESTION` envelope and resumes with `ANSWER` and `IResumeDecision.answers`. The answers are stored as the tool's result.
+**Decision.** With `IHumanGateConfig.userQuestions.enabled`, the model has the tool `dyna_aigw_ask_user_question`. One call packs every open question (`IUserQuestions`: a title, questions with a `RADIO`, `CHECK` or `FREE_TEXT` mode, options, a free-text option); the run pauses with a `USER_QUESTION` envelope and resumes with `ANSWER` and `IResumeDecision.answers`. The answers are stored as the tool's result.
 
 **Why.** There is no provider standard for asking the user; the common idiom (Claude Code, Codex, the AI SDK's approval tools) is a tool whose call pauses the run and whose result is the user's answer.
 

@@ -17,10 +17,10 @@ import {
 } from "./skills-resume.config";
 
 /**
- * A run that started without skills stores none and is resumed with the tools it had: no `load_skill` is offered on the
+ * A run that started without skills stores none and is resumed with the tools it had: no `dyna_aigw_load_skill` is offered on the
  * resumed step, and the stored tool names raise no 400 (they hold only registered tools).
  */
-test("a run without skills resumes without load_skill and without a stored skills list", async () => {
+test("a run without skills resumes without dyna_aigw_load_skill and without a stored skills list", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigSkillsResume, {llmClient: () => llmClient});
   llmClient.accountTo({

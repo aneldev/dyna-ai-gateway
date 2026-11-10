@@ -1,9 +1,9 @@
-import {IToolCallPart} from "../../../contracts";
-
 import {
-  ASK_USER_QUESTION_TOOL_NAME,
-  askUserQuestionInputSchema,
-} from "../makeAskUserQuestionTool";
+  IToolCallPart,
+  BUILT_IN_TOOL_NAMES,
+} from "../../../contracts";
+
+import {askUserQuestionInputSchema} from "../makeAskUserQuestionTool";
 import {
   TPauseEnvelopeDraft,
   EPauseKind,
@@ -17,9 +17,9 @@ import {
  *
  * > A question to the user, or a call for a human to approve.
  *
- * An `ask_user_question` call whose input passes the schema is a USER_QUESTION envelope with the input as the questions
+ * An `dyna_aigw_ask_user_question` call whose input passes the schema is a USER_QUESTION envelope with the input as the questions
  * and ANSWER as the only allowed action (D62). Any other call is a TOOL_APPROVAL envelope with the call, the policy's
- * `rejectionText` and `reasonCode` for it (D87) and APPROVE, EDIT, REJECT allowed. An `ask_user_question` input the schema
+ * `rejectionText` and `reasonCode` for it (D87) and APPROVE, EDIT, REJECT allowed. An `dyna_aigw_ask_user_question` input the schema
  * rejects pauses as an approval, so the human sees what the model asked for.
  *
  * # Who needs it
@@ -39,7 +39,7 @@ export const makePauseEnvelopeDraft = (
     reasonCode?: string;
   },
 ): TPauseEnvelopeDraft => {
-  if (toolCall.toolName === ASK_USER_QUESTION_TOOL_NAME) {
+  if (toolCall.toolName === BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION) {
     const parsed = askUserQuestionInputSchema.safeParse(toolCall.input);
     if (parsed.success) {
       return {

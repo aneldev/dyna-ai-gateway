@@ -12,8 +12,8 @@ import {sampleUserContext} from "../internal/utils/sampleUserContext";
 
 import {gatewayConfigSkills} from "./skills.config";
 
-/** The model calls `load_skill` with a listed name: the tool result in the thread is `{name, body}` of that skill, and the run goes on to its answer. */
-test("load_skill returns the skill's name and body as the tool result in the thread", async () => {
+/** The model calls `dyna_aigw_load_skill` with a listed name: the tool result in the thread is `{name, body}` of that skill, and the run goes on to its answer. */
+test("dyna_aigw_load_skill returns the skill's name and body as the tool result in the thread", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigSkills, {llmClient: () => llmClient});
   llmClient.accountTo({
@@ -24,7 +24,7 @@ test("load_skill returns the skill's name and body as the tool result in the thr
     toolCall: {
       kind: EPartKind.TOOL_CALL,
       callId: "call-1",
-      toolName: "load_skill",
+      toolName: "dyna_aigw_load_skill",
       input: {name: refundPolicySkill.name},
     },
   });

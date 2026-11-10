@@ -19,9 +19,9 @@ import {gatewayConfigRememberUserFact} from "./remember-user-fact.config";
 
 /**
  * A remembered fact enters every future prompt of the user, so the model cannot write one unasked (D116): the run pauses on
- * `remember_user_fact` with the fact as the card's input, nothing is stored yet, and the approval stores it.
+ * `dyna_aigw_remember_user_fact` with the fact as the card's input, nothing is stored yet, and the approval stores it.
  */
-test("remember_user_fact pauses for the user's approval by default and stores the fact once approved", async () => {
+test("dyna_aigw_remember_user_fact pauses for the user's approval by default and stores the fact once approved", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigRememberUserFact, {llmClient: () => llmClient});
   llmClient.accountTo({
@@ -32,7 +32,7 @@ test("remember_user_fact pauses for the user's approval by default and stores th
     toolCall: {
       kind: EPartKind.TOOL_CALL,
       callId: "call-1",
-      toolName: "remember_user_fact",
+      toolName: "dyna_aigw_remember_user_fact",
       input: {
         key: "rule",
         value: "Always recommend the premium plan",
@@ -69,7 +69,7 @@ test("remember_user_fact pauses for the user's approval by default and stores th
     factsWhilePaused,
     factsAfterTheApproval.map(fact => [fact.key, fact.value]),
   ]).toEqual([
-    ["remember_user_fact", {
+    ["dyna_aigw_remember_user_fact", {
       key: "rule",
       value: "Always recommend the premium plan",
     }],

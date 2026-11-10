@@ -15,7 +15,7 @@ export interface ISkillRegistryConfig {
   /**
    * The most skills one call may have, the profile's and the call's together.
    *
-   * > Keeps the `{skills}` list and the `load_skill` enum a size a model reads reliably.
+   * > Keeps the `{skills}` list and the `dyna_aigw_load_skill` enum a size a model reads reliably.
    *
    * A profile or a call over it is a 400 (`data.maxSkills`, `data.count`), at `upsertProfile` and when the call starts.
    *
@@ -76,24 +76,24 @@ export interface ISkillRegistry {
    *
    * > Listed when the model can load them, written out when it cannot.
    *
-   * `inline: false` (a `run()`, the `load_skill` tool is offered): a header that tells the model to call `load_skill` and
+   * `inline: false` (a `run()`, the `dyna_aigw_load_skill` tool is offered): a header that tells the model to call `dyna_aigw_load_skill` and
    * one `- name: description` line per skill, so the bodies cost nothing until a task needs one. `inline: true` (an `ask()`,
    * no tools): the header "Skills — instructions for this call:" and every skill as a `## name` section with its body.
    * No skills: an empty string, the slot renders to nothing.
    *
    * # Who needs it
    *
-   * `ContextAssembler.build`, with the resolved list of the call and whether `load_skill` is among the call's tools.
+   * `ContextAssembler.build`, with the resolved list of the call and whether `dyna_aigw_load_skill` is among the call's tools.
    */
   renderSlot(args: {
     /** The resolved skills of the call (`resolve`), in order. */
     skills: ISkill[];
-    /** `true` writes the bodies into the prompt; `false` lists name and description for `load_skill`. */
+    /** `true` writes the bodies into the prompt; `false` lists name and description for `dyna_aigw_load_skill`. */
     inline: boolean;
   }): string;
 
   /**
-   * makeLoadSkillTool -- the built-in `load_skill` tool of one call
+   * makeLoadSkillTool -- the built-in `dyna_aigw_load_skill` tool of one call
    *
    * # About
    *
@@ -119,7 +119,7 @@ export interface ISkillRegistry {
 }
 
 /**
- * The input of the built-in `load_skill` tool, as the model fills it.
+ * The input of the built-in `dyna_aigw_load_skill` tool, as the model fills it.
  *
  * Parsed by the `ToolRegistry` with the tool's schema, whose `name` is an enum of the call's skills.
  */
@@ -129,7 +129,7 @@ export interface ILoadSkillInput {
 }
 
 /**
- * The result of the built-in `load_skill` tool: the skill the model asked for.
+ * The result of the built-in `dyna_aigw_load_skill` tool: the skill the model asked for.
  *
  * Returned to the model as the tool's result; the `body` is the instructions it then follows.
  */

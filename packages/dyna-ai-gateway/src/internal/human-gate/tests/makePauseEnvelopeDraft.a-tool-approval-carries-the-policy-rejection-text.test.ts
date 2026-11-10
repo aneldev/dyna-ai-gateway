@@ -1,9 +1,9 @@
 import {
   IToolCallPart,
   EPartKind,
+  BUILT_IN_TOOL_NAMES,
 } from "../../../contracts";
 
-import {ASK_USER_QUESTION_TOOL_NAME} from "../makeAskUserQuestionTool";
 import {
   EUserQuestionMode,
   EPauseKind,
@@ -24,7 +24,7 @@ test("a TOOL_APPROVAL envelope carries the policy's rejection text; a USER_QUEST
     rejectionText: "The refund of 500 was declined.",
   });
   const question = makePauseEnvelopeDraft({
-    toolCall: makeCall(ASK_USER_QUESTION_TOOL_NAME, {
+    toolCall: makeCall(BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION, {
       title: "Which invoice?",
       questions: [{
         text: "Pick the invoice",

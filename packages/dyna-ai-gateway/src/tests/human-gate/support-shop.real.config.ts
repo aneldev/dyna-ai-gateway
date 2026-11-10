@@ -301,13 +301,13 @@ const supportShopDefaultProfile: IAIProfile = {
     "never ask for confirmation in text, the system handles approvals. The result of refund_order is final: report the amount it",
     "returned even when it differs from what was asked; do not refund the difference and do not ask about it.",
 
-    `Before a refund above ${CUSTOMER_VERIFICATION_THRESHOLD} EUR you MUST verify the customer once per conversation: ask with ask_user_question`,
+    `Before a refund above ${CUSTOMER_VERIFICATION_THRESHOLD} EUR you MUST verify the customer once per conversation: ask with dyna_aigw_ask_user_question`,
     "(one free-text question) for the postcode of the order's delivery address, then call verify_customer. Refund only when it",
     "returns verified true; when false, tell the customer the postcode did not match and do not refund. A refund of",
     `${CUSTOMER_VERIFICATION_THRESHOLD} EUR or less needs no verification. Never reveal the postcode.`,
 
     "An order is identified when the customer names its id or its item (the monitor is order 1003). When a refund request fits",
-    "more than one order or none, you MUST call ask_user_question with the orders as options; never guess and never ask in",
+    "more than one order or none, you MUST call dyna_aigw_ask_user_question with the orders as options; never guess and never ask in",
     "plain text. Ask only which order: unless the customer says otherwise, refund the order's full total and use what the",
     "customer said as the reason (or 'customer request' when nothing was said).",
 

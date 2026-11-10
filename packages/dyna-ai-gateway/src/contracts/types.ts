@@ -207,6 +207,36 @@ export const DEFAULT_TOOL_REJECTION_TEXT = "The user declined this tool call. It
 /** Sent to the model as a tool's output when the tool's `policy` denies the call (D87); the policy's reason is appended. */
 export const DEFAULT_TOOL_DENIAL_TEXT = "The application's policy refused this tool call. It was not executed and nothing happened. Do not call it again with the same input; tell the user it was not done and ask how to proceed.";
 
+/**
+ * Prefix of every built-in tool name.
+ *
+ * > Keeps the gateway's own tools apart from the application's.
+ *
+ * Reserved: an application tool whose name starts with it, registered or passed as `additionalTools`, is a 400.
+ */
+export const BUILT_IN_TOOL_NAME_PREFIX = "dyna_aigw_";
+
+/**
+ * Names of the gateway's built-in tools, as the model and the thread see them.
+ *
+ * > A host that renders tool calls or reads the stored tool results tells the built-ins apart by these names.
+ *
+ * `ASK_USER_QUESTION` when `humanGate.userQuestions` is enabled, `REMEMBER_USER_FACT` / `FORGET_USER_FACT` when the user
+ * memory is, `LOAD_SKILL` in a `run()` whose profile or call has skills.
+ *
+ * @example BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION - the tool part of a user question in the thread
+ */
+export const BUILT_IN_TOOL_NAMES = {
+  /** The model asks the user; its call pauses the run with a USER_QUESTION. */
+  ASK_USER_QUESTION: "dyna_aigw_ask_user_question",
+  /** The model loads the instructions of one skill. */
+  LOAD_SKILL: "dyna_aigw_load_skill",
+  /** The model stores a lasting fact the user stated about themselves. */
+  REMEMBER_USER_FACT: "dyna_aigw_remember_user_fact",
+  /** The model removes a stored fact the user asked to forget. */
+  FORGET_USER_FACT: "dyna_aigw_forget_user_fact",
+} as const;
+
 /** What a tool's `policy` can say about one call (D87). */
 export enum EToolCallVerdict {
   /** The call runs now, without a human. The same as a tool without `policy`. */
@@ -314,7 +344,7 @@ export type TToolVisibleWhenHandler = (args: {
  * Instructions the model loads when a task needs them, instead of reading them on every call (D124).
  *
  * Attached to a profile (`IAIProfile.skills`) or to one call (`IGatewayAskInput.skills`). In `run()` the system prompt lists
- * every skill's `name` and `description`, and the model fetches a `body` with the built-in `load_skill` tool when a task
+ * every skill's `name` and `description`, and the model fetches a `body` with the built-in `dyna_aigw_load_skill` tool when a task
  * matches; in `ask()` the bodies are in the prompt (no tool loop there). A long rule that applies to few calls (a refund
  * policy, an onboarding script, an escalation procedure) belongs here; a rule for every call belongs in `promptAddendum`.
  */

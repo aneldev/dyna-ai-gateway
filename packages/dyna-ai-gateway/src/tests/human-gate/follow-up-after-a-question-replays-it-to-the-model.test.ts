@@ -6,8 +6,8 @@ import {
   EMessageRole,
   EPartKind,
   EResumeAction,
+  BUILT_IN_TOOL_NAMES,
 } from "../..";
-import {ASK_USER_QUESTION_TOOL_NAME} from "../../internal";
 
 import {FakeLLMClient} from "../internal/fakes/FakeLLMClient";
 import {noKb} from "../internal/utils/makeGateway";
@@ -20,7 +20,7 @@ import {
 } from "./user-question.config";
 
 /**
- * The next call on the thread sends the question round to the model as history: the `ask_user_question` call, its result
+ * The next call on the thread sends the question round to the model as history: the `dyna_aigw_ask_user_question` call, its result
  * with the answers, the assistant's answer. The model keeps what the user said; a provider sees a complete tool round.
  */
 test("a follow-up on the thread sends the question, the answers and the reply to the model as history", async () => {
@@ -34,7 +34,7 @@ test("a follow-up on the thread sends the question, the answers and the reply to
     toolCall: {
       kind: EPartKind.TOOL_CALL,
       callId: "call-ask",
-      toolName: ASK_USER_QUESTION_TOOL_NAME,
+      toolName: BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION,
       input: whichInvoiceQuestions,
     },
   });
@@ -79,7 +79,7 @@ test("a follow-up on the thread sends the question, the answers and the reply to
   expect(history).toEqual([
     [EMessageRole.USER, [EPartKind.TEXT]],
     [EMessageRole.ASSISTANT, [EPartKind.TOOL_CALL]],
-    [EMessageRole.TOOL, [[ASK_USER_QUESTION_TOOL_NAME, {answers: whichInvoiceAnswers}]]],
+    [EMessageRole.TOOL, [[BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION, {answers: whichInvoiceAnswers}]]],
     [EMessageRole.ASSISTANT, [EPartKind.TEXT]],
     [EMessageRole.USER, [EPartKind.TEXT]],
   ]);

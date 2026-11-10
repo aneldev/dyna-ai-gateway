@@ -64,7 +64,7 @@ export interface IToolPolicy {
    * (allowed because the app passed them, the permissions still apply, D66), narrowed to `activeTools` when the call
    * names them (D48); none when the model cannot call tools (`caps.tools`). The gateway's built-in tools (D61) are always
    * in the set, in the order of the registry: no profile, permission or `activeTools` filters them, and the profile's
-   * `approvals` do not apply to them; a built-in's own `policy` still pauses (`ask_user_question`, D62).
+   * `approvals` do not apply to them; a built-in's own `policy` still pauses (`dyna_aigw_ask_user_question`, D62).
    *
    * `approvals`: the tools whose `policy` is `NEEDS_APPROVAL`, plus the tools the profile lists (D87).
    *

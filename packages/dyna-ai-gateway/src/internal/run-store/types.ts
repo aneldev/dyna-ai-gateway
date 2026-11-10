@@ -313,7 +313,7 @@ export interface IRun {
    * is code, not data, so `resume` takes it again from its caller (D36).
    */
   request: Omit<IModelRequest, "messages" | "outputSchema">;
-  /** Tool names resolved for this run; re-fetched from ToolRegistry on resume. `load_skill` among them is rebuilt from `skills`. */
+  /** Tool names resolved for this run; re-fetched from ToolRegistry on resume. `dyna_aigw_load_skill` among them is rebuilt from `skills`. */
   toolNames: string[];
   /**
    * The skills the call brought (`IGatewayRunInput.skills`, D124), present when it brought any.

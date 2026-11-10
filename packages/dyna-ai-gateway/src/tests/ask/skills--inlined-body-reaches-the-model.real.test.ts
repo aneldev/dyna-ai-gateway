@@ -15,7 +15,7 @@ import {
 
 /**
  * An `ask()` with a skill (D124): no tools, so the body is inlined in the system prompt and the model answers with the planted
- * return window in one step, no `load_skill` involved.
+ * return window in one step, no `dyna_aigw_load_skill` involved.
  *
  * Runs when AIGATEWAY_TEST_ANTHROPIC_API_KEY is in .env (see .env.sample); skipped otherwise.
  */

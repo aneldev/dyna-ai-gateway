@@ -9,8 +9,8 @@ import {sampleUserContext} from "../internal/utils/sampleUserContext";
 
 import {gatewayConfigNoSkills} from "./skills.config";
 
-/** A profile and a call without skills: nothing about skills in the prompt and no `load_skill` among the tools (D124). */
-test("a run without skills has no skills header and no load_skill tool", async () => {
+/** A profile and a call without skills: nothing about skills in the prompt and no `dyna_aigw_load_skill` among the tools (D124). */
+test("a run without skills has no skills header and no dyna_aigw_load_skill tool", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigNoSkills, {llmClient: () => llmClient});
   llmClient.accountTo({

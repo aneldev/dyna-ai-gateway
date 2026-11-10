@@ -21,7 +21,7 @@ import {
 } from "./support-shop.real.config";
 
 /**
- * The question gate: a refund request that names no order cannot proceed, so the model asks through `ask_user_question` and the
+ * The question gate: a refund request that names no order cannot proceed, so the model asks through `dyna_aigw_ask_user_question` and the
  * run pauses with the question (the orders as options) instead of a guess. The answer picks order 1002. 19 EUR is above the
  * verification threshold, so the model asks the postcode next (a second question, or the same call when it batched both) and
  * verifies; 19 is under the approval threshold, so the refund then runs directly and the run answers. The test answers every

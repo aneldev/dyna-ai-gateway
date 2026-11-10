@@ -14,7 +14,7 @@ export const gatewayConfigAskUserQuestion: IAIGatewayConfig = {
         ...sampleProfile,
         promptAddendum: [
           "You prepare refunds for an accounting team. Two invoices are overdue: 4521 (Acme GmbH, 120 EUR) and 4522 (Globex Ltd, 80 EUR).",
-          "When the request does not say which invoice, you MUST call the ask_user_question tool to ask; never guess and never ask in plain text.",
+          "When the request does not say which invoice, you MUST call the dyna_aigw_ask_user_question tool to ask; never guess and never ask in plain text.",
           `Once the invoice is known, answer with exactly: "Refund of invoice <number> is prepared."`,
         ].join(" "),
       }],

@@ -5,8 +5,8 @@ import {
   EGatewayResponseKind,
   EPartKind,
   EResumeAction,
+  BUILT_IN_TOOL_NAMES,
 } from "../..";
-import {ASK_USER_QUESTION_TOOL_NAME} from "../../internal";
 
 import {FakeLLMClient} from "../internal/fakes/FakeLLMClient";
 import {noKb} from "../internal/utils/makeGateway";
@@ -33,7 +33,7 @@ test("an answer to a cancelled run is a 409 and the input rules do not run for i
     toolCall: {
       kind: EPartKind.TOOL_CALL,
       callId: "call-ask",
-      toolName: ASK_USER_QUESTION_TOOL_NAME,
+      toolName: BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION,
       input: whichInvoiceQuestions,
     },
   });

@@ -6,8 +6,8 @@ import {
   EPartKind,
   EPauseKind,
   EResumeAction,
+  BUILT_IN_TOOL_NAMES,
 } from "../..";
-import {ASK_USER_QUESTION_TOOL_NAME} from "../../internal";
 
 import {FakeLLMClient} from "../internal/fakes/FakeLLMClient";
 import {refundTool} from "../internal/samples/tools";
@@ -44,7 +44,7 @@ test("an approval and a user question pause together; EDIT and ANSWER resume the
       {
         kind: EPartKind.TOOL_CALL,
         callId: "call-2",
-        toolName: ASK_USER_QUESTION_TOOL_NAME,
+        toolName: BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION,
         input: whichInvoiceQuestions,
       },
     ],

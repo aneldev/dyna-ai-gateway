@@ -27,7 +27,7 @@ export const escalationProfile: IAIProfile = {
   skills: [escalationSkill],
 };
 
-/** A profile with the tool and no skills: a run on it has no `load_skill` to rebuild. */
+/** A profile with the tool and no skills: a run on it has no `dyna_aigw_load_skill` to rebuild. */
 export const noSkillsProfile: IAIProfile = {
   ...sampleProfile,
   id: "no-skills",

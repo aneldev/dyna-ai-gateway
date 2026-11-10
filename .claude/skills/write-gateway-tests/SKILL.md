@@ -81,7 +81,7 @@ A step with `toolCalls: [...]` scripts a model's parallel tool calls (handled in
 
 - Gate with `describeWithProvider(EModelProvider.OPENAI)(...)` (`src/tests/internal/utils/describeWithProvider.ts`): the test runs when the key is in the repo-root `.env` (`AIGATEWAY_TEST_<PROVIDER>_API_KEY`, see `.env.sample`) and is skipped otherwise. Never fail for a missing key. Real tests never run in CI.
 - A real model is not deterministic. A stable test **leaves the model one path**:
-  1. The profile addendum states the facts and the rule ("two invoices are overdue … when the request does not say which, you MUST call ask_user_question; never guess, never ask in plain text").
+  1. The profile addendum states the facts and the rule ("two invoices are overdue … when the request does not say which, you MUST call dyna_aigw_ask_user_question; never guess, never ask in plain text").
   2. The prompt lacks exactly what the rule needs, or plants a token no model knows (`PONG-7731`, `XK-7731`, the document's invented "34 days").
   3. Only the tools the path needs are offered (`allowedTools`, `activeTools`).
   4. Assert structure, not wording: response kind, pause kind, the tool name in the stored tool results, a traced call kind (`ETraceKind.QUERY_REWRITE`), the planted token. Never assert a sentence.

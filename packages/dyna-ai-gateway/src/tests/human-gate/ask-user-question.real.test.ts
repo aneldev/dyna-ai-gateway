@@ -16,7 +16,7 @@ import {gatewayConfigAskUserQuestion} from "./ask-user-question.real.config";
 /**
  * The model asks the user (D62) on a real provider. A real model is not deterministic; the test is stable because the request
  * leaves it one path: the profile names two overdue invoices and forbids guessing and asking in text, the prompt names none, and
- * `ask_user_question` is the only tool. The assertions are structural (pause kind, response kind) plus the one token the user chose.
+ * `dyna_aigw_ask_user_question` is the only tool. The assertions are structural (pause kind, response kind) plus the one token the user chose.
  *
  * Runs when AIGATEWAY_TEST_OPENAI_API_KEY is in .env (see .env.sample); skipped otherwise.
  */

@@ -15,7 +15,7 @@ import {gatewayConfigSkills} from "./skills.config";
  * A name that is not among the call's skills fails the tool's input schema (an enum of the names): the model reads an invalid-input
  * error result (the registry's 400, `errorCode` on the stored part) and the run goes on to its answer; nothing is thrown.
  */
-test("load_skill with a name outside the enum is an error result and the run goes on", async () => {
+test("dyna_aigw_load_skill with a name outside the enum is an error result and the run goes on", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigSkills, {llmClient: () => llmClient});
   llmClient.accountTo({
@@ -26,7 +26,7 @@ test("load_skill with a name outside the enum is an error result and the run goe
     toolCall: {
       kind: EPartKind.TOOL_CALL,
       callId: "call-1",
-      toolName: "load_skill",
+      toolName: "dyna_aigw_load_skill",
       input: {name: "shipping_policy"},
     },
   });

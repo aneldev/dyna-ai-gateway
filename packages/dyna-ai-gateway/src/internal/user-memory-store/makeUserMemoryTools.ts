@@ -3,17 +3,12 @@ import {z} from "zod";
 import {
   IToolDef,
   EToolCallVerdict,
+  BUILT_IN_TOOL_NAMES,
 } from "../../contracts";
 
 import {defineTool} from "../tool-registry";
 
 import {IUserMemoryStore} from "./types";
-
-/** Names of the built-in tools of the user memory (D61); the gateway offers them in every run when the memory is enabled. */
-export const USER_MEMORY_TOOL_NAMES = {
-  REMEMBER: "remember_user_fact",
-  FORGET: "forget_user_fact",
-} as const;
 
 /**
  * makeUserMemoryTools -- the two built-in tools of the user memory
@@ -22,10 +17,10 @@ export const USER_MEMORY_TOOL_NAMES = {
  *
  * > "Remember this" and "forget that", stored the moment the user says it.
  *
- * Builds `remember_user_fact` (writes through `upsertFact`) and `forget_user_fact` (writes through `removeFact`), tagged
+ * Builds `dyna_aigw_remember_user_fact` (writes through `upsertFact`) and `dyna_aigw_forget_user_fact` (writes through `removeFact`), tagged
  * `memory`, so the model acts on the user's request at once instead of waiting for the extraction (D61). Both write
- * like the user's own edits, scoped by the call's `userContext`. `remember_user_fact` carries `NEEDS_APPROVAL` unless
- * `rememberNeedsApproval` is false, so the run pauses for the user before a fact is stored (D116); `forget_user_fact`
+ * like the user's own edits, scoped by the call's `userContext`. `dyna_aigw_remember_user_fact` carries `NEEDS_APPROVAL` unless
+ * `rememberNeedsApproval` is false, so the run pauses for the user before a fact is stored (D116); `dyna_aigw_forget_user_fact`
  * never pauses.
  *
  * # Who needs it
@@ -48,7 +43,7 @@ export const makeUserMemoryTools = (
   },
 ): IToolDef[] => [
   defineTool({
-    name: USER_MEMORY_TOOL_NAMES.REMEMBER,
+    name: BUILT_IN_TOOL_NAMES.REMEMBER_USER_FACT,
     description: [
       "Stores a lasting fact about the user for all future conversations: when the user asks to remember something,",
       "or states something lasting about themselves (name, where they live or work, language, role, preferences).",
@@ -84,7 +79,7 @@ export const makeUserMemoryTools = (
     },
   }),
   defineTool({
-    name: USER_MEMORY_TOOL_NAMES.FORGET,
+    name: BUILT_IN_TOOL_NAMES.FORGET_USER_FACT,
     description: "Removes a stored fact about the user, when the user asks to forget it or says it no longer holds. The key is one of the known user facts.",
     inputSchema: z.object({key: z.string().describe("The key of the stored fact")}),
     tags: ["memory"],

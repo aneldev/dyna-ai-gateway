@@ -45,7 +45,7 @@ test("an ask inlines the skill bodies in the system prompt and involves no tool"
     system.includes("Skills — instructions for this call:"),
     system.includes(`## ${refundPolicySkill.name}\n\n${refundPolicySkill.body}`),
     system.includes(`## ${escalationSkill.name}\n\n${escalationSkill.body}`),
-    system.includes("load_skill"),
+    system.includes("dyna_aigw_load_skill"),
     llmClient.completeCalls[0].tools ?? [],
     response.debug?.steps,
   ]).toEqual([true, true, true, false, [], 1]);

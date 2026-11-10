@@ -20,21 +20,21 @@ export interface IUserMemoryStoreConfig {
   maxFacts?: number;
   /**
    * Cap of the characters of a fact's key and of its value. Every fact goes into every prompt of the user, so an unbounded fact
-   * costs on every call. A fact set by hand (`upsertFact`, the `remember_user_fact` tool) over the cap is a 400; a fact the
+   * costs on every call. A fact set by hand (`upsertFact`, the `dyna_aigw_remember_user_fact` tool) over the cap is a 400; a fact the
    * extractor writes is cut to it.
    *
    * @default 500
    */
   maxFactChars?: number;
   /**
-   * The model's `remember_user_fact` waits for the user's approval before it stores the fact (D116).
+   * The model's `dyna_aigw_remember_user_fact` waits for the user's approval before it stores the fact (D116).
    *
    * > A fact enters every prompt of the user: text the model only read (a tool result, a knowledge-base excerpt, a file) must
    * > not be able to write one unasked.
    *
    * The run pauses with a TOOL_APPROVAL card whose input is the fact (`{key, value}`). Switch it off for an app that accepts
    * the risk and wants "remember this" stored at once. The facts the extractor writes and `upsertUserFact` are not affected;
-   * `forget_user_fact` never pauses (it only removes).
+   * `dyna_aigw_forget_user_fact` never pauses (it only removes).
    *
    * @default true
    */
@@ -174,7 +174,7 @@ export interface IUserMemoryStore {
    *
    * # Who needs it
    *
-   * `AIGateway.upsertUserFact`, and the `remember_user_fact` tool of `makeUserMemoryTools` (after the user's approval,
+   * `AIGateway.upsertUserFact`, and the `dyna_aigw_remember_user_fact` tool of `makeUserMemoryTools` (after the user's approval,
    * D116).
    *
    * # Pitfalls
@@ -206,7 +206,7 @@ export interface IUserMemoryStore {
    *
    * # Who needs it
    *
-   * `AIGateway.removeUserFact`, and the `forget_user_fact` tool of `makeUserMemoryTools`.
+   * `AIGateway.removeUserFact`, and the `dyna_aigw_forget_user_fact` tool of `makeUserMemoryTools`.
    */
   removeFact(
     {

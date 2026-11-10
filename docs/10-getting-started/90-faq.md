@@ -611,7 +611,7 @@ screen the user is on knows). The system prompt carries the names and descriptio
 it.
 
 ```ts
-// On a run(): the skills are listed, the model loads one with the built-in tool load_skill (one step per load)
+// On a run(): the skills are listed, the model loads one with the built-in tool dyna_aigw_load_skill (one step per load)
 const {response} = gateway.run({
   userContext,
   profileId: "support",

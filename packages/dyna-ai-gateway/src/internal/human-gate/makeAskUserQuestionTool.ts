@@ -2,8 +2,9 @@ import {z} from "zod";
 import {dynaError} from "dyna-error";
 
 import {
-  EToolCallVerdict,
   IToolDef,
+  EToolCallVerdict,
+  BUILT_IN_TOOL_NAMES,
 } from "../../contracts";
 
 import {defineTool} from "../tool-registry";
@@ -13,9 +14,6 @@ import {
   EUserQuestionMode,
 } from "./types";
 
-/** Name of the built-in user-question tool (D62); the gateway offers it in every run when `humanGate.userQuestions` is enabled. */
-export const ASK_USER_QUESTION_TOOL_NAME = "ask_user_question";
-
 /**
  * makeAskUserQuestionTool -- the built-in tool with which the model asks the user
  *
@@ -23,7 +21,7 @@ export const ASK_USER_QUESTION_TOOL_NAME = "ask_user_question";
  *
  * > The model asks instead of guessing; the run waits for the answer.
  *
- * Builds `ask_user_question` (D62): its input is the form the UI renders (`askUserQuestionInputSchema`, the shape of
+ * Builds `dyna_aigw_ask_user_question` (D62): its input is the form the UI renders (`askUserQuestionInputSchema`, the shape of
  * `IUserQuestions`), its `policy` is `NEEDS_APPROVAL`, so the loop pauses on every call and `settleRun` turns the input
  * into a USER_QUESTION envelope (`makePauseEnvelopeDraft`). The call never executes: `execute` throws a 500 (error
  * 5372634117683) if it is ever reached. The user's answers come back through `resume` with ANSWER and reach the model as
@@ -40,7 +38,7 @@ export const ASK_USER_QUESTION_TOOL_NAME = "ask_user_question";
  * human sees what the model asked for. `ask()` has no tools: there the model cannot ask.
  */
 export const makeAskUserQuestionTool = (): IToolDef<IUserQuestions, never> => defineTool({
-  name: ASK_USER_QUESTION_TOOL_NAME,
+  name: BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION,
   description: [
     "Asks the user when the task cannot proceed without their input: a missing value, an ambiguous reference, a choice only they can make.",
     "Put every open question into one call; the user answers them together. Prefer options over free text when the answers are known.",
@@ -53,7 +51,7 @@ export const makeAskUserQuestionTool = (): IToolDef<IUserQuestions, never> => de
     throw dynaError({
       code: 5372634117683,
       status: 500,
-      message: `HumanGate: the [${ASK_USER_QUESTION_TOOL_NAME}] tool is never executed, its call pauses the run`,
+      message: `HumanGate: the [${BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION}] tool is never executed, its call pauses the run`,
       data: {title: input.title},
     });
   },

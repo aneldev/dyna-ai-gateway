@@ -92,7 +92,7 @@ export interface IContextAssembler {
    * (`contextTokens − reserveOutputTokens − system`); its notes are rendered into `{memory}` after the user's facts. While
    * the request would still overflow the model's window, the oldest messages are left out first (`turns_trimmed`), then the
    * lowest-ranked chunks (`kb_chunks_trimmed`); the notes and the facts are never cut. The skills are listed by name and
-   * description when `load_skill` is among the tools, written out otherwise; a stored `CHAT_MAIN` without `{skills}` drops
+   * description when `dyna_aigw_load_skill` is among the tools, written out otherwise; a stored `CHAT_MAIN` without `{skills}` drops
    * them with the WARNING `skills_slot_missing`. The files of the question go into its message when the model can read
    * their type (images, PDF); another file is left out with the WARNING `file_dropped`. Returns the request, the template
    * version, the chunk ids that are in it, the estimated input tokens and the warnings.
@@ -120,14 +120,14 @@ export interface IContextInput {
   inlineFiles: IInlineFilePart[];
   /** The knowledge-base search of the call: whether it ran and what it found, for the `{kb}` slot. */
   retrieval: IRetrievalResult;
-  /** The tools of the call; read only to see whether `load_skill` is offered (the skills are then listed, not inlined). */
+  /** The tools of the call; read only to see whether `dyna_aigw_load_skill` is offered (the skills are then listed, not inlined). */
   tools: IToolDef[];
   /**
    * The skills of the call, for the `{skills}` slot (D124).
    *
    * > The resolved list: the profile's skills, then the call's (`SkillRegistry.resolve`).
    *
-   * Listed by name and description when `tools` holds `load_skill`, written out in full otherwise.
+   * Listed by name and description when `tools` holds `dyna_aigw_load_skill`, written out in full otherwise.
    *
    * @default [] - no skills, the slot renders to nothing
    */

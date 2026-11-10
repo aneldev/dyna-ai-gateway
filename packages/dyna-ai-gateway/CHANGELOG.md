@@ -6,6 +6,50 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+## [0.0.13-beta.9] - 2026-11-10
+
+### Breaking changes
+
+- **The built-in tools are renamed `dyna_aigw_<name>`**: `dyna_aigw_ask_user_question`, `dyna_aigw_remember_user_fact`,
+  `dyna_aigw_forget_user_fact`, `dyna_aigw_load_skill`. The prefix `dyna_aigw_` is reserved: an application tool whose
+  name starts with it is a 400, in `toolRegistry.tools` when the gateway is constructed and in `additionalTools` when
+  the call starts. Affected: a host that compares a tool name with an old literal (a renderer of tool parts, a reader of
+  stored tool results or the trace, a test), and a host whose own tool name starts with `dyna_aigw_`. A run paused before
+  the upgrade whose stored tools use an old name cannot be resumed: `resume` is a 400 (code `5387318840411`, the names in
+  `data.legacyTools`) and the run stays paused; start a new run.
+
+  Migration: compare with the exported `BUILT_IN_TOOL_NAMES`, never with a literal.
+
+  ```ts
+  // before
+  if (part.toolName === "ask_user_question") renderQuestionForm(part.input);
+
+  // after
+  import {BUILT_IN_TOOL_NAMES} from "dyna-ai-gateway";
+
+  if (part.toolName === BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION) renderQuestionForm(part.input);
+  ```
+
+  An application tool named `ask_user_question` (or another old built-in name) is no longer a collision: it is the
+  application's tool.
+
+  AI prompt that performs the migration:
+
+  ```text
+  Migrate this codebase to the next dyna-ai-gateway release, which renames its built-in tools. Search for the string
+  literals "ask_user_question", "remember_user_fact", "forget_user_fact" and "load_skill".
+  1. Where a literal names the gateway's built-in tool (compared with a tool name, a toolName of a tool part or of a
+     stored tool result, an expected value in a test), replace it with the constant exported by "dyna-ai-gateway":
+     BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION, .REMEMBER_USER_FACT, .FORGET_USER_FACT, .LOAD_SKILL
+     (their values are "dyna_aigw_ask_user_question", "dyna_aigw_remember_user_fact", "dyna_aigw_forget_user_fact",
+     "dyna_aigw_load_skill"). Leave a literal that names the application's own tool unchanged.
+  2. Search for "dyna_aigw_" in the names of the application's own tools (defineTool({name}), toolRegistry.tools,
+     additionalTools). Rename each one: the prefix is reserved and the gateway refuses it with a 400.
+  3. Where the code calls resume(), handle a 400 with code 5387318840411: the run was paused before the upgrade and
+     cannot continue; tell the user to start again.
+  Verify: `tsc` passes and the tests pass.
+  ```
+
 ## [0.0.13-beta.8] - 2026-11-09
 
 

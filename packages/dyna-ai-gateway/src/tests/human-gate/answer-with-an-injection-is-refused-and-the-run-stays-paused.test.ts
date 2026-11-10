@@ -6,8 +6,8 @@ import {
   EPartKind,
   EResumeAction,
   ERunStatus,
+  BUILT_IN_TOOL_NAMES,
 } from "../..";
-import {ASK_USER_QUESTION_TOOL_NAME} from "../../internal";
 
 import {FakeLLMClient} from "../internal/fakes/FakeLLMClient";
 import {sampleUser} from "../internal/samples/profiles";
@@ -35,7 +35,7 @@ test("an answer whose free text matches an injection pattern is refused and the 
     toolCall: {
       kind: EPartKind.TOOL_CALL,
       callId: "call-ask",
-      toolName: ASK_USER_QUESTION_TOOL_NAME,
+      toolName: BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION,
       input: whichInvoiceQuestions,
     },
   });

@@ -21,7 +21,7 @@ import {
 
 /**
  * Extra verification from the customer: a refund of 19 EUR is above the verification threshold (10), so the model does not refund
- * yet; it asks the customer for the postcode of the delivery address through `ask_user_question` (the run pauses), then calls
+ * yet; it asks the customer for the postcode of the delivery address through `dyna_aigw_ask_user_question` (the run pauses), then calls
  * `verify_customer` with the answer, and only then `refund_order`. 19 is under the approval threshold (50), so no human pause
  * follows and the run answers. Asserted in order: the question pause, the verification result, the refund result, the answer.
  * Three model calls: the listing, the question, the verification and refund step.
