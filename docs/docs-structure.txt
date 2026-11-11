@@ -36,16 +36,27 @@
     092-Chats' files, the storage
 
   /24-learning-paths
-    # These files are the guide to learn
-    # Each file will list only the needed APIs articles needs to know
-    # For instance, all should have on top the 10.10, 10.20, 10.30, 10.40
-    # The goal is a developer that has specific need, would follow ony guide file and that's it
+    # These files are the guides to learn the gateway, one per goal
+    # Each file lists only the API articles its goal needs
+    # All of them open with the Getting started pages 10, 20, 30, 40
+    # A developer with one specific need follows one file and nothing else
+    # Each file holds the links and the examples the developer needs
+    # and explains how the parts connect
     # Chapters
     # - About
-    # - Descripion
+    # - Description
     # - What you will be able to do
+    #   each item links the 8.x examples that show it
+    # - List of the parts
+    # - Understanding the connection of parts
     # - API you should know from /30          # List the references
+    #   grouped by the step of the developer's code: set up, make the call, read the result, what follows
+    #   each group links the 8.x examples that use its symbols
     # - API advanced (most of it for the classes replacement)
+    #   grouped by the part that is replaced; the last group says how a class is plugged in (IAIGatewayOverrides)
+    # - Examples (8.0 is the IAIGatewayConfig the examples run on, each key commented with why)
+    #   each 8.x: a title that says what it does, a short description, a "The bigger picture" quote;
+    #   in the order the application meets them (setup, the call, its variants, what follows)
     # - Pitfalls (What you shouldn't do)
     # - Summary
     # - FAQ
@@ -56,7 +67,7 @@
     040-protect-the-conversation.md           # guardrails, rules
     050-remember-the-user.md                  # memory window/summary, user facts
     060-answer-from-your-documents.md         # knowledge base, citations
-    070-extract-data-from-files.md            # extracr data from files using the LLM
+    070-extract-data-from-files.md            # extract data from files using the LLM
     080-run-it-in-production.md               # cancel, timeout, shutdown, recovery, trace, cost
     090-classify-and-route-requests.md        # ask() with outputSchema, cheap model: triage tickets, intents
     100-summarize-a-document.md               # ask() with files or context, plain or structured summary (data extraction)

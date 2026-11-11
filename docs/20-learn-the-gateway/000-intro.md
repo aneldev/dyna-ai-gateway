@@ -4,6 +4,9 @@ This section explains each part of the gateway: what it does, how it decides, an
 its own. You do not need to read them in order, and you do not need all of them: read the page of the part your
 application uses, and come back to the others when you need them.
 
+To learn only what one goal needs, follow its [learning path](../24-learning-paths/README.md) instead: it lists the
+sections of these pages to read, in order.
+
 Every page has the same chapters:
 
 | Chapter       | What it holds                                             |

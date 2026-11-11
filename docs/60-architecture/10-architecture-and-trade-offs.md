@@ -163,9 +163,10 @@ sequenceDiagram
 
   App->>GW: prompt, threadId, user context, files
   GW-->>App: {events, response} at once
+  GW->>GW: load profile, model facts
   GW->>GR: check input (built-in + app input rules)
-  GW->>GW: load profile, model facts, user facts, KB chunks
   GW->>TS: append user turn
+  GW->>GW: load user facts, KB chunks
   GW->>CA: build(system, messages, tools)
   CA->>WM: load(thread, budget) → window + notes
   GW->>DR: run(request, tools, hooks)

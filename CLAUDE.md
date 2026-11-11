@@ -64,6 +64,7 @@ ESLint 8, webpack 5 (from `dyna-ts-module-boilerplate`), pnpm workspace.
 - Types: `pnpm typecheck` — `tsc` over sources **and tests** (each package's `tsconfig.tests.json`); `tsconfig.json` excludes tests and ts-jest only warns, so this is the only check that fails on a type error in a test
 - Build: `pnpm build` (every package: lint + typecheck + CJS + ESM + `.d.ts` into its `dist/`)
 - Docs site: `pnpm docs:install` once, then `pnpm docs:start` / `pnpm docs:build` (`website/`, outside the workspace; deployed to https://aneldev.github.io/dyna-ai-gateway/ by `.github/workflows/docs.yml`) — `docs/30-api` is generated from the JSDoc, never edited; the API navigation is the list in `website/api-sidebar.mjs` (`docs/85-workspace.md` § Docs site)
+- Doc samples: `pnpm docs:check-samples [folder…]` type-checks the ```ts samples of the learning paths (default `docs/24-learning-paths`) against `src/`; run it after editing a sample (`docs/85-workspace.md` § Docs site)
 - Sandbox: `pnpm sandbox-cli <ask|run>` (chat) and `pnpm sandbox-debug` (inspector) run the config of `src/dev-sandbox/sandbox.config.ts` — point it at a test's `gatewayConfig<Scenario>`; keys from the repo-root `.env`
 
 ## Rules enforced by lint

@@ -9,6 +9,7 @@ pauses for a human when a policy says so, asks your code before every model call
 **You don't need to know everything, only what you need.** A first answer takes one configuration object and one call.
 Tools, approvals, memory, the knowledge base and the class replacements are there when a use case asks for them, and not
 before.
+The [learning paths](../24-learning-paths/README.md) give each goal one page: the sections to read, the configuration and the examples it needs, and nothing else.
 
 | Chapter                                                | What you get                                                           |
 |--------------------------------------------------------|------------------------------------------------------------------------|

@@ -305,10 +305,11 @@ sequenceDiagram
 
   App->>GW: prompt, threadId, user context, files
   GW-->>App: {events, response} at once (D38)
-  GW->>GR: check input (built-in + app input rules)
-  GW->>GW: load profile, model facts, user facts, KB chunks
+  GW->>GW: load profile, model facts
   GW->>GW: SkillRegistry.resolve(profile + call skills) → dyna_aigw_load_skill tool (run only, D124)
+  GW->>GR: check input (built-in + app input rules)
   GW->>TS: append user turn (with file pointers)
+  GW->>GW: load user facts, KB chunks
   GW->>CA: build(system, messages, tools) from that data
   CA->>WM: load(thread, budget) → window + notes (the strategy decides)
   GW->>DR: run(request, tools, hooks)
