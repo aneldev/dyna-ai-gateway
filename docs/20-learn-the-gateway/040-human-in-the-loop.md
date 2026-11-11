@@ -506,8 +506,10 @@ const gateway = new AIGateway({...config, runStore: {repository: new MyRunReposi
 No. The run is a record in the repository. The process that paused it can stop; any instance resumes it from the record.
 
 **Can the asker and the approver be different users?**
-Yes. Any user of the tenant can resume. The tools run with the approver's `userContext`; the memory and the trace stay
-the asker's.
+Yes. Any user of the tenant can resume. The tools run with the approver's `userContext`, the user memory tools included:
+an approved `dyna_aigw_remember_user_fact` is stored under the approver
+([User memory](090-user-memory.md), pitfall "Another user answering the card"). The memory jobs and the trace stay the
+asker's.
 
 **How do I show why a call waits?**
 Return a `reasonCode` from the tool's predicate with `NEEDS_APPROVAL`. The envelope carries it as `reasonCode`; your card
