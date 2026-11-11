@@ -311,29 +311,8 @@ returns or emits, the callers (`grep` them — "Who needs it" names only callers
 **contradiction**: resolved in the same change, never smoothed over, never averaged into a sentence both sides could
 accept, never left for later.
 
-Where they hide (found in every audit so far): a dependency typed as the class in the doc and as its interface in the
-code; a result shape that gained or lost a field; an enum member added to the code only; an argument optional in the
-code and required in the doc, or the reverse; a table of outputs missing a field the code emits; a number that was true
-when written ("~300 lines", "chars / 4"); a code comment that describes the previous implementation.
-
-How to resolve one:
-
-1. **Find the truth.** The most recent deliberate change wins: `git log -p -S'<text>' -- <file>` or `git blame` on both
-   sides says which one moved, and when. The code is usually the truth — a doc describes, the code does — but a doc
-   changed after the code, with a decision behind it, means the code is the one behind.
-2. **At least 98 % sure which side is right → fix the other side now**, in the same unit: the design doc first (the
-   source of truth), then every user doc that repeats it, then the JSDoc and the code comment next to it. Log what was
-   fixed where the unit is reported (the handoff's Findings, the plan's step).
-3. **Less sure → ask first**, quoting both sides verbatim and the git evidence. Do not write the block until the
-   developer answered: a block that matches a doc you doubt is a second copy of the error.
-4. **The code is the wrong side.** A documentation task changes no behaviour. The block states what the code does
-   **today** and names the gap in one sentence; the fix is a backlog entry proposed to the developer, or — a few lines,
-   no signature change, the behaviour the docs already promise, a test — a small local fix once he agreed.
-5. **Not wrong, but odd** (a dependency declared and never read, a public method nobody calls, a declared default that is
-   ignored): not a contradiction. Put it on the developer's observation list; fix nothing before he answers.
-
-Never paraphrase a doc into a block without reading the code; never change a doc to match a block you just wrote; never
-delete the sentence that contradicts instead of correcting it.
+The contradiction is resolved by the `consistency-pressure-test` skill: §4 says which side is right (the 98 % rule,
+what to do when the code is the wrong side, the odd-but-not-wrong cases), §3 where contradictions hide.
 
 ## 11. Self-check before saving
 
@@ -346,3 +325,5 @@ delete the sentence that contradicts instead of correcting it.
 5. Any `@param` / `@returns`? → rewrite inline (§5).
 6. Headers outside a §1 block? → remove.
 7. Every claim of the block comes from the code? A doc, a block or a comment that says otherwise → §10, resolved, not ignored.
+8. Before the handoff: the `consistency-pressure-test` skill over the blocks written or touched, every doc that
+   describes the same symbols included, and its result in the handoff.

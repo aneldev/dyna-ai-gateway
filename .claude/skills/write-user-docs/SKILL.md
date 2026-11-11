@@ -22,8 +22,8 @@ The private docs leave the repo before the library is published. A user doc that
    the JSDoc of the changed symbols.
 3. **`../../../docs/60-architecture`** is derived from `docs/internal` **and** the codebase: the decision as it stands
    in the code, grouped by the class it concerns, in the user's words.
-4. **Consistency is part of "done".** All docs agree with each other and with the code. When the code and a doc
-   disagree, the code is the reality; fix `docs/internal` first, then the user doc.
+4. **Consistency is part of "done".** All docs agree with each other and with the code. The `consistency-pressure-test`
+   skill checks it and says which side of a contradiction is right (`docs/internal` is fixed first, then the user doc).
 
 ## Rules for a user doc
 
@@ -60,3 +60,5 @@ audience rule: never link `docs/internal` or `docs/plans` from a JSDoc. Link a u
 - [ ] Every name in the doc exists in `src/` with that spelling.
 - [ ] Every fact appears once; the other mentions are links.
 - [ ] A reader who only has the npm package could follow the doc.
+- [ ] Last: the `consistency-pressure-test` skill over the pages written or touched and everything that states the same
+      facts; its result goes into the handoff.

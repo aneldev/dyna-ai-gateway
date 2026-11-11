@@ -52,6 +52,9 @@ ESLint 8, webpack 5 (from `dyna-ts-module-boilerplate`), pnpm workspace.
 - Flow of every change: 1. update `docs/internal` (the truth) → 2. update the user docs it affects →
   3. `docs/60-architecture` is derived from `docs/internal` **and** the codebase → 4. all docs agree with each
      other and with the code. JSDoc counts as user documentation (it ships in the `.d.ts`).
+- **Step 4 is checked by the `consistency-pressure-test` skill** (`.claude/skills/consistency-pressure-test/SKILL.md`),
+  run by `jsdoc-style`, `write-user-docs` and `stepwise-plan` before a handoff: rounds until one finds zero issues, at most 5,
+  then the open problems go to Dennis. It owns the rule of which side of a contradiction is right.
 
 ## Commands
 

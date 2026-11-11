@@ -163,7 +163,7 @@ decided the same way at the next handoff. The developer must know precisely what
 ### Pressure test — before the plan is presented
 
 A written plan is a draft until it survives a pressure test. Read it as a hostile senior reviewer would, not as its
-author: the goal is to find what breaks, not to confirm it works. Check it on three axes:
+author: the goal is to find what breaks, not to confirm it works. Check it on four axes:
 
 1. **Professional approach.** Is every step the standard, mature way to do it today, or a shortcut, a workaround, an
    invented pattern, an over-abstraction? Would a senior engineer approve it in review? Does it follow `CLAUDE.md`'s
@@ -179,20 +179,11 @@ author: the goal is to find what breaks, not to confirm it works. Check it on th
    answers each one. Every term the plan uses matches the glossary (`CLAUDE.md`, Terminology); a term used two ways is an
    issue.
 
-**The loop:**
-
-- **Run** the three checks over the whole plan and list every issue.
-- **Fix** each issue in the plan. An issue that only the developer can settle (an unclear requirement, a choice between
-  two valid designs) → ask him (`AskUserQuestion`, the recommended option first) and write his answer into the plan.
-  Asking is not a failed round.
-- **Re-run** the full test on the changed plan, since a fix can create a new issue. Repeat until a round finds **zero
-  issues**.
-- **Stop after 3 unsuccessful rounds.** If issues are still there after the third round of fixes, stop fixing and hand
-  them to the developer. Per problem: what is wrong, in plain language and with a concrete example (no jargon, no
-  internal ids without their meaning), why it matters, and 1–3 possible solutions with the recommended one first. He
-  decides; apply his decisions and run the test once more.
-- **Record** the result in the plan's `## Pressure test` chapter: the date, the number of rounds, one line per issue and
-  how it was resolved.
+**The loop is the `consistency-pressure-test` skill's** (its §5 and §6): a round runs the four axes above together
+with the skill's checks of the facts against the code, the docs and the glossary; rounds go on until one finds zero
+issues, **at most 5**, then the open problems go to the developer in the skill's format. Asking him is not a failed
+round. The result goes into the plan's `## Pressure test` chapter: the date, the number of rounds, one line per issue
+and how it was resolved.
 
 A change the developer makes to the plan during his review is pressure-tested again (the loop above) before Step 0.1.
 
@@ -212,6 +203,8 @@ Each step runs through the `implement-task` skill — it owns the implement → 
    - **Findings:** pre-existing issues discovered (broken tests, dead deps, stale configs) — fixed only if they block the step; otherwise noted + added to follow-ups.
    - **Deviations:** if the step had to grow or a later step was pulled forward, add it as `### [ ] Step X.Yb — … (pulled forward from N)` — don't silently widen a step.
    - Things that could NOT be verified and why (no browser, needs a key, needs prod) → that becomes the developer's check.
+   - **A step that writes docs or JSDoc** runs the `consistency-pressure-test` skill before its handoff; the result goes
+     under the handoff's **Verified**, and the open problems after 5 rounds into the step's **Findings**.
    - The "Ready for review" message **opens with the step's Goal and Result**, verbatim from the plan, then says whether the
      Result is reached. The developer reads the handoff before the diff; he must not have to open the plan to know what he
      is looking at.
