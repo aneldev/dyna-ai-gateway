@@ -132,9 +132,43 @@ The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask]
 
 ### 8.0 The configuration
 
-The tools are those of 8.1; the job runs as the service user of 8.2. The keys this path uses come first, each with why; the others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The tools are those of 8.1; the job runs as the service user of 8.2. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
 
 > **The bigger picture:** Your worker process builds this gateway once at startup. Nobody watches its runs, so a failed tool call goes to the log through `onToolError`, and `toolPolicy` fixes which tools the job may use and in which order.
+
+<details>
+<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+
+```ts
+import {
+  IAIGatewayConfig,
+  InMemoryBlobAdapter,
+  InMemoryPromptTemplateRepository,
+  InMemoryTraceRepository,
+  InMemoryUsageAdapter,
+  InMemoryUserMemoryRepository,
+  InMemoryVectorIndexAdapter,
+} from "dyna-ai-gateway";
+
+// Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
+// and the features this path does not need switched off
+const baseConfig = {
+  promptTemplateStore: {repository: new InMemoryPromptTemplateRepository()},
+  fileStore: {adapter: new InMemoryBlobAdapter(), path: "ai-files"},
+  workingMemory: {enabled: false}, // no summary of the thread
+  userMemoryStore: {repository: new InMemoryUserMemoryRepository(), enabled: false}, // user facts off
+  embedder: {embeddingModelId: "text-embedding-3-small", dimensions: 1536},
+  vectorStore: {adapter: new InMemoryVectorIndexAdapter({embeddingModelId: "text-embedding-3-small", dimensions: 1536})},
+  queryRewriter: {enabled: false}, // no follow-up rewrite
+  humanGate: {userQuestions: {enabled: false}}, // the model asks no questions
+  usageGuard: {adapter: new InMemoryUsageAdapter()},
+  contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
+  trace: {repository: new InMemoryTraceRepository()},
+  defaultCheapModelId: "gpt-5-mini",
+} satisfies Partial<IAIGatewayConfig>;
+```
+
+</details>
 
 ```ts
 import {
@@ -143,15 +177,9 @@ import {
   IAIProfile,
   EModelProvider,
   InMemoryAIProfileRepository,
-  InMemoryBlobAdapter,
   InMemoryModelRegistryRepository,
-  InMemoryPromptTemplateRepository,
   InMemoryRunRepository,
   InMemoryThreadRepository,
-  InMemoryTraceRepository,
-  InMemoryUsageAdapter,
-  InMemoryUserMemoryRepository,
-  InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
 
 const reconciliation: IAIProfile = {
@@ -180,22 +208,10 @@ const config: IAIGatewayConfig = {
   runStore: {repository: new InMemoryRunRepository()}, // a job that waits for an approver is stored here
   threadStore: {repository: new InMemoryThreadRepository(), leaseMs: 300_000}, // the job's timeoutMs stays under it
 
-  // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
-  // and the features this path does not need switched off
+  // required too, and kept in view: the provider key, the models
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
   modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
-  promptTemplateStore: {repository: new InMemoryPromptTemplateRepository()},
-  fileStore: {adapter: new InMemoryBlobAdapter(), path: "ai-files"},
-  workingMemory: {enabled: false}, // no summary of the thread
-  userMemoryStore: {repository: new InMemoryUserMemoryRepository(), enabled: false}, // user facts off
-  embedder: {embeddingModelId: "text-embedding-3-small", dimensions: 1536},
-  vectorStore: {adapter: new InMemoryVectorIndexAdapter({embeddingModelId: "text-embedding-3-small", dimensions: 1536})},
-  queryRewriter: {enabled: false}, // no follow-up rewrite
-  humanGate: {userQuestions: {enabled: false}}, // the model asks no questions
-  usageGuard: {adapter: new InMemoryUsageAdapter()},
-  contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
-  trace: {repository: new InMemoryTraceRepository()},
-  defaultCheapModelId: "gpt-5-mini",
+  ...baseConfig, // the other required keys, collapsed above
 };
 
 const gateway = new AIGateway(config);

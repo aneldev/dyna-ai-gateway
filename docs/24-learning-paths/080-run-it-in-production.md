@@ -149,9 +149,37 @@ The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask]
 
 ### 8.0 The configuration
 
-The in-memory stores of Installation with the settings that matter in production; 8.1 replaces the stores with yours, the tool is the one of 8.3. The keys this path uses come first, each with why; the others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The in-memory stores of Installation with the settings that matter in production; 8.1 replaces the stores with yours, the tool is the one of 8.3. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
 
 > **The bigger picture:** Your server builds this gateway once at startup, with the timeouts, the thread lease and the stores it needs in production; every request of every tenant goes through it.
+
+<details>
+<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+
+```ts
+import {
+  IAIGatewayConfig,
+  InMemoryBlobAdapter,
+  InMemoryPromptTemplateRepository,
+  InMemoryUserMemoryRepository,
+  InMemoryVectorIndexAdapter,
+} from "dyna-ai-gateway";
+
+// Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
+// and the features this path does not need switched off
+const baseConfig = {
+  promptTemplateStore: {repository: new InMemoryPromptTemplateRepository()},
+  fileStore: {adapter: new InMemoryBlobAdapter(), path: "ai-files"},
+  workingMemory: {enabled: true},
+  userMemoryStore: {repository: new InMemoryUserMemoryRepository(), enabled: false}, // user facts off
+  embedder: {embeddingModelId: "text-embedding-3-small", dimensions: 1536},
+  vectorStore: {adapter: new InMemoryVectorIndexAdapter({embeddingModelId: "text-embedding-3-small", dimensions: 1536})},
+  queryRewriter: {enabled: false}, // no follow-up rewrite
+  defaultCheapModelId: "gpt-5-mini",
+} satisfies Partial<IAIGatewayConfig>;
+```
+
+</details>
 
 ```ts
 import {
@@ -160,15 +188,11 @@ import {
   IAIProfile,
   EModelProvider,
   InMemoryAIProfileRepository,
-  InMemoryBlobAdapter,
   InMemoryModelRegistryRepository,
-  InMemoryPromptTemplateRepository,
   InMemoryRunRepository,
   InMemoryThreadRepository,
   InMemoryTraceRepository,
   InMemoryUsageAdapter,
-  InMemoryUserMemoryRepository,
-  InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
 
 const accounting: IAIProfile = {
@@ -199,18 +223,10 @@ const config: IAIGatewayConfig = {
   // the stable prompt block is cached, per tenant
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
 
-  // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
-  // and the features this path does not need switched off
+  // required too, and kept in view: the models, the profiles
   modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting]})},
-  promptTemplateStore: {repository: new InMemoryPromptTemplateRepository()},
-  fileStore: {adapter: new InMemoryBlobAdapter(), path: "ai-files"},
-  workingMemory: {enabled: true},
-  userMemoryStore: {repository: new InMemoryUserMemoryRepository(), enabled: false}, // user facts off
-  embedder: {embeddingModelId: "text-embedding-3-small", dimensions: 1536},
-  vectorStore: {adapter: new InMemoryVectorIndexAdapter({embeddingModelId: "text-embedding-3-small", dimensions: 1536})},
-  queryRewriter: {enabled: false}, // no follow-up rewrite
-  defaultCheapModelId: "gpt-5-mini",
+  ...baseConfig, // the other required keys, collapsed above
 };
 
 const gateway = new AIGateway(config);

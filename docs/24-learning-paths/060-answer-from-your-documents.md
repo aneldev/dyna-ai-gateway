@@ -139,9 +139,41 @@ The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask]
 
 ### 8.0 The configuration
 
-The examples ingest documents and ask within their scope. The keys this path uses come first, each with why; the others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The examples ingest documents and ask within their scope. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
 
 > **The bigger picture:** Your server builds this gateway once at startup. The index is shared by the whole server; the documents of each tenant are kept apart in it, by `tenantId`.
+
+<details>
+<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+
+```ts
+import {
+  IAIGatewayConfig,
+  InMemoryBlobAdapter,
+  InMemoryPromptTemplateRepository,
+  InMemoryRunRepository,
+  InMemoryThreadRepository,
+  InMemoryTraceRepository,
+  InMemoryUsageAdapter,
+  InMemoryUserMemoryRepository,
+} from "dyna-ai-gateway";
+
+// Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
+// and the features this path does not need switched off
+const baseConfig = {
+  promptTemplateStore: {repository: new InMemoryPromptTemplateRepository()},
+  threadStore: {repository: new InMemoryThreadRepository()},
+  fileStore: {adapter: new InMemoryBlobAdapter(), path: "ai-files"},
+  userMemoryStore: {repository: new InMemoryUserMemoryRepository(), enabled: false}, // user facts off
+  runStore: {repository: new InMemoryRunRepository()},
+  humanGate: {userQuestions: {enabled: false}}, // the model asks no questions
+  usageGuard: {adapter: new InMemoryUsageAdapter()},
+  contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
+  trace: {repository: new InMemoryTraceRepository()},
+} satisfies Partial<IAIGatewayConfig>;
+```
+
+</details>
 
 ```ts
 import {
@@ -150,14 +182,7 @@ import {
   IAIProfile,
   EModelProvider,
   InMemoryAIProfileRepository,
-  InMemoryBlobAdapter,
   InMemoryModelRegistryRepository,
-  InMemoryPromptTemplateRepository,
-  InMemoryRunRepository,
-  InMemoryThreadRepository,
-  InMemoryTraceRepository,
-  InMemoryUsageAdapter,
-  InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
 
@@ -186,19 +211,10 @@ const config: IAIGatewayConfig = {
   workingMemory: {enabled: true}, // the rewrite reads the thread's summary, which SUMMARY_BUFFER writes
   defaultCheapModelId: "gpt-5-mini", // the rewrite runs on the cheap model
 
-  // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
-  // and the features this path does not need switched off
+  // required too, and kept in view: the provider key, the profiles
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting]})},
-  promptTemplateStore: {repository: new InMemoryPromptTemplateRepository()},
-  threadStore: {repository: new InMemoryThreadRepository()},
-  fileStore: {adapter: new InMemoryBlobAdapter(), path: "ai-files"},
-  userMemoryStore: {repository: new InMemoryUserMemoryRepository(), enabled: false}, // user facts off
-  runStore: {repository: new InMemoryRunRepository()},
-  humanGate: {userQuestions: {enabled: false}}, // the model asks no questions
-  usageGuard: {adapter: new InMemoryUsageAdapter()},
-  contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
-  trace: {repository: new InMemoryTraceRepository()},
+  ...baseConfig, // the other required keys, collapsed above
 };
 
 const gateway = new AIGateway(config);

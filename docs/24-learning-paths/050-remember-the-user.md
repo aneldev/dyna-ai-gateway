@@ -136,9 +136,39 @@ The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask]
 
 ### 8.0 The configuration
 
-The examples continue threads and keep facts about the user. The keys this path uses come first, each with why; the others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The examples continue threads and keep facts about the user. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
 
 > **The bigger picture:** Your server builds this gateway once at startup. The memory settings here are the default of every profile; the facts of each user and the memory of each thread are kept in the two repositories.
+
+<details>
+<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+
+```ts
+import {
+  IAIGatewayConfig,
+  InMemoryBlobAdapter,
+  InMemoryPromptTemplateRepository,
+  InMemoryTraceRepository,
+  InMemoryUsageAdapter,
+  InMemoryVectorIndexAdapter,
+} from "dyna-ai-gateway";
+
+// Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
+// and the features this path does not need switched off
+const baseConfig = {
+  promptTemplateStore: {repository: new InMemoryPromptTemplateRepository()},
+  fileStore: {adapter: new InMemoryBlobAdapter(), path: "ai-files"},
+  embedder: {embeddingModelId: "text-embedding-3-small", dimensions: 1536},
+  vectorStore: {adapter: new InMemoryVectorIndexAdapter({embeddingModelId: "text-embedding-3-small", dimensions: 1536})},
+  queryRewriter: {enabled: false}, // no follow-up rewrite
+  humanGate: {userQuestions: {enabled: false}}, // the model asks no questions
+  usageGuard: {adapter: new InMemoryUsageAdapter()},
+  contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
+  trace: {repository: new InMemoryTraceRepository()},
+} satisfies Partial<IAIGatewayConfig>;
+```
+
+</details>
 
 ```ts
 import {
@@ -148,15 +178,10 @@ import {
   EModelProvider,
   EWorkingMemoryStrategy,
   InMemoryAIProfileRepository,
-  InMemoryBlobAdapter,
   InMemoryModelRegistryRepository,
-  InMemoryPromptTemplateRepository,
   InMemoryRunRepository,
   InMemoryThreadRepository,
-  InMemoryTraceRepository,
-  InMemoryUsageAdapter,
   InMemoryUserMemoryRepository,
-  InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
 
 const accounting: IAIProfile = {
@@ -185,20 +210,11 @@ const config: IAIGatewayConfig = {
   defaultCheapModelId: "gpt-5-mini", // the summary and the extraction run on the cheap model
   runStore: {repository: new InMemoryRunRepository()}, // a remember request pauses the run until the user approves
 
-  // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
-  // and the features this path does not need switched off
+  // required too, and kept in view: the provider key, the models, the profiles
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
   modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting]})},
-  promptTemplateStore: {repository: new InMemoryPromptTemplateRepository()},
-  fileStore: {adapter: new InMemoryBlobAdapter(), path: "ai-files"},
-  embedder: {embeddingModelId: "text-embedding-3-small", dimensions: 1536},
-  vectorStore: {adapter: new InMemoryVectorIndexAdapter({embeddingModelId: "text-embedding-3-small", dimensions: 1536})},
-  queryRewriter: {enabled: false}, // no follow-up rewrite
-  humanGate: {userQuestions: {enabled: false}}, // the model asks no questions
-  usageGuard: {adapter: new InMemoryUsageAdapter()},
-  contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
-  trace: {repository: new InMemoryTraceRepository()},
+  ...baseConfig, // the other required keys, collapsed above
 };
 
 const gateway = new AIGateway(config);
