@@ -82,9 +82,11 @@ pnpm docs:check-samples [folder…]   # type-check the TypeScript samples (defau
   the folder once, in file order, its link text the page's `h1`. A new path is a file and a row.
 - **The sample check** (`scripts/check-doc-samples/check.mjs`) compiles each example as a developer pastes it: one `.ts`
   file under `temp/check-doc-samples/` per `### 8.N`, holding the samples of 8.0 and then those of 8.N at the top level of
-  one module, and runs `tsc` on them with the root `tsconfig.base.json`; `dyna-ai-gateway` resolves to the gateway's
-  `src/`, so a sample is checked against the code as it is now. An example that declares its own `const gateway` replaces
-  the `const gateway = new AIGateway(config);` line of 8.0. There is no prelude: a name an example takes from the
+  one module, joined as they are, imports included (a name that 8.0 and the example both import fails, as it does in the
+  pasted file, so an example imports only what 8.0 does not), and runs `tsc` on them with the root `tsconfig.base.json`;
+  `dyna-ai-gateway` resolves to the gateway's `src/`, so a sample is checked against the code as it is now. An example
+  that declares its own `const gateway` replaces the `const gateway = new AIGateway(config);` line of 8.0. There is no
+  prelude: a name an example takes from the
   application is a `declare` line of the example, and a name several examples run on is defined in 8.0. The learning
   paths hold whole samples; the other folders hold fragments that do not compile on their own, so they are not checked.
 - **Mermaid's node tooltips need d3-transition** (flowcharts, class and state diagrams):

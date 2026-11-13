@@ -92,12 +92,12 @@ Examples: [8.0](#80-the-configuration), [8.7](#87-an-admin-adds-a-model-and-a-pr
 
 Examples: [8.0](#80-the-configuration), [8.1](#81-the-user-asks-a-question-and-gets-one-answer), [8.2](#82-the-answer-streams-to-the-screen-as-the-model-writes-it), [8.3](#83-the-screen-passes-the-open-record-and-its-own-instructions), [8.4](#84-the-answer-comes-back-as-typed-data), [8.5](#85-the-answer-is-plain-text-for-an-sms), [8.6](#86-the-user-asks-a-follow-up-on-the-same-thread), [8.8](#88-the-next-question-goes-to-another-model), [8.9](#89-the-call-sets-a-sampling-temperature), [8.10](#810-the-call-fails-or-is-rejected).
 
-| Symbol                                                               | What you use it for                                                                         |
-|----------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| [`AIGateway.ask`](../30-api/index/classes/AIGateway.md#ask)          | the call                                                                                    |
-| [`IGatewayAskInput`](../30-api/index/interfaces/IGatewayAskInput.md) | its fields: `prompt`, `context`, `instructions`, `outputSchema`, `outputFormat`, `threadId` |
-| [`IUserContext`](../30-api/index/interfaces/IUserContext.md)         | who calls                                                                                   |
-| [`EOutputFormat`](../30-api/index/enumerations/EOutputFormat.md)     | `MARKDOWN` or `PLAIN`                                                                       |
+| Symbol                                                               | What you use it for                                                                                        |
+|----------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| [`AIGateway.ask`](../30-api/index/classes/AIGateway.md#ask)          | the call                                                                                                   |
+| [`IGatewayAskInput`](../30-api/index/interfaces/IGatewayAskInput.md) | its fields: `prompt`, `context`, `instructions`, `outputSchema`, `outputFormat`, `temperature`, `threadId` |
+| [`IUserContext`](../30-api/index/interfaces/IUserContext.md)         | who calls                                                                                                  |
+| [`EOutputFormat`](../30-api/index/enumerations/EOutputFormat.md)     | `MARKDOWN` or `PLAIN`                                                                                      |
 
 ### 6.3 Read the result
 
@@ -149,7 +149,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The examples ask on one profile; 8.7 adds a model and a second profile while the server runs. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The examples ask on `accounting`; 8.8 and 8.9 on `accounting-claude`, seeded here with its Claude model. 8.7 shows how an admin adds the same two while the server runs (an upsert overwrites). The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup, with the providers, the models and the profile of the tenant; every question of every user goes through it.
 
@@ -220,10 +220,8 @@ const baseConfig = {
 ```ts
 import {
   AIGateway,
-  IAIGatewayConfig,
   IAIProfile,
   IUserContext,
-  EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
   InMemoryThreadRepository,
@@ -240,19 +238,35 @@ const accounting: IAIProfile = {
   limits: {maxStepsPerRun: 6, maxOutputTokens: 2_000},
 };
 
+// the Claude model and profile of 8.7, seeded here too so that 8.8 and 8.9 run without it
+const claudeHaiku: IModelInfo = {
+  id: "claude-haiku-4-5",
+  provider: EModelProvider.ANTHROPIC,
+  providerModelId: "claude-haiku-4-5-20251001",
+  label: "Claude Haiku 4.5",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: true, embeddings: false,
+    contextTokens: 200_000, maxOutputTokens: 64_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const accountingClaude: IAIProfile = {...accounting, id: "accounting-claude", name: "Accounting on Claude", modelId: "claude-haiku-4-5"};
+
 const config: IAIGatewayConfig = {
   ...baseConfig, // the required keys this path does not use, collapsed above; a key below wins over it
 
   // What this path uses
-  // the credentials of each provider; 8.7 adds a Claude model
+  // the credentials of each provider: the Claude model of 8.8 and 8.9 needs the Anthropic key
   llmClient: {providers: {
     [EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""},
     [EModelProvider.ANTHROPIC]: {apiKey: process.env.ANTHROPIC_API_KEY ?? ""},
   }},
   // the models a profile may name, with their caps and prices
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
-  // the profile every call names
-  aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small, claudeHaiku]})},
+  // the profiles the calls name
+  aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting, accountingClaude]})},
   threadStore: {repository: new InMemoryThreadRepository()}, // the threads a follow-up continues (8.6)
   workingMemory: {enabled: true}, // what a follow-up sees of the thread
 };
@@ -291,7 +305,7 @@ if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // Ma
 
 ### 8.2 The answer streams to the screen as the model writes it
 
-The same call, read through `events`: each `TEXT_DELTA` adds text as it arrives. `ANSWER_WITHDRAWN` tells the screen to drop what it rendered, because an output check did not keep the answer.
+The same call, read through `events`: each `TEXT_DELTA` adds text as it arrives. `ANSWER_WITHDRAWN` tells the screen to drop what it rendered, because an output check did not keep the answer or the call was stopped.
 
 > **The bigger picture:** The chat window, where the user sees the answer grow word by word instead of waiting for the whole of it.
 
@@ -307,7 +321,7 @@ const {events, response} = gateway.ask({
 
 for await (const event of events) {
   if (event.kind === ELLMClientEventKind.TEXT_DELTA) process.stdout.write(event.text ?? "");
-  if (event.kind === ELLMClientEventKind.ANSWER_WITHDRAWN) process.stdout.write("\n[withdrawn]\n"); // an output rule blocked it
+  if (event.kind === ELLMClientEventKind.ANSWER_WITHDRAWN) process.stdout.write("\n[withdrawn]\n"); // an output rule blocked it, or the call was stopped
 }
 const result = await response; // the stream ended because the response settled
 ```
@@ -403,13 +417,11 @@ const second = await gateway.ask({
 
 ### 8.7 An admin adds a model and a profile while the server runs
 
-`upsertModel` registers a Claude model and `upsertProfile` saves a second profile on it, with no restart. A profile is stored whole, so the code reads the existing one, spreads it and saves the copy.
+`upsertModel` registers a Claude model and `upsertProfile` saves a second profile on it, with no restart. 8.0 seeds the same two, so on that gateway the upserts overwrite them. A profile is stored whole, so the code reads the existing one, spreads it and saves the copy.
 
 > **The bigger picture:** The admin screen of your product: a new model is offered to a tenant, and the next call can name the new profile.
 
 ```ts
-import {EModelProvider} from "dyna-ai-gateway";
-
 await gateway.modelRegistry.upsertModel({
   model: {
     id: "claude-haiku-4-5",

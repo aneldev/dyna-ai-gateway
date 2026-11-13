@@ -74,7 +74,7 @@ Examples: [8.0](#80-the-configuration), [8.6](#86-the-summary-was-cut-at-the-out
 
 ### 6.2 Hand over the text
 
-Example: [8.4](#84-the-decisions-and-open-points-of-a-conversation).
+Examples: [8.1](#81-summarise-an-uploaded-pdf-in-a-few-paragraphs), [8.3](#83-a-contract-summary-as-structured-fields), [8.4](#84-the-decisions-and-open-points-of-a-conversation), [8.6](#86-the-summary-was-cut-at-the-output-limit).
 
 | Symbol                                                                                                                          | What you use it for                                     |
 |---------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|
@@ -199,10 +199,8 @@ const baseConfig = {
 ```ts
 import {
   AIGateway,
-  IAIGatewayConfig,
   IAIProfile,
   IUserContext,
-  EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryBlobAdapter,
   InMemoryModelRegistryRepository,
@@ -349,14 +347,16 @@ const {response} = gateway.ask({
 
 ### 8.5 Estimate the cost before you send a long document
 
-`modelRegistry.estimateCostUsd` computes the USD cost of a call from token counts and the list prices of the model, before anything is sent.
+`modelRegistry.estimateCostUsd` computes the USD cost of a call from token counts and the list prices of the model, before anything is sent. The gateway exports no token counter: the token counts are your estimate, and the system prompt, the thread and the thinking of a reasoning model come on top, so the result is a lower bound.
 
 > **The bigger picture:** Before a large PDF is summarised, your server compares the estimate with the tenant's budget, or the UI shows it to the user to confirm.
 
 ```ts
+declare const pages: number; // the page count of the PDF, from your PDF library
+
 const costUsd = await gateway.modelRegistry.estimateCostUsd({
   modelId: "gpt-5-mini",
-  inputTokens: 40 * 2_000, // a 40-page PDF counts 2 000 tokens per page
+  inputTokens: pages * 2_000, // your estimate: about 2 000 tokens per page
   outputTokens: 1_500,
 });
 ```

@@ -81,7 +81,25 @@ Examples: [8.0](#80-the-configuration), [8.1](#81-a-profile-keeps-the-exact-word
 | [`IUserMemoryStoreConfig`](../30-api/index/interfaces/IUserMemoryStoreConfig.md)                                                                                                       | `enabled`, the caps, `rememberNeedsApproval` |
 | [`IThreadRepository`](../30-api/index/interfaces/IThreadRepository.md), [`IUserMemoryRepository`](../30-api/index/interfaces/IUserMemoryRepository.md)                                 | where threads and facts are kept             |
 
-### 6.2 The memory of a thread
+### 6.2 Continue a thread
+
+Example: [8.2](#82-the-user-continues-a-conversation-on-the-same-thread).
+
+| Symbol                                                             | What you use it for                                                          |
+|--------------------------------------------------------------------|------------------------------------------------------------------------------|
+| [`IAnswerResponse`](../30-api/index/interfaces/IAnswerResponse.md) | `threadId`, to send with the next message; `issues`, such as `turns_trimmed` |
+
+### 6.3 Let the model remember and forget
+
+Example: [8.3](#83-the-user-asks-the-model-to-remember-a-fact-and-approves-it).
+
+| Symbol                                                                                                                       | What you use it for                                                        |
+|------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| [`AIGateway.run`](../30-api/index/classes/AIGateway.md#run), [`resume`](../30-api/index/classes/AIGateway.md#resume)         | the run in which the model writes facts, and the user's answer to its card |
+| [`BUILT_IN_TOOL_NAMES`](../30-api/index/variables/BUILT_IN_TOOL_NAMES.md)                                                    | `REMEMBER_USER_FACT`, `FORGET_USER_FACT`: the tools the model calls        |
+| [`EPauseKind`](../30-api/index/enumerations/EPauseKind.md), [`EResumeAction`](../30-api/index/enumerations/EResumeAction.md) | the `TOOL_APPROVAL` card of a fact, and `APPROVE` or `REJECT`              |
+
+### 6.4 The memory of a thread
 
 Examples: [8.4](#84-the-memory-of-this-chat-panel-shows-and-resets-the-thread-memory), [8.6](#86-a-test-waits-for-the-background-memory-update-before-reading-it).
 
@@ -89,7 +107,7 @@ Examples: [8.4](#84-the-memory-of-this-chat-panel-shows-and-resets-the-thread-me
 |------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|
 | [`AIGateway.getThreadMemory`](../30-api/index/classes/AIGateway.md#getthreadmemory), [`resetThreadMemory`](../30-api/index/classes/AIGateway.md#resetthreadmemory), [`IWorkingMemoryState`](../30-api/index/interfaces/IWorkingMemoryState.md) | the "memory of this chat" panel |
 
-### 6.3 The facts of a user
+### 6.5 The facts of a user
 
 Examples: [8.5](#85-the-what-you-know-about-me-screen-reads-sets-and-removes-the-facts), [8.7](#87-a-users-data-is-erased-or-pseudonymised-on-request).
 
@@ -99,7 +117,7 @@ Examples: [8.5](#85-the-what-you-know-about-me-screen-reads-sets-and-removes-the
 | [`AIGateway.getUserFacts`](../30-api/index/classes/AIGateway.md#getuserfacts), [`upsertUserFact`](../30-api/index/classes/AIGateway.md#upsertuserfact), [`removeUserFact`](../30-api/index/classes/AIGateway.md#removeuserfact), [`clearUserFacts`](../30-api/index/classes/AIGateway.md#clearuserfacts) | the facts from your application |
 | [`AIGateway.deleteUserData`](../30-api/index/classes/AIGateway.md#deleteuserdata), [`anonymizeUserData`](../30-api/index/classes/AIGateway.md#anonymizeuserdata)                                                                                                                                         | "forget this user"              |
 
-### 6.4 Wait for the background work
+### 6.6 Wait for the background work
 
 Example: [8.6](#86-a-test-waits-for-the-background-memory-update-before-reading-it).
 
@@ -202,10 +220,8 @@ const baseConfig = {
 ```ts
 import {
   AIGateway,
-  IAIGatewayConfig,
   IAIProfile,
   IUserContext,
-  EModelProvider,
   EWorkingMemoryStrategy,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
@@ -268,8 +284,6 @@ The `workingMemory` of a profile replaces the gateway's strategy for the calls o
 > **The bigger picture:** Set up next to the other profiles, at startup or in an admin screen: a code review needs the lines as they were written, while the accounting chat lives with a summary.
 
 ```ts
-import {EWorkingMemoryStrategy, IAIProfile} from "dyna-ai-gateway";
-
 const codeReview: IAIProfile = {
   id: "code-review",
   tenantId: "acme",
@@ -318,7 +332,7 @@ if (later.kind === EGatewayResponseKind.ANSWER && later.issues.some(issue => iss
 
 ### 8.3 The user asks the model to remember a fact, and approves it
 
-In a `run()`, the model saves a fact through the built-in tool `BUILT_IN_TOOL_NAMES.REMEMBER_USER_FACT`. With `rememberNeedsApproval: true` the run pauses on a `TOOL_APPROVAL` card first; the user's `resume()` with `APPROVE` writes the fact.
+In a `run()`, the model saves a fact through the built-in tool `BUILT_IN_TOOL_NAMES.REMEMBER_USER_FACT`. With `rememberNeedsApproval: true` the run pauses on a `TOOL_APPROVAL` card first; the user's `resume()` with `APPROVE` writes the fact. `BUILT_IN_TOOL_NAMES.FORGET_USER_FACT` removes one, without a card.
 
 > **The bigger picture:** The user types "remember that …" in the chat and sees a small "Remember" / "Don't remember" card; from then on the fact is in every prompt of that user, in every thread.
 
@@ -339,6 +353,14 @@ if (paused.kind === EGatewayResponseKind.PAUSED) {
     await gateway.resume({userContext, runId: card.runId, pauseId: paused.pauseId, decisions: [{action: EResumeAction.APPROVE}]}).response;
   }
 }
+
+// Forgetting needs no card: the model calls BUILT_IN_TOOL_NAMES.FORGET_USER_FACT and the fact goes
+await gateway.run({
+  userContext,
+  profileId: "accounting",
+  prompt: "Forget where I work.",
+  kbFilters: {libraryIds: [], bookIds: []},
+}).response;
 ```
 
 ### 8.4 The "memory of this chat" panel shows and resets the thread memory
@@ -393,7 +415,7 @@ const {summary, facts} = await gateway.getThreadMemory({userContext, threadId});
 ```ts
 const erased = await gateway.deleteUserData({tenantId: "acme", userId: "u-17"}); // facts, files, threads, runs, trace
 // or keep the records under a pseudonym:
-await gateway.anonymizeUserData({tenantId: "acme", userId: "u-18"});
+const {pseudonym} = await gateway.anonymizeUserData({tenantId: "acme", userId: "u-18"}); // the id the kept records carry now
 ```
 
 ## 9. Pitfalls

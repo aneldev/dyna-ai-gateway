@@ -227,10 +227,8 @@ const baseConfig = {
 import {z} from "zod";
 import {
   AIGateway,
-  IAIGatewayConfig,
   IAIProfile,
   IUserContext,
-  EModelProvider,
   EToolCallVerdict,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
@@ -361,8 +359,7 @@ if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // a 
 > **The bigger picture:** A support agent with many tools: it sorts the request first, and the conversation stops when a human agent takes the case.
 
 ```ts
-import {z} from "zod";
-import {AIGateway, defineTool} from "dyna-ai-gateway";
+import {EGatewayResponseKind} from "dyna-ai-gateway";
 
 declare const tickets: {open(reason: string): Promise<{ticketId: string; accepted: boolean}>}; // your helpdesk
 
@@ -386,6 +383,16 @@ const handOver = defineTool({
 
 // the gateway of 8.0 with the two tools, in place of the gateway line of 8.0
 const gateway = new AIGateway({...config, toolRegistry: {...config.toolRegistry, tools: [getInvoice, postCreditNote, classifyIntent, handOver]}});
+
+const result = await gateway.run({
+  userContext,
+  profileId: "accounting", // its allowedTools lists both tools
+  prompt: "I want to talk to a person about my refund.",
+  kbFilters: {libraryIds: [], bookIds: []},
+}).response;
+if (result.kind === EGatewayResponseKind.ANSWER && result.endedByTool === "handover_to_agent") {
+  console.log("Handed over:", result.text); // the hand-over was accepted, the run ended
+}
 ```
 
 ### 8.4 One call offers fewer tools than the profile allows
@@ -411,9 +418,6 @@ const {response} = gateway.run({
 > **The bigger picture:** The letter editor: the tool writes into the draft open on the screen, so it exists only for the calls made from that screen.
 
 ```ts
-import {z} from "zod";
-import {defineTool} from "dyna-ai-gateway";
-
 declare const drafts: {replaceText(args: {tenantId: string; draftId: string; text: string}): Promise<{saved: boolean}>}; // your editor's storage
 
 const replaceDraft = defineTool({
@@ -484,8 +488,8 @@ for await (const event of events) {
 
 const result = await response;
 if (result.kind === EGatewayResponseKind.ANSWER) {
-  result.endedByTool;                                                  // the tool with endsRun, if one ended it
-  result.issues.some(issue => issue.code === "output_truncated");      // maxStepsPerRun or a refused step cut it
+  result.endedByTool;                                                  // the tool with endsRun that ended it: on the gateway of 8.3
+  result.issues.some(issue => issue.code === "output_truncated");      // limits.maxOutputTokens, maxStepsPerRun or a refused step cut it
 }
 if (result.kind === EGatewayResponseKind.PAUSED) {
   // a call waits for a human: Keep a human in control

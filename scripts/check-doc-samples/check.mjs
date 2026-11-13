@@ -6,8 +6,9 @@
 //     in page order, at the top level of one module (what a developer gets by pasting the two into a file). An example
 //     that declares its own `const gateway` replaces the `const gateway = new AIGateway(config);` line of 8.0.
 //   - any other page: one file with all its samples
-//   - the imports of the samples are merged at the top; `dyna-ai-gateway` and `dyna-ai-gateway/vercel-ui` resolve to
-//     packages/dyna-ai-gateway/src, so a sample is checked against the code as it is now, not against the last build
+//   - the samples are joined as they are, imports included: a name that 8.0 and the example both import fails, as it
+//     does in the pasted file; `dyna-ai-gateway` and `dyna-ai-gateway/vercel-ui` resolve to packages/dyna-ai-gateway/src,
+//     so a sample is checked against the code as it is now, not against the last build
 // There is no prelude: what an example takes from your application is a `declare` line of the example itself.
 
 import {execFileSync} from 'node:child_process';
@@ -21,28 +22,12 @@ const gatewayDir = path.join(root, 'packages', 'dyna-ai-gateway');
 const outDir = path.join(root, 'temp', 'check-doc-samples');
 const folders = process.argv.length > 2 ? process.argv.slice(2) : ['docs/24-learning-paths'];
 
-const importStatement = /import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+"([^"]+)";\n?/g;
 const gatewayLine = /^const gateway = new AIGateway\(config\);\n?/m;
 
 const samplesOf = (markdown) => [...markdown.matchAll(/```ts\n([\s\S]*?)```/g)].map((match) => match[1]);
 
-// One module: the merged imports, then the samples in order
-const moduleOf = (samples) => {
-  const imports = new Map();
-  const bodies = samples.map((sample) => sample.replace(importStatement, (statement, names, module) => {
-    const set = imports.get(module) ?? new Set();
-    names.split(',').map((name) => name.trim()).filter(Boolean).forEach((name) => set.add(name));
-    imports.set(module, set);
-    return '';
-  }));
-  return [
-    '/* eslint-disable */',
-    ...[...imports].map(([module, names]) => `import {${[...names].sort().join(', ')}} from "${module}";`),
-    'export {};',
-    ...bodies,
-    '',
-  ].join('\n');
-};
+// One module: the samples in order, as pasted into one file
+const moduleOf = (samples) => ['/* eslint-disable */', ...samples, 'export {};', ''].join('\n');
 
 // The examples of a page: [{id, source}]
 const examplesOf = (markdown) => {

@@ -210,10 +210,8 @@ const baseConfig = {
 import {z} from "zod";
 import {
   AIGateway,
-  IAIGatewayConfig,
   IAIProfile,
   IUserContext,
-  EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
   InMemoryRunRepository,
@@ -314,7 +312,7 @@ const call = gateway.run({
   userContext,
   profileId: "claims",
   prompt: "My order arrived broken.",
-  instructions: "Collect a damage report. Ask for every missing field in one question card. Then call submit_damage_report.",
+  instructions: "Collect a damage report. Look the order up with get_order, ask for every missing field in one question card, then call submit_damage_report.",
   kbFilters: {libraryIds: [], bookIds: []},
 });
 const first = await call.response; // PAUSED with a USER_QUESTION card: the order number, the damage, replacement or refund
@@ -337,7 +335,7 @@ import {
 } from "dyna-ai-gateway";
 
 declare const first: TGatewayResponse; // the response of the run() of 8.2
-declare const formValues: Record<string, string>; // what the user typed into the card, by question
+declare const formValues: Record<string, string[]>; // what the user picked or typed in the card, by question: none, one or several
 
 if (first.kind === EGatewayResponseKind.PAUSED) {
   const [card] = first.envelopes;
@@ -345,14 +343,14 @@ if (first.kind === EGatewayResponseKind.PAUSED) {
     // card.userQuestions.questions: [{text, mode: RADIO | CHECK | FREE_TEXT, options?, freeOption?}, …]
     const answers = card.userQuestions.questions.map((question): IUserAnswer =>
       question.mode === EUserQuestionMode.FREE_TEXT
-        ? {question: question.text, selected: [], freeText: formValues[question.text] ?? ""}
-        : {question: question.text, selected: [formValues[question.text] ?? ""]}); // one of question.options
+        ? {question: question.text, selected: [], freeText: formValues[question.text]?.[0] ?? ""}
+        : {question: question.text, selected: formValues[question.text] ?? []}); // RADIO one of question.options, CHECK any of them
 
     const next = await gateway.resume({
       userContext,
       runId: card.runId,
       pauseId: first.pauseId,
-      decisions: [{action: EResumeAction.ANSWER, answers}],
+      decisions: [{action: EResumeAction.ANSWER, answers}], // one card: the decision needs no callId
     }).response;
   }
 }
@@ -388,7 +386,7 @@ while (response.kind === EGatewayResponseKind.PAUSED) {
     userContext,
     runId: card.runId,
     pauseId: response.pauseId,
-    decisions: [{action: EResumeAction.ANSWER, answers: await renderCard(card.userQuestions)}], // your screen
+    decisions: [{action: EResumeAction.ANSWER, answers: await renderCard(card.userQuestions)}], // one card: no callId
   }).response;
 }
 
@@ -399,7 +397,7 @@ if (response.kind === EGatewayResponseKind.ANSWER && response.endedByTool === "s
 
 ### 8.5 The form as the structured answer of one message, without a tool
 
-With `outputSchema: damageReport`, the final answer is the form itself, parsed and checked, in `structured`; your code stores it instead of a tool.
+With `outputSchema: damageReport`, the final answer is the form itself, parsed and checked, in `structured`; your code stores it instead of a tool, which `activeTools` leaves out. If the model asks first, the response is `PAUSED`: the `resume()` passes `outputSchema` again, since a paused run does not store it.
 
 > **The bigger picture:** An email or a first message that already names the order, the damage and the wish: the claims service gets the filled form from one call.
 
@@ -411,6 +409,7 @@ const result = await gateway.run({
   profileId: "claims",
   prompt: "My order 88231 arrived with a cracked lid. I want a replacement.",
   outputSchema: damageReport, // the final answer is the form, validated
+  activeTools: ["get_order"], // submit_damage_report is not offered: the answer is the form
   kbFilters: {libraryIds: [], bookIds: []},
 }).response;
 

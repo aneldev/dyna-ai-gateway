@@ -90,10 +90,11 @@ Example: [8.2](#82-the-upload-route-stores-the-file-and-returns-its-pointer).
 
 Examples: [8.1](#81-an-input-rule-screens-every-file-before-the-model-sees-it), [8.3](#83-the-fields-of-an-invoice-pdf-are-extracted-into-a-typed-object), [8.4](#84-the-rows-of-a-photographed-receipt-are-extracted), [8.5](#85-one-question-compares-several-files), [8.6](#86-the-extraction-drops-the-file-or-fails-the-schema).
 
-| Symbol                                                                                                                            | What you use it for     |
-|-----------------------------------------------------------------------------------------------------------------------------------|-------------------------|
-| [`AIGateway.ask`](../30-api/index/classes/AIGateway.md#ask), [`IGatewayAskInput`](../30-api/index/interfaces/IGatewayAskInput.md) | `files`, `outputSchema` |
-| [`IAnswerResponse`](../30-api/index/interfaces/IAnswerResponse.md)                                                                | `structured`, `issues`  |
+| Symbol                                                                                                                                                                                               | What you use it for                                               |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| [`AIGateway.ask`](../30-api/index/classes/AIGateway.md#ask), [`IGatewayAskInput`](../30-api/index/interfaces/IGatewayAskInput.md)                                                                    | `files`, `outputSchema`                                           |
+| [`IAnswerResponse`](../30-api/index/interfaces/IAnswerResponse.md)                                                                                                                                   | `structured`, `issues`                                            |
+| [`IGuardrailsConfig`](../30-api/index/interfaces/IGuardrailsConfig.md), [`IInputRule`](../30-api/index/interfaces/IInputRule.md), [`IInputJudgeArgs`](../30-api/index/interfaces/IInputJudgeArgs.md) | `inputRules`: a rule that screens the files, and its `judge` call |
 
 ### 6.4 Remove it
 
@@ -197,10 +198,8 @@ const baseConfig = {
 ```ts
 import {
   AIGateway,
-  IAIGatewayConfig,
   IAIProfile,
   IUserContext,
-  EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryBlobAdapter,
   InMemoryModelRegistryRepository,
@@ -255,7 +254,7 @@ An `IInputRule` in `guardrails.inputRules` runs before the model call. This one 
 > **The bigger picture:** A rule of your product, written once at startup: passports and ID cards are never sent to the model, whatever the user uploads.
 
 ```ts
-import {IInputRule, AIGateway} from "dyna-ai-gateway";
+import {IInputRule} from "dyna-ai-gateway";
 
 const noIdDocuments: IInputRule = {
   name: "no_id_documents",
@@ -379,7 +378,7 @@ const {response} = gateway.ask({
 
 ### 8.6 The extraction drops the file or fails the schema
 
-A file the model cannot read (its caps have no `pdf` or `images`) is left out with the WARNING `file_dropped`, and the answer comes from the prompt alone. An answer that does not match the schema returns `FAILED` with the issue `output_schema`, whose `field` names the first failing path.
+A file the model cannot read (its caps have no `pdf` or `images`) is left out with the WARNING `file_dropped`, and the answer comes from the prompt alone. An answer that is not JSON returns `FAILED` with the issue `output_invalid_json`; one that does not match the schema, with `output_schema`, whose `field` names the first failing path.
 
 > **The bigger picture:** The error handling of the extraction screen: the user is told to check the fields or to try again, never shown fields the model did not read.
 
@@ -401,8 +400,8 @@ const result = await gateway.ask({
 if (result.kind === EGatewayResponseKind.ANSWER && result.issues.some(issue => issue.code === "file_dropped")) {
   // the model has no caps.pdf: the fields came from the prompt alone, do not trust them
 }
-if (result.kind === EGatewayResponseKind.FAILED && result.issues.some(issue => issue.code === "output_schema")) {
-  // the answer did not match the schema: issue.field names the first failing path
+if (result.kind === EGatewayResponseKind.FAILED) {
+  // output_invalid_json: the answer was not JSON; output_schema: it did not match, issue.field names the first failing path
 }
 ```
 

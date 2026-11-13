@@ -207,10 +207,8 @@ const baseConfig = {
 ```ts
 import {
   AIGateway,
-  IAIGatewayConfig,
   IAIProfile,
   IUserContext,
-  EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
   InMemoryVectorIndexAdapter,
@@ -317,7 +315,7 @@ const oneBook = gateway.ask({
   userContext,
   profileId: "accounting",
   prompt: "Wie lange ist eine Rückerstattung möglich?",
-  kbFilters: {libraryIds: ["tax"], bookIds: ["vat-2026"], tags: ["b2b"], language: "de"},
+  kbFilters: {libraryIds: ["tax"], bookIds: ["vat-2026"], tags: ["b2b"], language: "en"},
 });
 
 const everyLibrary = gateway.ask({
@@ -404,7 +402,7 @@ const failed = reports.filter(entry => entry.error);
 
 ### 8.8 The usage adapter refuses an ingestion
 
-Each embedding call of an ingestion is checked by your usage adapter. A refusal makes `ingestDocument` throw an error that `isUsageDeniedError` recognises: a 429 with your `denyCode`.
+Each embedding call of an ingestion is checked by your usage adapter. A refusal makes `ingestDocument` throw an error that `isUsageDeniedError` recognises: a 429 whose `data.denyCode` is your `denyCode`. Nothing is written to the index; the document keeps its old chunks.
 
 > **The bigger picture:** The save endpoint of the editor, when the tenant has used up its budget: the admin sees that the document was not indexed, instead of a silent gap in the answers.
 
@@ -417,7 +415,7 @@ try {
   await gateway.kbIngestor.ingestDocument({tenantId: "acme", doc: refunds, userId: "admin-3"});
 } catch (error) {
   if (!isUsageDeniedError(error)) throw error;
-  // a 429 with your denyCode: nothing was embedded
+  // a 429 whose data.denyCode is your denyCode: nothing was written to the index, the document keeps its old chunks
 }
 ```
 

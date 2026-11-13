@@ -32,17 +32,18 @@ providers, and runs two jobs next to the server. Nothing in your calls changes.
 
 ## 4. The parts
 
-| # | Read                                                                                                                                                                                                                                 | For                                    |
-|---|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------|
-| 1 | [Token control with the Usage Guard](../20-learn-the-gateway/060-usage-guard.md)                                                                                                                                                     | the adapter, denials, tokens and cost  |
-| 2 | [Can I cancel a call, or limit how long it takes?](../10-getting-started/90-faq.md#can-i-cancel-a-call-or-limit-how-long-it-takes)                                                                                                   | `abortSignal`, `timeoutMs`             |
-| 3 | [How do I stop the server cleanly?](../10-getting-started/90-faq.md#how-do-i-stop-the-server-cleanly)                                                                                                                                | `shutdown`                             |
-| 4 | [What happens to the runs a crashed server left behind?](../10-getting-started/90-faq.md#what-happens-to-the-runs-a-crashed-server-left-behind)                                                                                      | `recoverStuckRuns`                     |
-| 5 | [Human in the loop: Expiry and cancel](../20-learn-the-gateway/040-human-in-the-loop.md#28-expiry-and-cancel), [Storage and restarts](../20-learn-the-gateway/040-human-in-the-loop.md#211-storage-and-restarts)                     | `expirePausedRuns`, the run repository |
-| 6 | [Every model call leaves an entry](../60-architecture/90-decisions.md#every-model-call-leaves-an-entry), [D63](../60-architecture/90-decisions.md#d63-debug-true-attaches-the-transcript-to-the-answer)                              | the trace and `debug`                  |
-| 7 | [Is the system prompt cached, and what does it cost?](../10-getting-started/90-faq.md#is-the-system-prompt-cached-and-what-does-it-cost)                                                                                             | prompt caching                         |
-| 8 | [Persistence decisions](../60-architecture/90-decisions.md#16-persistence)                                                                                                                                                           | the seams and the table names          |
-| 9 | [What the gateway checks and what it trusts](../60-architecture/10-architecture-and-trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts), [Known limits](../60-architecture/10-architecture-and-trade-offs.md#6-known-limits) | the boundary of your host              |
+| #  | Read                                                                                                                                                                                                                                 | For                                             |
+|----|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
+| 1  | [Token control with the Usage Guard](../20-learn-the-gateway/060-usage-guard.md)                                                                                                                                                     | the adapter, denials, tokens and cost           |
+| 2  | [Can I cancel a call, or limit how long it takes?](../10-getting-started/90-faq.md#can-i-cancel-a-call-or-limit-how-long-it-takes)                                                                                                   | `abortSignal`, `timeoutMs`                      |
+| 3  | [How do I stop the server cleanly?](../10-getting-started/90-faq.md#how-do-i-stop-the-server-cleanly)                                                                                                                                | `shutdown`                                      |
+| 4  | [What happens to the runs a crashed server left behind?](../10-getting-started/90-faq.md#what-happens-to-the-runs-a-crashed-server-left-behind)                                                                                      | `recoverStuckRuns`                              |
+| 5  | [Human in the loop: Expiry and cancel](../20-learn-the-gateway/040-human-in-the-loop.md#28-expiry-and-cancel), [Storage and restarts](../20-learn-the-gateway/040-human-in-the-loop.md#211-storage-and-restarts)                     | `expirePausedRuns`, the run repository          |
+| 6  | [Every model call leaves an entry](../60-architecture/90-decisions.md#every-model-call-leaves-an-entry), [D63](../60-architecture/90-decisions.md#d63-debug-true-attaches-the-transcript-to-the-answer)                              | the trace and `debug`                           |
+| 7  | [Is the system prompt cached, and what does it cost?](../10-getting-started/90-faq.md#is-the-system-prompt-cached-and-what-does-it-cost)                                                                                             | prompt caching                                  |
+| 8  | [Persistence decisions](../60-architecture/90-decisions.md#16-persistence)                                                                                                                                                           | the seams and the table names                   |
+| 9  | [What the gateway checks and what it trusts](../60-architecture/10-architecture-and-trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts), [Known limits](../60-architecture/10-architecture-and-trade-offs.md#6-known-limits) | the boundary of your host                       |
+| 10 | [Models and profiles](../20-learn-the-gateway/010-models-and-profiles.md)                                                                                                                                                            | the models and the profiles your database holds |
 
 ## 5. How the parts connect
 
@@ -91,11 +92,12 @@ Examples: [8.2](#82-a-per-tenant-budget-decides-every-model-call), [8.5](#85-the
 
 Examples: [8.0](#80-the-configuration), [8.1](#81-your-own-database-behind-every-store), [8.3](#83-a-tool-that-stops-when-the-call-is-stopped), [8.4](#84-the-user-stops-a-run-or-its-deadline-passes), [8.7](#87-graceful-shutdown-and-the-two-scheduled-jobs).
 
-| Symbol                                                                                                                                                                                                                     | What you use it for                         |
-|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------|
-| [`IGatewayAskInput`](../30-api/index/interfaces/IGatewayAskInput.md)                                                                                                                                                       | `abortSignal`, `timeoutMs`                  |
-| [`CALL_ABORTED_ISSUE_CODE`](../30-api/index/variables/CALL_ABORTED_ISSUE_CODE.md), [`CALL_TIMED_OUT_ISSUE_CODE`](../30-api/index/variables/CALL_TIMED_OUT_ISSUE_CODE.md)                                                   | a stopped call                              |
-| [`IThreadStoreConfig`](../30-api/index/interfaces/IThreadStoreConfig.md), [`ILLMClientConfig`](../30-api/index/interfaces/ILLMClientConfig.md), [`IToolRegistryConfig`](../30-api/index/interfaces/IToolRegistryConfig.md) | `leaseMs`, the model-call and tool timeouts |
+| Symbol                                                                                                                                                                                                                     | What you use it for                                                     |
+|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| [`IGatewayAskInput`](../30-api/index/interfaces/IGatewayAskInput.md)                                                                                                                                                       | `abortSignal`, `timeoutMs`                                              |
+| [`defineTool`](../30-api/index/functions/defineTool.md)                                                                                                                                                                    | a tool whose `execute` passes on its `abortSignal`, and its `timeoutMs` |
+| [`CALL_ABORTED_ISSUE_CODE`](../30-api/index/variables/CALL_ABORTED_ISSUE_CODE.md), [`CALL_TIMED_OUT_ISSUE_CODE`](../30-api/index/variables/CALL_TIMED_OUT_ISSUE_CODE.md)                                                   | a stopped call                                                          |
+| [`IThreadStoreConfig`](../30-api/index/interfaces/IThreadStoreConfig.md), [`ILLMClientConfig`](../30-api/index/interfaces/ILLMClientConfig.md), [`IToolRegistryConfig`](../30-api/index/interfaces/IToolRegistryConfig.md) | `leaseMs`, the model-call and tool timeouts                             |
 
 ### 6.4 Shutdown and the scheduled jobs
 
@@ -213,10 +215,8 @@ const baseConfig = {
 ```ts
 import {
   AIGateway,
-  IAIGatewayConfig,
   IAIProfile,
   IUserContext,
-  EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
   InMemoryRunRepository,
@@ -231,7 +231,7 @@ const accounting: IAIProfile = {
   name: "Accounting assistant",
   modelId: "gpt-5-mini",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
-  allowedTools: [],
+  allowedTools: ["fetch_bank_statement"], // the tool of 8.3
   approvals: [],
   limits: {maxStepsPerRun: 6, maxOutputTokens: 2_000},
 };
@@ -275,13 +275,12 @@ const userContext: IUserContext = {
 
 ### 8.1 Your own database behind every store
 
-Every in-memory store and adapter of 8.0 is replaced by a class of your application that implements the interface named in its comment; the rest of `config` stays. With your `IRunRepository`, paused runs survive a restart.
+Every in-memory store and adapter of 8.0 is replaced by a class of your application that implements the interface named in its comment; the rest of `config` stays. With your `IRunRepository`, paused runs survive a restart. Your database starts empty: the models and the profiles are written once, as an admin or a migration does ([Models and profiles](../20-learn-the-gateway/010-models-and-profiles.md)).
 
 > **The bigger picture:** The step from development to production: the same configuration at startup, with the stores pointed at the database and the blob storage your application already runs.
 
 ```ts
 import {
-  AIGateway,
   IModelRegistryRepository,
   IAIProfileRepository,
   IPromptTemplateRepository,
@@ -321,6 +320,11 @@ const gateway = new AIGateway({
   vectorStore: {adapter: new MyVectorIndexAdapter(db)},                 // IVectorIndexAdapter
   usageGuard: {adapter: new MyUsageAdapter(db)},                        // IUsageAdapter
 });
+
+// once, on the empty database: the models and the profile of 8.0
+await gateway.modelRegistry.upsertModel({model: gpt5Mini});
+await gateway.modelRegistry.upsertModel({model: textEmbedding3Small});
+await gateway.aiProfileStore.upsertProfile({tenantId: "acme", profile: accounting});
 ```
 
 ### 8.2 A per-tenant budget decides every model call
@@ -330,7 +334,7 @@ const gateway = new AIGateway({
 > **The bigger picture:** The billing side of your product: the plan of each customer company sets its monthly budget, and the ledger the adapter writes feeds the usage page and the invoice.
 
 ```ts
-import {IUsageAdapter, IUsageAddArgs, IUsageCheckArgs, IUsageCheckResult, IUsage} from "dyna-ai-gateway";
+import {IUsage, IUsageAdapter, IUsageAddArgs, IUsageCheckArgs, IUsageCheckResult} from "dyna-ai-gateway";
 
 declare const budgets: {
   tokensLeft(tenantId: string): Promise<number>;
@@ -349,6 +353,9 @@ class TenantBudget implements IUsageAdapter {
     await budgets.record({tenantId: args.tenantId, traceId: args.traceId, usage: args.usage, costUsd: args.costUsd}); // also failed calls, with 0
   }
 }
+
+// the gateway of 8.0 with this adapter, in place of the gateway line of 8.0
+const gateway = new AIGateway({...config, usageGuard: {adapter: new TenantBudget()}});
 ```
 
 ### 8.3 A tool that stops when the call is stopped
@@ -359,7 +366,7 @@ The tool's `execute` passes its `abortSignal` to `fetch`, so the HTTP request en
 
 ```ts
 import {z} from "zod";
-import {defineTool, AIGateway} from "dyna-ai-gateway";
+import {defineTool} from "dyna-ai-gateway";
 
 const fetchStatement = defineTool({
   name: "fetch_bank_statement",
@@ -403,7 +410,7 @@ if (result.kind === EGatewayResponseKind.FAILED) {
 
 ### 8.5 The budget refuses a call, and the user reads why
 
-When your `check` refuses a call, the response carries an issue with the code `USAGE_DENIED_ISSUE_CODE`: its `userMessage` is your `denyUserMessage`, its `data.denyCode` your `denyCode`. The message is shown as it is.
+When your `check` refuses a call, the response carries an issue with the code `USAGE_DENIED_ISSUE_CODE`: its `userMessage` is your `denyUserMessage`, its `data.denyCode` your `denyCode`. The message is shown as it is. The example scripts the refusal with the `deny` option of `InMemoryUsageAdapter`; in production it comes from your adapter, as in 8.2.
 
 > **The bigger picture:** A user asks in the chat after the team's budget ran out and reads "Your team has used this month's AI budget." instead of an error; the UI can branch on `denyCode`, for example to offer a plan upgrade.
 
@@ -411,6 +418,14 @@ When your `check` refuses a call, the response carries an issue with the code `U
 import {EGatewayResponseKind, USAGE_DENIED_ISSUE_CODE} from "dyna-ai-gateway";
 
 declare function showToUser(text: string): void; // your UI
+
+// a test stand-in for the TenantBudget of 8.2 with no budget left, in place of the gateway line of 8.0
+const gateway = new AIGateway({
+  ...config,
+  usageGuard: {adapter: new InMemoryUsageAdapter({
+    deny: () => ({approved: false, denyCode: "budget_exhausted", denyUserMessage: "Your team has used this month's AI budget."}),
+  })},
+});
 
 const result = await gateway.ask({userContext, profileId: "accounting", prompt: "Summarise October.", kbFilters: {libraryIds: [], bookIds: []}}).response;
 const denied = result.kind === EGatewayResponseKind.PAUSED ? undefined : result.issues.find(issue => issue.code === USAGE_DENIED_ISSUE_CODE);

@@ -193,11 +193,8 @@ const baseConfig = {
 ```ts
 import {
   AIGateway,
-  IAIGatewayConfig,
   IAIProfile,
   IUserContext,
-  IModelInfo,
-  EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
 } from "dyna-ai-gateway";
@@ -272,7 +269,7 @@ An `IOutputRule` in `guardrails.outputRules` runs on the answer after the model 
 > **The bigger picture:** A rule of the business, written by your developers and registered at startup: whatever the model writes, support never promises a discount the shop did not decide.
 
 ```ts
-import {EIssueSeverity, IIssue, IOutputRule, AIGateway} from "dyna-ai-gateway";
+import {EGatewayResponseKind, EIssueSeverity, IIssue, IOutputRule} from "dyna-ai-gateway";
 
 const noDiscountPromises: IOutputRule = {
   name: "no_discount_promises",
@@ -284,6 +281,16 @@ const noDiscountPromises: IOutputRule = {
 
 // the gateway of 8.0 with this rule, in place of the gateway line of 8.0
 const gateway = new AIGateway({...config, guardrails: {...config.guardrails, outputRules: [noDiscountPromises]}});
+
+const result = await gateway.ask({
+  userContext,
+  profileId: "support",
+  prompt: "The customer threatens to cancel. Write a reply that keeps them.",
+  kbFilters: {libraryIds: [], bookIds: []},
+}).response;
+if (result.kind === EGatewayResponseKind.FAILED && result.issues.some(issue => issue.code === "discount_promise")) {
+  // the draft promised a discount: it is not stored, and the editor shows nothing of it
+}
 ```
 
 ### 8.2 The tenant's admin sets the voice of every draft

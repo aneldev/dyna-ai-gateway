@@ -72,19 +72,21 @@ Grouped by the step of your code where you meet them, in the order of the exampl
 
 Examples: [8.0](#80-the-configuration), [8.1](#81-a-profile-of-its-own-for-the-classifier), [8.4](#84-the-same-message-gets-the-same-intent-every-time).
 
-| Symbol                                                   | What you use it for                           |
-|----------------------------------------------------------|-----------------------------------------------|
-| [`IAIProfile`](../30-api/index/interfaces/IAIProfile.md) | the classifier's profile                      |
-| [`IModelCaps`](../30-api/index/interfaces/IModelCaps.md) | `structuredOutput`, `temperature`, the prices |
+| Symbol                                                                                                                                                | What you use it for                            |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
+| [`IAIProfile`](../30-api/index/interfaces/IAIProfile.md)                                                                                              | the classifier's profile                       |
+| [`IModelCaps`](../30-api/index/interfaces/IModelCaps.md)                                                                                              | `structuredOutput`, `temperature`, the prices  |
+| [`AIGateway.aiProfileStore`](../30-api/index/classes/AIGateway.md#aiprofilestore), [`IAIProfileStore`](../30-api/index/interfaces/IAIProfileStore.md) | `upsertProfile`: the profile stored at runtime |
 
 ### 6.2 Make the call
 
 Examples: [8.2](#82-route-a-message-by-its-intent), [8.3](#83-a-triage-decision-with-priority-team-and-summary), [8.4](#84-the-same-message-gets-the-same-intent-every-time), [8.5](#85-the-model-answers-outside-the-enum-and-a-human-takes-the-message), [8.6](#86-delete-the-thread-of-each-classified-message).
 
-| Symbol                                                               | What you use it for                                      |
-|----------------------------------------------------------------------|----------------------------------------------------------|
-| [`AIGateway.ask`](../30-api/index/classes/AIGateway.md#ask)          | the call                                                 |
-| [`IGatewayAskInput`](../30-api/index/interfaces/IGatewayAskInput.md) | `outputSchema`, `temperature`, `context`, `instructions` |
+| Symbol                                                                                                                        | What you use it for                                      |
+|-------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
+| [`AIGateway.ask`](../30-api/index/classes/AIGateway.md#ask)                                                                   | the call                                                 |
+| [`IGatewayAskInput`](../30-api/index/interfaces/IGatewayAskInput.md)                                                          | `outputSchema`, `temperature`, `context`, `instructions` |
+| [`AIGateway.delete`](../30-api/index/classes/AIGateway.md#delete), [`IDeleteArgs`](../30-api/index/interfaces/IDeleteArgs.md) | removes the thread a classification left                 |
 
 ### 6.3 Read the decision
 
@@ -199,11 +201,8 @@ const baseConfig = {
 ```ts
 import {
   AIGateway,
-  IAIGatewayConfig,
   IAIProfile,
   IUserContext,
-  IModelInfo,
-  EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
 } from "dyna-ai-gateway";
@@ -229,7 +228,7 @@ const triage: IAIProfile = {
   promptAddendum: "You classify support messages of a web shop. You never answer them.",
   allowedTools: [],
   approvals: [],
-  limits: {maxStepsPerRun: 1, maxOutputTokens: 300},
+  limits: {maxStepsPerRun: 1, maxOutputTokens: 2_000}, // a reasoning model thinks within this cap
 };
 
 const triageClaude: IAIProfile = {
@@ -240,7 +239,7 @@ const triageClaude: IAIProfile = {
   promptAddendum: "You classify support messages of a web shop. You never answer them.",
   allowedTools: [],
   approvals: [],
-  limits: {maxStepsPerRun: 1, maxOutputTokens: 300},
+  limits: {maxStepsPerRun: 1, maxOutputTokens: 2_000}, // a reasoning model thinks within this cap
 };
 
 const config: IAIGatewayConfig = {
@@ -274,7 +273,7 @@ const userContext: IUserContext = {
 
 ### 8.1 A profile of its own for the classifier
 
-`upsertProfile` stores the `triage` profile of 8.0, which the configuration also seeds at startup: a small, fast model, no tools, one step and a short output limit. The classifier's rule, to classify and never answer, lives in its `promptAddendum`.
+`upsertProfile` stores the `triage` profile of 8.0, which the configuration also seeds at startup: a small, fast model, no tools, one step, and an output limit that leaves room for the thinking of a reasoning model. The classifier's rule, to classify and never answer, lives in its `promptAddendum`.
 
 > **The bigger picture:** Done once per tenant, at startup or from the admin screen that manages the profiles; every message classified later runs on it.
 
@@ -413,6 +412,8 @@ if (result.kind !== EGatewayResponseKind.PAUSED && result.threadId) { // a call 
   model without the cap is a 400.
 - A call without `threadId` starts a new thread. A classifier called on every message leaves one thread per message;
   remove them with `delete` ([How do I delete conversations?](../10-getting-started/90-faq.md#how-do-i-delete-conversations)).
+- On a reasoning model (`caps.reasoning`), the thinking counts against `limits.maxOutputTokens`: a cap of a few hundred
+  tokens can cut the answer before its JSON is complete. Keep the cap in the thousands.
 - The classifier's profile needs no tools: an `ask()` offers none
   ([Human in the loop: About](../20-learn-the-gateway/040-human-in-the-loop.md#1-about)).
 

@@ -57,7 +57,7 @@ it has one.
 Each example is complete with 8.0: the two, pasted in that order into one file, are a TypeScript module that compiles. 8.0 builds the `gateway` from the
 stores of [Installation](../10-getting-started/20-installation.md) and defines the `userContext` of a request
 ([Example: ask](../10-getting-started/30-example-ask.md)); an example that declares its own `gateway` takes the place
-of the `const gateway = new AIGateway(config);` line of 8.0. What comes from your application (`invoices.load`, `ledger`, the `threadId` your screen holds) is a `declare` line
+of the `const gateway = new AIGateway(config);` line of 8.0. An example imports only the names 8.0 does not import. What comes from your application (`invoices.load`, `ledger`, the `threadId` your screen holds) is a `declare` line
 at the top of the example: replace it with your own code.
 
 Every example is server code: the gateway is [server-only](../10-getting-started/20-installation.md). Its bigger-picture

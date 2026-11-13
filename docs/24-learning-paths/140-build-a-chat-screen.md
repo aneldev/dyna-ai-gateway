@@ -34,15 +34,15 @@ each step. Every other path plugs into this screen: tools, approvals, memory, do
 
 ## 4. The parts
 
-| # | Read                                                                                                                                       | For                                             |
-|---|--------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
-| 1 | [Vercel chat client](../10-getting-started/50-vercel-chat-client.md)                                                                       | the module, the endpoints, the cards, the files |
-| 2 | [How do I show the user's conversations and open one?](../10-getting-started/90-faq.md#how-do-i-show-the-users-conversations-and-open-one) | the sidebar                                     |
-| 3 | [How do I delete conversations?](../10-getting-started/90-faq.md#how-do-i-delete-conversations)                                            | "delete conversation"                           |
-| 4 | [Thread memory: About](../20-learn-the-gateway/080-thread-memory.md#1-about)                                                               | threads and turns                               |
-| 5 | [Tools: Showing the tool calls in a UI](../20-learn-the-gateway/030-tools.md#36-showing-the-tool-calls-in-a-ui)                            | the tool events                                 |
-| 6 | [Chat files: Show the files of a thread](../20-learn-the-gateway/092-chat-files.md#33-show-the-files-of-a-thread)                          | attachments                                     |
-| 7 | [Human in the loop: Render the cards and resume](../20-learn-the-gateway/040-human-in-the-loop.md#32-render-the-cards-and-resume)          | the cards                                       |
+| # | Read                                                                                                                                                                                                   | For                                             |
+|---|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
+| 1 | [Vercel chat client](../10-getting-started/50-vercel-chat-client.md)                                                                                                                                   | the module, the endpoints, the cards, the files |
+| 2 | [How do I show the user's conversations and open one?](../10-getting-started/90-faq.md#how-do-i-show-the-users-conversations-and-open-one)                                                             | the sidebar                                     |
+| 3 | [How do I delete conversations?](../10-getting-started/90-faq.md#how-do-i-delete-conversations)                                                                                                        | "delete conversation"                           |
+| 4 | [Thread memory: About](../20-learn-the-gateway/080-thread-memory.md#1-about)                                                                                                                           | threads and turns                               |
+| 5 | [Tools: Showing the tool calls in a UI](../20-learn-the-gateway/030-tools.md#36-showing-the-tool-calls-in-a-ui)                                                                                        | the tool events                                 |
+| 6 | [Chat files: Show the files of a thread](../20-learn-the-gateway/092-chat-files.md#33-show-the-files-of-a-thread), [Vercel chat client: Files](../10-getting-started/50-vercel-chat-client.md#5-files) | attachments                                     |
+| 7 | [Human in the loop: Render the cards and resume](../20-learn-the-gateway/040-human-in-the-loop.md#32-render-the-cards-and-resume)                                                                      | the cards                                       |
 
 ## 5. How the parts connect
 
@@ -128,7 +128,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The screen runs on one profile, with the knowledge base of the help center. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The screen runs on one profile, with the knowledge base of the help center: the `help-center` library holds your help articles, ingested as in [Answer from your documents](060-answer-from-your-documents.md). `cancel_order` waits for the user's approval, and the model may ask a question: the two cards of 8.8. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup, and the routes of the chat screen call it for every user. Threads, files and paused runs are kept per tenant and per user.
 
@@ -182,7 +182,6 @@ const baseConfig = {
   embedder: {embeddingModelId: "text-embedding-3-small", dimensions: 1536},
   vectorStore: {adapter: new InMemoryVectorIndexAdapter({embeddingModelId: "text-embedding-3-small", dimensions: 1536})},
   queryRewriter: {enabled: false}, // no follow-up rewrite
-  humanGate: {userQuestions: {enabled: false}}, // the model asks no questions
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
@@ -193,11 +192,12 @@ const baseConfig = {
 </details>
 
 ```ts
+import {z} from "zod";
 import {
   AIGateway,
-  IAIGatewayConfig,
+  defineTool,
+  EToolCallVerdict,
   IAIProfile,
-  EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryBlobAdapter,
   InMemoryModelRegistryRepository,
@@ -206,13 +206,25 @@ import {
   IUserContext,
 } from "dyna-ai-gateway";
 
+declare const orders: {cancel(tenantId: string, orderNo: string): Promise<{cancelled: boolean}>}; // your order system
+
+// a tool whose every call waits for the user: the approval card of 8.8
+const cancelOrder = defineTool({
+  name: "cancel_order",
+  description: "Cancels an order of the customer.",
+  inputSchema: z.object({orderNo: z.string()}),
+  tags: ["orders"],
+  policy: EToolCallVerdict.NEEDS_APPROVAL,
+  execute: async ({input, userContext}) => orders.cancel(userContext.tenantId, input.orderNo),
+});
+
 const support: IAIProfile = {
   id: "support",
   tenantId: "acme",
   name: "Customer support",
   modelId: "gpt-5-mini",
   promptAddendum: "You answer the customers of the Acme web shop.",
-  allowedTools: [],
+  allowedTools: ["cancel_order"],
   approvals: [],
   limits: {maxStepsPerRun: 6, maxOutputTokens: 2_000},
 };
@@ -225,6 +237,8 @@ const config: IAIGatewayConfig = {
   workingMemory: {enabled: true}, // what the model sees of a long conversation
   fileStore: {adapter: new InMemoryBlobAdapter(), path: "ai-files"}, // the attachments
   runStore: {repository: new InMemoryRunRepository()}, // a run that waits for a card
+  toolRegistry: {tools: [cancelOrder]}, // the approval card of 8.8
+  humanGate: {userQuestions: {enabled: true}}, // the question card of 8.8
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [support]})}, // the profile of the chat
 
   // required too, and kept in view: the provider key, the models
@@ -284,7 +298,7 @@ The route takes the user from the session, reads the file of the form and calls 
 > **The bigger picture:** The paperclip of the message box: the browser uploads the file first, then sends the message with the reference it got back.
 
 ```ts
-import {IFileRef, IUserContext} from "dyna-ai-gateway";
+import {IFileRef} from "dyna-ai-gateway";
 
 declare function sessionOf(request: Request): Promise<IUserContext>; // your authentication
 
@@ -331,7 +345,7 @@ if (result.kind === EGatewayResponseKind.PAUSED) socket.send({type: "cards", pau
 
 ### 8.5 A second message while the first is still answering is a 409
 
-One call at a time runs on a thread: a `run()` on a thread with a call in flight, or one that waits for a human, throws an error with `status` 409. The screen asks the user to send it again.
+One call at a time runs on a thread: a `run()` on a thread with a call in flight, or one that waits for a human, throws an error with `status` 409. The screen asks the user to send it again, or to answer the open card first.
 
 > **The bigger picture:** A user who presses send twice, or writes on in a second tab while the answer still streams.
 
@@ -344,14 +358,14 @@ try {
   await gateway.run({userContext, profileId: "support", threadId, prompt: text, kbFilters: {libraryIds: [], bookIds: []}}).response;
 } catch (error) {
   if (typeof error === "object" && error !== null && "status" in error && error.status === 409) {
-    showToUser("Still answering. Send it again in a moment."); // one call at a time per thread
+    showToUser("Still answering, or a card waits for your decision. Send it again in a moment."); // one call at a time per thread
   }
 }
 ```
 
 ### 8.6 The thread shows its attachments through short-lived URLs
 
-The `FILE` parts of the turns name the uploaded files; `getFileUrl` signs a URL for each, valid for `ttlSec` seconds, and the browser loads the bytes from the storage.
+The `FILE` parts of the turns name the uploaded files; `getFileUrl` signs a URL for each, valid for `ttlSec` seconds, and the browser loads the bytes from the storage. The `InMemoryBlobAdapter` of 8.0 signs `in-memory://` URLs, which a browser cannot open: they are for tests, the screen needs your `IBlobAdapter` ([Run it in production](080-run-it-in-production.md)).
 
 > **The bigger picture:** A thread opened again from the sidebar: the images and PDFs the user attached appear with their messages.
 
@@ -369,20 +383,25 @@ const shown = await Promise.all((await gateway.getTurns({userContext, threadId})
 
 ### 8.7 The same screen on `useChat`, through `dyna-ai-gateway/vercel-ui`
 
-`AIGatewayVercelUi` serves the endpoints of the AI SDK's `useChat`: `chat` streams the answer to the last user message, `history` returns the messages of a thread. The user comes from your session, never from the request body.
+`AIGatewayVercelUi` serves the endpoints of the AI SDK's `useChat`: `chat` streams the answer to the last user message, `history` returns the messages of a thread. The user comes from your session, never from the request body. The `files` hooks carry the attachments: without them a file part is a 400.
 
 > **The bigger picture:** A front end built on `useChat`: two routes take the place of the socket code of 8.4 and the `getTurns` of 8.2.
 
 ```ts
-import {IUserContext} from "dyna-ai-gateway";
+import {IFileRef} from "dyna-ai-gateway";
 import {AIGatewayVercelUi} from "dyna-ai-gateway/vercel-ui";
 
 declare function sessionOf(request: Request): Promise<IUserContext>; // your authentication
+declare const uploads: {find(userContext: IUserContext, url: string): Promise<IFileRef>}; // the IFileRefs of the upload route of 8.3, by the url the client got
 
 const supportChat = new AIGatewayVercelUi({
   mode: "run",
   userContext: async ({request}) => sessionOf(request), // the request body never names the tenant or the user
   call: {profileId: "support", kbFilters: {libraryIds: ["help-center"], bookIds: []}},
+  files: {
+    fromUi: async ({userContext, part}) => uploads.find(userContext, part.url), // the file part names an upload of 8.3
+    toUrl: async ({userContext, file}) => gateway.getFileUrl({userContext, fileId: file.id, ttlSec: 300}),
+  },
 }, {gateway});
 
 // POST /api/chat: what useChat posts

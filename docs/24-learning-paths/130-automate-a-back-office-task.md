@@ -78,30 +78,38 @@ Grouped by the step of your code where you meet them, in the order of the exampl
 
 Example: [8.0](#80-the-configuration).
 
-| Symbol                                                                                                        | What you use it for                |
-|---------------------------------------------------------------------------------------------------------------|------------------------------------|
-| [`defineTool`](../30-api/index/functions/defineTool.md), [`IToolDef`](../30-api/index/interfaces/IToolDef.md) | `policy`, `endsRun`, `visibleWhen` |
-| [`IToolPolicyConfig`](../30-api/index/interfaces/IToolPolicyConfig.md)                                        | `permissionsToTools`, `requires`   |
-| [`IUserContext`](../30-api/index/interfaces/IUserContext.md)                                                  | the job's identity and permissions |
-| [`IAIProfileLimits`](../30-api/index/interfaces/IAIProfileLimits.md)                                          | `maxStepsPerRun`                   |
+| Symbol                                                                                                        | What you use it for                                       |
+|---------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
+| [`defineTool`](../30-api/index/functions/defineTool.md), [`IToolDef`](../30-api/index/interfaces/IToolDef.md) | `policy`, `endsRun`                                       |
+| [`IToolPolicyConfig`](../30-api/index/interfaces/IToolPolicyConfig.md)                                        | `permissionsToTools`, `requires`                          |
+| [`IUserContext`](../30-api/index/interfaces/IUserContext.md)                                                  | the job's identity and permissions                        |
+| [`IAIProfileLimits`](../30-api/index/interfaces/IAIProfileLimits.md)                                          | `maxStepsPerRun`                                          |
+| [`TOnToolErrorHandler`](../30-api/index/type-aliases/TOnToolErrorHandler.md)                                  | `toolRegistry.onToolError`: being told that a tool failed |
 
 ### 6.2 Start the job
 
 Examples: [8.3](#83-the-job-starts-the-run-and-handles-its-three-outcomes), [8.5](#85-the-nightly-schedule-runs-the-job-and-the-maintenance-jobs).
 
-| Symbol                                                                                                                            | What you use it for                 |
-|-----------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|
-| [`AIGateway.run`](../30-api/index/classes/AIGateway.md#run), [`IGatewayRunInput`](../30-api/index/interfaces/IGatewayRunInput.md) | the job, `timeoutMs`, `activeTools` |
+| Symbol                                                                                                                            | What you use it for  |
+|-----------------------------------------------------------------------------------------------------------------------------------|----------------------|
+| [`AIGateway.run`](../30-api/index/classes/AIGateway.md#run), [`IGatewayRunInput`](../30-api/index/interfaces/IGatewayRunInput.md) | the job, `timeoutMs` |
 
 ### 6.3 Read the outcome
 
 Examples: [8.3](#83-the-job-starts-the-run-and-handles-its-three-outcomes), [8.4](#84-an-approver-lists-the-jobs-paused-runs-and-approves-them).
 
-| Symbol                                                                                                                                                                                                         | What you use it for           |
-|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|
-| [`IAnswerResponse`](../30-api/index/interfaces/IAnswerResponse.md)                                                                                                                                             | `endedByTool`, `issues`       |
-| [`IPausedResponse`](../30-api/index/interfaces/IPausedResponse.md), [`AIGateway.listPausedRuns`](../30-api/index/classes/AIGateway.md#listpausedruns), [`resume`](../30-api/index/classes/AIGateway.md#resume) | a job that waits              |
-| [`TOnToolErrorHandler`](../30-api/index/type-aliases/TOnToolErrorHandler.md)                                                                                                                                   | being told that a tool failed |
+| Symbol                                                                                                                                                                                                         | What you use it for     |
+|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| [`IAnswerResponse`](../30-api/index/interfaces/IAnswerResponse.md)                                                                                                                                             | `endedByTool`, `issues` |
+| [`IPausedResponse`](../30-api/index/interfaces/IPausedResponse.md), [`AIGateway.listPausedRuns`](../30-api/index/classes/AIGateway.md#listpausedruns), [`resume`](../30-api/index/classes/AIGateway.md#resume) | a job that waits        |
+
+### 6.4 Keep the paused and the stuck runs in check
+
+Example: [8.5](#85-the-nightly-schedule-runs-the-job-and-the-maintenance-jobs).
+
+| Symbol                                                                                                                                                             | What you use it for                                                 |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------|
+| [`AIGateway.expirePausedRuns`](../30-api/index/classes/AIGateway.md#expirepausedruns), [`recoverStuckRuns`](../30-api/index/classes/AIGateway.md#recoverstuckruns) | the pauses nobody answered, the runs a dead instance left `RUNNING` |
 
 ## 7. Advanced API
 
@@ -203,10 +211,8 @@ const baseConfig = {
 import {z} from "zod";
 import {
   AIGateway,
-  IAIGatewayConfig,
   IAIProfile,
   IUserContext,
-  EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
   InMemoryRunRepository,
@@ -343,7 +349,7 @@ const result = await gateway.run({
 
 switch (result.kind) {
   case EGatewayResponseKind.ANSWER:
-    console.info("job done", result.endedByTool, result.issues.map(issue => issue.code)); // output_truncated: the step cap cut it
+    console.info("job done", result.endedByTool, result.issues.map(issue => issue.code)); // output_truncated: the output cap or the step cap cut it
     break;
   case EGatewayResponseKind.PAUSED:
     await notify.approvers({runId: result.envelopes[0].runId, pauseId: result.pauseId}); // a large amount waits
@@ -360,7 +366,7 @@ switch (result.kind) {
 > **The bigger picture:** The approvals screen of the accounting team the next morning: a person checks the large payments the night job left open and lets the job finish.
 
 ```ts
-import {EResumeAction, IUserContext} from "dyna-ai-gateway";
+import {EPauseKind, EResumeAction} from "dyna-ai-gateway";
 
 // per request, from the approver's own session
 const approverContext: IUserContext = {...jobContext, userId: "u-42", permissions: ["ledger.write"]};
@@ -371,7 +377,10 @@ for (const run of waiting) {
     userContext: approverContext,
     runId: run.runId,
     pauseId: run.pauseId,
-    decisions: run.envelopes.map(() => ({action: EResumeAction.APPROVE})), // one decision per card
+    decisions: run.envelopes.map(envelope => ({
+      callId: envelope.kind === EPauseKind.TOOL_APPROVAL ? envelope.callId : undefined, // which card it decides
+      action: EResumeAction.APPROVE,
+    })),
   }).response;
 }
 ```
@@ -383,16 +392,16 @@ One timer starts the run, then calls `expirePausedRuns`, which closes the pauses
 > **The bigger picture:** Your scheduler on the worker, once per tenant and night: the job itself, then the clean-up of what nobody decided and of what a crash left open.
 
 ```ts
+declare function reconcile(): Promise<void>; // the code of 8.3, as a function
+
 setInterval(async () => {
-  await gateway.run({
-    userContext: {...jobContext, now: new Date()},
-    profileId: "reconciliation",
-    prompt: "Reconcile yesterday's lines of account NO-1234, then file the report.",
-    timeoutMs: 240_000,
-    kbFilters: {libraryIds: [], bookIds: []},
-  }).response;
-  await gateway.expirePausedRuns({tenantId: "acme"});
-  await gateway.recoverStuckRuns({tenantId: "acme"});
+  try {
+    await reconcile();
+    await gateway.expirePausedRuns({tenantId: "acme"});
+    await gateway.recoverStuckRuns({tenantId: "acme"});
+  } catch (error) {
+    console.error("nightly job failed", error); // a store or a provider that throws: not an unhandled rejection
+  }
 }, 24 * 60 * 60_000);
 ```
 

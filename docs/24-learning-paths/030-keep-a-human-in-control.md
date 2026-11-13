@@ -221,10 +221,8 @@ const baseConfig = {
 import {z} from "zod";
 import {
   AIGateway,
-  IAIGatewayConfig,
   IAIProfile,
   IUserContext,
-  EModelProvider,
   EToolCallVerdict,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
@@ -360,8 +358,6 @@ The tools are shared by every tenant; a profile belongs to one. `approvals` on t
 > **The bigger picture:** The settings screen of one customer company: its admin decides that, in their company, every credit note needs a second person. The other companies on the same server are not affected.
 
 ```ts
-import {IAIProfile} from "dyna-ai-gateway";
-
 const strictAccounting: IAIProfile = {
   id: "accounting-strict",
   tenantId: "acme",
@@ -374,6 +370,13 @@ const strictAccounting: IAIProfile = {
 };
 
 await gateway.aiProfileStore.upsertProfile({tenantId: "acme", profile: strictAccounting});
+
+const paused = await gateway.run({
+  userContext,
+  profileId: "accounting-strict",
+  prompt: "Credit 300 NOK on invoice 2024-1187: the shipping fee was charged twice.",
+  kbFilters: {libraryIds: [], bookIds: []},
+}).response; // PAUSED: the post_credit_note call waits for the approver (8.4)
 ```
 
 ### 8.3 The run pauses, and the approver approves
@@ -432,7 +435,7 @@ Instead of approving, the approver changes the input of the call (the policy dec
 ```ts
 import {EResumeAction} from "dyna-ai-gateway";
 
-// the ids of a post_credit_note card the approver opened: from the PAUSED response or listPausedRuns (8.9)
+// the ids of a post_credit_note card the approver opened: from the PAUSED response of 8.2 or listPausedRuns (8.9)
 declare const runId: string;
 declare const pauseId: string;
 
@@ -483,8 +486,6 @@ With `humanGate.userQuestions` enabled, the model can pause the run with a card 
 
 > **The bigger picture:** The chat shows a small form ("which invoice do you mean?") instead of a guessed answer; the user picks an option and the conversation continues.
 
-`paused` is the response of 8.3.
-
 ```ts
 import {
   EGatewayResponseKind,
@@ -492,10 +493,14 @@ import {
   EResumeAction,
   EUserQuestionMode,
   IUserAnswer,
-  TGatewayResponse,
 } from "dyna-ai-gateway";
 
-declare const paused: TGatewayResponse; // the response of a run() that paused, as in 8.3
+const paused = await gateway.run({
+  userContext,
+  profileId: "accounting",
+  prompt: "Is my invoice paid?", // which one: the model asks instead of guessing
+  kbFilters: {libraryIds: [], bookIds: []},
+}).response;
 
 if (paused.kind === EGatewayResponseKind.PAUSED) {
   const [card] = paused.envelopes;
@@ -523,24 +528,33 @@ On a profile with `reviewAnswers: true`, the finished answer of every `run()` wa
 > **The bigger picture:** A regulated reply: the answer to a customer is written by the model, but a team lead reads and corrects it in a review queue before it is sent.
 
 ```ts
-import {EPauseKind, EResumeAction} from "dyna-ai-gateway";
+import {EGatewayResponseKind, EPauseKind, EResumeAction} from "dyna-ai-gateway";
 
-// the ids of the review card: from the PAUSED response or listPausedRuns (8.9)
-declare const runId: string;
-declare const pauseId: string;
 declare function showToUser(text: string): void; // your UI
 
-const run = await gateway.getPausedRun({tenantId: "acme", runId}); // raw ids: your host decides who may review
-for (const envelope of run.pending ?? []) {
-  if (envelope.kind === EPauseKind.RESULT_REVIEW) showToUser(envelope.result?.text ?? ""); // the draft
-}
+const asked = await gateway.run({
+  userContext,
+  profileId: "accounting-reviewed", // reviewAnswers: true
+  prompt: "Is invoice 2024-1187 paid?",
+  kbFilters: {libraryIds: [], bookIds: []},
+}).response; // PAUSED with one RESULT_REVIEW card; the asker's card carries no draft
 
-await gateway.resume({
-  userContext: approverContext,
-  runId,
-  pauseId,
-  decisions: [{action: EResumeAction.EDIT, editedInput: "The corrected answer the user will read."}], // or APPROVE, or REJECT
-}).response;
+if (asked.kind === EGatewayResponseKind.PAUSED) {
+  const {runId} = asked.envelopes[0];
+  const {pauseId} = asked; // or both from listPausedRuns (8.9)
+
+  const run = await gateway.getPausedRun({tenantId: "acme", runId}); // raw ids: your host decides who may review
+  for (const envelope of run.pending ?? []) {
+    if (envelope.kind === EPauseKind.RESULT_REVIEW) showToUser(envelope.result?.text ?? ""); // the draft
+  }
+
+  await gateway.resume({
+    userContext: approverContext,
+    runId,
+    pauseId,
+    decisions: [{action: EResumeAction.EDIT, editedInput: "The corrected answer the user will read."}], // or APPROVE, or REJECT
+  }).response;
+}
 ```
 
 ### 8.8 Resume until the run stops pausing
