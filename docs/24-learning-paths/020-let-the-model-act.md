@@ -43,8 +43,8 @@ Where it ends: a call that must wait for a person is [Keep a human in control](0
 ## 5. How the parts connect
 
 ```mermaid
-flowchart LR
-  R["Resolve: the registry, allowedTools, the user's permissions, activeTools, additionalTools, caps.tools"] --> O["Offer: requires, visibleWhen, the skills"]
+flowchart TD
+  R["Resolve: the registry, allowedTools,<br/>the user's permissions, activeTools,<br/>additionalTools, caps.tools"] --> O["Offer: requires, visibleWhen, the skills"]
   O --> G["Gate: the tool's policy, then the profile's approvals"]
   G -->|NEEDS_APPROVAL| P(["the run pauses"])
   G --> E["Execute: inputSchema, the timeout, the output cap"]
