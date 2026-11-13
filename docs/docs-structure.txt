@@ -39,6 +39,7 @@
     # These files are the guides to learn the gateway, one per goal
     # Each file lists only the API articles its goal needs
     # All of them open with the Getting started pages 10, 20, 30, 40
+    # then a Prerequisites line: the API keys the 8.0 config reads, the front end a path assumes
     # A developer with one specific need follows one file and nothing else
     # Each file holds the links and the examples the developer needs
     # and explains how the parts connect

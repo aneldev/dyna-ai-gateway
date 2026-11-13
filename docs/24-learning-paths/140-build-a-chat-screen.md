@@ -6,6 +6,11 @@ of the documentation is required. It starts from four pages of Getting started:
 [Installation](../10-getting-started/20-installation.md), [Example: ask](../10-getting-started/30-example-ask.md),
 [Example: run](../10-getting-started/40-example-run.md).
 
+**Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
+`OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
+Installation, `gpt-5-mini` and `text-embedding-3-small`. Examples [8.7](#87-the-same-screen-on-usechat-through-dyna-ai-gatewayvercel-ui) and [8.8](#88-the-cards-of-a-paused-run-in-a-usechat-screen) also need a front end built on the Vercel AI
+SDK's `useChat`.
+
 ## 1. About
 
 A chat screen on the gateway: the user's conversations in a sidebar, the answer streamed as it is written, attachments,

@@ -6,6 +6,11 @@ of the documentation is required. It starts from four pages of Getting started:
 [Installation](../10-getting-started/20-installation.md), [Example: ask](../10-getting-started/30-example-ask.md),
 [Example: run](../10-getting-started/40-example-run.md).
 
+**Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
+`OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
+Installation, `gpt-5-mini` and `text-embedding-3-small`. Examples [8.8](#88-the-next-question-goes-to-another-model) and [8.9](#89-the-call-sets-a-sampling-temperature) also call
+the Claude model that [8.7](#87-an-admin-adds-a-model-and-a-profile-while-the-server-runs) adds: an Anthropic API key in `ANTHROPIC_API_KEY`.
+
 ## 1. About
 
 One call, one answer: `ask()` with a profile, a prompt and what the screen knows. The answer is text, or a typed object

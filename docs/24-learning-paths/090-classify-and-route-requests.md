@@ -6,6 +6,11 @@ of the documentation is required. It starts from four pages of Getting started:
 [Installation](../10-getting-started/20-installation.md), [Example: ask](../10-getting-started/30-example-ask.md),
 [Example: run](../10-getting-started/40-example-run.md).
 
+**Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
+`OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
+Installation, `gpt-5-mini` and `text-embedding-3-small`. Example [8.4](#84-the-same-message-gets-the-same-intent-every-time) also calls a Claude model: an Anthropic API key in
+`ANTHROPIC_API_KEY`.
+
 ## 1. About
 
 One `ask()` on a small, fast model whose `outputSchema` is the decision: an intent, a priority, a team. Your code reads

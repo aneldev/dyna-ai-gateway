@@ -16,6 +16,9 @@ Every path starts with the same four pages of [Getting started](../10-getting-st
 | [Example: ask](../10-getting-started/30-example-ask.md)                      | one answer                            |
 | [Example: run](../10-getting-started/40-example-run.md)                      | one agent with a tool                 |
 
+A **Prerequisites** line follows them: the API keys the examples of the path need, and the front end it assumes, where
+it has one.
+
 ## The paths
 
 | Path                                                              | Your goal                                                                      |
