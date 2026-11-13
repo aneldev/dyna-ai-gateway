@@ -71,6 +71,10 @@ pnpm docs:check-samples [folder…]   # type-check the TypeScript samples (defau
   `src/entries/vercel-ui` on every build. It is gitignored and never edited by hand; the JSDoc is its source.
 - **What the API navigation shows** is the list in `website/api-sidebar.mjs`. A symbol that is not listed still has a
   page, so links to it resolve.
+- **The build is the link check:** `onBrokenLinks`, `onBrokenAnchors` and `onBrokenMarkdownLinks` are `"throw"`, so
+  `pnpm docs:build` fails on a link to a missing page (it names the file and the line) and on a broken anchor (it names
+  the published page and the anchor).
+  The documents the site does not publish are not checked.
 - **The output check** (`website/scripts/check-output.mjs`) fails the build on an API page without exactly one `h1`, on
   any excluded document in the output, and on a Mermaid diagram of a published doc that does not parse. Mermaid renders in
   the browser, so without this check a broken diagram only shows on the live page.

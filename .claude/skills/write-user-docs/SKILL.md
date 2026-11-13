@@ -60,5 +60,11 @@ audience rule: never link `docs/internal` or `docs/plans` from a JSDoc. Link a u
 - [ ] Every name in the doc exists in `src/` with that spelling.
 - [ ] Every fact appears once; the other mentions are links.
 - [ ] A reader who only has the npm package could follow the doc.
+- [ ] `pnpm docs:check-samples` passes when a ```ts sample of `docs/24-learning-paths` was written or touched (the other
+      folders hold fragments that do not compile on their own).
+- [ ] `pnpm docs:build` passes. It is the link check: a link to a missing page fails it with the file and the line, a
+      broken anchor with the published page and the anchor (`onBrokenLinks`, `onBrokenAnchors`, `onBrokenMarkdownLinks: "throw"` in
+      `website/docusaurus.config.mjs`). The pages it does not publish (`internal/`, `plans/`, `implementation/`,
+      `80-backlog.md`, `85-workspace.md`, `docs-structure.txt`) are not checked.
 - [ ] Last: the `consistency-pressure-test` skill over the pages written or touched and everything that states the same
       facts; its result goes into the handoff.
