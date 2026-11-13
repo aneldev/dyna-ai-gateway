@@ -99,7 +99,6 @@ Examples: [8.0](#80-the-configuration), [8.6](#86-the-model-loads-a-skill-when-t
 | [`IToolPolicyConfig`](../30-api/index/interfaces/IToolPolicyConfig.md)                                                         | `permissionsToTools`, `requires`                          |
 | [`IAIProfileLimits`](../30-api/index/interfaces/IAIProfileLimits.md)                                                           | `maxStepsPerRun`                                          |
 | [`ISkill`](../30-api/index/interfaces/ISkill.md), [`ISkillRegistryConfig`](../30-api/index/interfaces/ISkillRegistryConfig.md) | a skill and the caps of all skills                        |
-| [`BUILT_IN_TOOL_NAMES`](../30-api/index/variables/BUILT_IN_TOOL_NAMES.md)                                                      | the gateway's own tools                                   |
 
 ### 6.3 Make the call
 
@@ -112,11 +111,12 @@ Examples: [8.1](#81-a-tool-that-reads-data-and-a-run-that-calls-it), [8.2](#82-a
 
 ### 6.4 Follow the run
 
-Example: [8.7](#87-the-ui-shows-the-tool-calls-and-reads-how-the-run-ended).
+Examples: [8.0](#80-the-configuration), [8.7](#87-the-ui-shows-the-tool-calls-and-reads-how-the-run-ended).
 
 | Symbol                                                                                                                                             | What you use it for                                            |
 |----------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
 | [`ELLMClientEventKind`](../30-api/index/enumerations/ELLMClientEventKind.md)                                                                       | `TOOL_REQUEST`, `TOOL_RESULT`, `STEP_END`, `RUN_ENDED_BY_TOOL` |
+| [`BUILT_IN_TOOL_NAME_PREFIX`](../30-api/index/variables/BUILT_IN_TOOL_NAME_PREFIX.md)                                                              | tells the gateway's own tools from yours                       |
 | [`TOnToolErrorHandler`](../30-api/index/type-aliases/TOnToolErrorHandler.md), [`IToolErrorReport`](../30-api/index/interfaces/IToolErrorReport.md) | being told that a tool failed                                  |
 
 ## 7. Advanced API
@@ -271,7 +271,7 @@ const accounting: IAIProfile = {
   name: "Accounting assistant",
   modelId: "gpt-5-mini",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
-  allowedTools: ["get_invoice", "post_credit_note", "classify_intent", "handover_to_agent"],
+  allowedTools: ["get_invoice", "post_credit_note"],
   approvals: [],
   limits: {maxStepsPerRun: 6, maxOutputTokens: 2_000},
 };
@@ -381,12 +381,18 @@ const handOver = defineTool({
   endsRun: ({output}) => output.accepted, // after execute: output is typed from its return type
 });
 
-// the gateway of 8.0 with the two tools, in place of the gateway line of 8.0
-const gateway = new AIGateway({...config, toolRegistry: {...config.toolRegistry, tools: [getInvoice, postCreditNote, classifyIntent, handOver]}});
+// the gateway of 8.0 with the two tools, and the profile that allows them, in place of the gateway line of 8.0
+const gateway = new AIGateway({
+  ...config,
+  toolRegistry: {...config.toolRegistry, tools: [getInvoice, postCreditNote, classifyIntent, handOver]},
+  aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [
+    {...accounting, allowedTools: [...accounting.allowedTools, "classify_intent", "handover_to_agent"]},
+  ]})},
+});
 
 const result = await gateway.run({
   userContext,
-  profileId: "accounting", // its allowedTools lists both tools
+  profileId: "accounting", // on this gateway, its allowedTools lists both tools
   prompt: "I want to talk to a person about my refund.",
   kbFilters: {libraryIds: [], bookIds: []},
 }).response;

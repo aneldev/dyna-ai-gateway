@@ -378,7 +378,7 @@ const {response} = gateway.ask({
 
 ### 8.6 The extraction drops the file or fails the schema
 
-A file the model cannot read (its caps have no `pdf` or `images`) is left out with the WARNING `file_dropped`, and the answer comes from the prompt alone. An answer that is not JSON returns `FAILED` with the issue `output_invalid_json`; one that does not match the schema, with `output_schema`, whose `field` names the first failing path.
+A file the model cannot read (its caps have no `pdf` or `images`) is left out with the WARNING `file_dropped`, and the answer comes from the prompt alone. The `gpt-5-mini` of 8.0 reads both, so that branch matters on a profile whose model lacks the cap. An answer that is not JSON returns `FAILED` with the issue `output_invalid_json`; one that does not match the schema, with `output_schema`, whose `field` names the first failing path.
 
 > **The bigger picture:** The error handling of the extraction screen: the user is told to check the fields or to try again, never shown fields the model did not read.
 

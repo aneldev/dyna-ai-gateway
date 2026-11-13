@@ -101,7 +101,7 @@ Examples: [8.0](#80-the-configuration), [8.1](#81-the-user-asks-a-question-and-g
 
 ### 6.3 Read the result
 
-Examples: [8.1](#81-the-user-asks-a-question-and-gets-one-answer), [8.2](#82-the-answer-streams-to-the-screen-as-the-model-writes-it), [8.3](#83-the-screen-passes-the-open-record-and-its-own-instructions), [8.4](#84-the-answer-comes-back-as-typed-data), [8.6](#86-the-user-asks-a-follow-up-on-the-same-thread), [8.10](#810-the-call-fails-or-is-rejected).
+Examples: [8.1](#81-the-user-asks-a-question-and-gets-one-answer), [8.2](#82-the-answer-streams-to-the-screen-as-the-model-writes-it), [8.4](#84-the-answer-comes-back-as-typed-data), [8.6](#86-the-user-asks-a-follow-up-on-the-same-thread), [8.10](#810-the-call-fails-or-is-rejected).
 
 | Symbol                                                                         | What you use it for                                 |
 |--------------------------------------------------------------------------------|-----------------------------------------------------|

@@ -52,7 +52,7 @@ sequenceDiagram
   Job->>Job: 1. builds its userContext, permissionsToTools maps it to tools
   Job->>GW: 2. run() without a threadId, the job awaits response
   loop every step
-    GW->>GW: 3. requires and visibleWhen decide what is offered
+    GW->>GW: 3. requires decides what is offered
     GW->>T: 6. one entry per step
   end
   GW-->>Job: 4. a NEEDS_APPROVAL tool pauses the job
@@ -64,7 +64,7 @@ sequenceDiagram
    use ([Narrow, never widen](../20-learn-the-gateway/030-tools.md#23-narrow-never-widen)).
 2. `run()` without a `threadId` starts a thread for the job; the job awaits `response` and ignores `events`
    ([Example: ask](../10-getting-started/30-example-ask.md#the-parts-of-the-call)).
-3. `requires` offers the action only after the lookup ran in this run; `visibleWhen` limits a tool to some steps.
+3. `requires` offers the action only after the lookup ran in this run.
 4. A tool with a `policy` of `NEEDS_APPROVAL` pauses the job; the approver resumes it later
    ([Human in the loop](../20-learn-the-gateway/040-human-in-the-loop.md), example 8.4).
 5. A terminal tool with `endsRun` closes the job; `maxStepsPerRun`, `timeoutMs` and your usage adapter bound it.
@@ -78,17 +78,17 @@ Grouped by the step of your code where you meet them, in the order of the exampl
 
 Example: [8.0](#80-the-configuration).
 
-| Symbol                                                                                                        | What you use it for                                       |
-|---------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
-| [`defineTool`](../30-api/index/functions/defineTool.md), [`IToolDef`](../30-api/index/interfaces/IToolDef.md) | `policy`, `endsRun`                                       |
-| [`IToolPolicyConfig`](../30-api/index/interfaces/IToolPolicyConfig.md)                                        | `permissionsToTools`, `requires`                          |
-| [`IUserContext`](../30-api/index/interfaces/IUserContext.md)                                                  | the job's identity and permissions                        |
-| [`IAIProfileLimits`](../30-api/index/interfaces/IAIProfileLimits.md)                                          | `maxStepsPerRun`                                          |
-| [`TOnToolErrorHandler`](../30-api/index/type-aliases/TOnToolErrorHandler.md)                                  | `toolRegistry.onToolError`: being told that a tool failed |
+| Symbol                                                                                                                                                                                | What you use it for                                       |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
+| [`defineTool`](../30-api/index/functions/defineTool.md), [`IToolDef`](../30-api/index/interfaces/IToolDef.md), [`EToolCallVerdict`](../30-api/index/enumerations/EToolCallVerdict.md) | `policy` (`NEEDS_APPROVAL`), `endsRun`                    |
+| [`IToolPolicyConfig`](../30-api/index/interfaces/IToolPolicyConfig.md)                                                                                                                | `permissionsToTools`, `requires`                          |
+| [`IUserContext`](../30-api/index/interfaces/IUserContext.md)                                                                                                                          | the job's identity and permissions                        |
+| [`IAIProfileLimits`](../30-api/index/interfaces/IAIProfileLimits.md)                                                                                                                  | `maxStepsPerRun`                                          |
+| [`TOnToolErrorHandler`](../30-api/index/type-aliases/TOnToolErrorHandler.md)                                                                                                          | `toolRegistry.onToolError`: being told that a tool failed |
 
 ### 6.2 Start the job
 
-Examples: [8.3](#83-the-job-starts-the-run-and-handles-its-three-outcomes), [8.5](#85-the-nightly-schedule-runs-the-job-and-the-maintenance-jobs).
+Example: [8.3](#83-the-job-starts-the-run-and-handles-its-three-outcomes).
 
 | Symbol                                                                                                                            | What you use it for  |
 |-----------------------------------------------------------------------------------------------------------------------------------|----------------------|
@@ -98,10 +98,10 @@ Examples: [8.3](#83-the-job-starts-the-run-and-handles-its-three-outcomes), [8.5
 
 Examples: [8.3](#83-the-job-starts-the-run-and-handles-its-three-outcomes), [8.4](#84-an-approver-lists-the-jobs-paused-runs-and-approves-them).
 
-| Symbol                                                                                                                                                                                                         | What you use it for     |
-|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
-| [`IAnswerResponse`](../30-api/index/interfaces/IAnswerResponse.md)                                                                                                                                             | `endedByTool`, `issues` |
-| [`IPausedResponse`](../30-api/index/interfaces/IPausedResponse.md), [`AIGateway.listPausedRuns`](../30-api/index/classes/AIGateway.md#listpausedruns), [`resume`](../30-api/index/classes/AIGateway.md#resume) | a job that waits        |
+| Symbol                                                                                                                                                                                                                                                                                                                                       | What you use it for     |
+|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| [`IAnswerResponse`](../30-api/index/interfaces/IAnswerResponse.md)                                                                                                                                                                                                                                                                           | `endedByTool`, `issues` |
+| [`IPausedResponse`](../30-api/index/interfaces/IPausedResponse.md), [`AIGateway.listPausedRuns`](../30-api/index/classes/AIGateway.md#listpausedruns), [`resume`](../30-api/index/classes/AIGateway.md#resume), [`EPauseKind`](../30-api/index/enumerations/EPauseKind.md), [`EResumeAction`](../30-api/index/enumerations/EResumeAction.md) | a job that waits        |
 
 ### 6.4 Keep the paused and the stuck runs in check
 
@@ -420,7 +420,7 @@ setInterval(async () => {
 ## 10. Summary
 
 - A job is a `run()` with a service `userContext`, awaited without reading `events`.
-- `permissionsToTools`, `requires` and `visibleWhen` decide what it may call and when.
+- `permissionsToTools` and `requires` decide what it may call and when.
 - `endsRun` closes it; `maxStepsPerRun`, `timeoutMs` and the usage adapter bound it.
 - A pause waits for an approver, as in a chat.
 

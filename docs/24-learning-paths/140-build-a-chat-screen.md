@@ -75,30 +75,32 @@ Grouped by the step of your code where you meet them, in the order of the exampl
 
 Examples: [8.1](#81-the-sidebar-lists-the-users-conversations-page-by-page), [8.2](#82-the-user-opens-renames-or-deletes-a-conversation), [8.6](#86-the-thread-shows-its-attachments-through-short-lived-urls).
 
-| Symbol                                                                                                                                                                                                                                                                 | What you use it for            |
-|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------|
-| [`AIGateway.listThreads`](../30-api/index/classes/AIGateway.md#listthreads), [`getTurns`](../30-api/index/classes/AIGateway.md#getturns), [`renameThread`](../30-api/index/classes/AIGateway.md#renamethread), [`delete`](../30-api/index/classes/AIGateway.md#delete) | the conversations              |
-| [`IThread`](../30-api/index/interfaces/IThread.md), [`ITurn`](../30-api/index/interfaces/ITurn.md)                                                                                                                                                                     | a conversation and its entries |
-| [`IPage`](../30-api/index/interfaces/IPage.md), [`IPageArgs`](../30-api/index/interfaces/IPageArgs.md)                                                                                                                                                                 | the paging of the list         |
+| Symbol                                                                                                                                                                                                                                                                 | What you use it for                          |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|
+| [`AIGateway.listThreads`](../30-api/index/classes/AIGateway.md#listthreads), [`getTurns`](../30-api/index/classes/AIGateway.md#getturns), [`renameThread`](../30-api/index/classes/AIGateway.md#renamethread), [`delete`](../30-api/index/classes/AIGateway.md#delete) | the conversations                            |
+| [`IThread`](../30-api/index/interfaces/IThread.md), [`ITurn`](../30-api/index/interfaces/ITurn.md)                                                                                                                                                                     | a conversation and its entries               |
+| [`EPartKind`](../30-api/index/enumerations/EPartKind.md)                                                                                                                                                                                                               | the kind of a turn's part: `TEXT`, `FILE`, … |
+| [`IPage`](../30-api/index/interfaces/IPage.md), [`IPageArgs`](../30-api/index/interfaces/IPageArgs.md)                                                                                                                                                                 | the paging of the list                       |
 
 ### 6.2 Send a message and stream the answer
 
-Examples: [8.3](#83-the-upload-route-stores-an-attachment-before-the-message-is-sent), [8.4](#84-the-user-sends-a-message-and-the-answer-streams-to-the-screen), [8.6](#86-the-thread-shows-its-attachments-through-short-lived-urls).
+Examples: [8.3](#83-the-upload-route-stores-an-attachment-before-the-message-is-sent), [8.4](#84-the-user-sends-a-message-and-the-answer-streams-to-the-screen), [8.5](#85-a-second-message-while-the-first-is-still-answering-is-a-409), [8.6](#86-the-thread-shows-its-attachments-through-short-lived-urls).
 
-| Symbol                                                                                                                                           | What you use it for |
-|--------------------------------------------------------------------------------------------------------------------------------------------------|---------------------|
-| [`ILLMClientEvent`](../30-api/index/interfaces/ILLMClientEvent.md), [`ELLMClientEventKind`](../30-api/index/enumerations/ELLMClientEventKind.md) | the stream          |
-| [`AIGateway.uploadFile`](../30-api/index/classes/AIGateway.md#uploadfile), [`getFileUrl`](../30-api/index/classes/AIGateway.md#getfileurl)       | attachments         |
+| Symbol                                                                                                                                                                                           | What you use it for                                                  |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------|
+| [`AIGateway.run`](../30-api/index/classes/AIGateway.md#run), [`IGatewayRunInput`](../30-api/index/interfaces/IGatewayRunInput.md)                                                                | the message: `threadId`, `prompt`, `files`; a thread in use is a 409 |
+| [`ILLMClientEvent`](../30-api/index/interfaces/ILLMClientEvent.md), [`ELLMClientEventKind`](../30-api/index/enumerations/ELLMClientEventKind.md)                                                 | the stream                                                           |
+| [`AIGateway.uploadFile`](../30-api/index/classes/AIGateway.md#uploadfile), [`getFileUrl`](../30-api/index/classes/AIGateway.md#getfileurl), [`IFileRef`](../30-api/index/interfaces/IFileRef.md) | attachments                                                          |
 
 ### 6.3 The same screen on `useChat`
 
-Examples: [8.0](#80-the-configuration), [8.7](#87-the-same-screen-on-usechat-through-dyna-ai-gatewayvercel-ui).
+Examples: [8.0](#80-the-configuration), [8.7](#87-the-same-screen-on-usechat-through-dyna-ai-gatewayvercel-ui), [8.8](#88-the-cards-of-a-paused-run-in-a-usechat-screen).
 
 | Symbol                                                                                                                                                                                                                                                           | What you use it for                |
 |------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
 | [`AIGatewayVercelUi`](../30-api/entries/vercel-ui/classes/AIGatewayVercelUi.md), [`IAIGatewayVercelUiConfig`](../30-api/entries/vercel-ui/interfaces/IAIGatewayVercelUiConfig.md)                                                                                | the `useChat` endpoints            |
 | [`IUiChatRequestBody`](../30-api/entries/vercel-ui/interfaces/IUiChatRequestBody.md), [`TGatewayUiMessage`](../30-api/entries/vercel-ui/type-aliases/TGatewayUiMessage.md), [`IUiMessageMetadata`](../30-api/entries/vercel-ui/interfaces/IUiMessageMetadata.md) | what the client sends and receives |
-| [`IUiPause`](../30-api/entries/vercel-ui/interfaces/IUiPause.md), [`IUiApprovalResponses`](../30-api/entries/vercel-ui/interfaces/IUiApprovalResponses.md)                                                                                                       | the cards in the client            |
+| [`IUiPause`](../30-api/entries/vercel-ui/interfaces/IUiPause.md)                                                                                                                                                                                                 | the cards in the client            |
 
 ## 7. Advanced API
 

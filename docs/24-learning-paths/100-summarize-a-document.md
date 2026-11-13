@@ -79,7 +79,7 @@ Examples: [8.1](#81-summarise-an-uploaded-pdf-in-a-few-paragraphs), [8.3](#83-a-
 | Symbol                                                                                                                          | What you use it for                                     |
 |---------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|
 | [`AIGateway.uploadFile`](../30-api/index/classes/AIGateway.md#uploadfile), [`IFileRef`](../30-api/index/interfaces/IFileRef.md) | a document as a file                                    |
-| [`AIGateway.getTurns`](../30-api/index/classes/AIGateway.md#getturns)                                                           | the whole thread, when your code builds the text itself |
+| [`AIGateway.getTurns`](../30-api/index/classes/AIGateway.md#getturns), [`EPartKind`](../30-api/index/enumerations/EPartKind.md) | the whole thread, when your code builds the text itself |
 
 ### 6.3 Make the call
 
@@ -92,11 +92,19 @@ Examples: [8.1](#81-summarise-an-uploaded-pdf-in-a-few-paragraphs), [8.2](#82-su
 
 ### 6.4 Read the summary
 
-Examples: [8.1](#81-summarise-an-uploaded-pdf-in-a-few-paragraphs), [8.2](#82-summarise-a-text-your-application-holds), [8.4](#84-the-decisions-and-open-points-of-a-conversation).
+Examples: [8.1](#81-summarise-an-uploaded-pdf-in-a-few-paragraphs), [8.2](#82-summarise-a-text-your-application-holds), [8.3](#83-a-contract-summary-as-structured-fields), [8.4](#84-the-decisions-and-open-points-of-a-conversation), [8.6](#86-the-summary-was-cut-at-the-output-limit).
 
-| Symbol                                                             | What you use it for           |
-|--------------------------------------------------------------------|-------------------------------|
-| [`IAnswerResponse`](../30-api/index/interfaces/IAnswerResponse.md) | `text`, `structured`, `usage` |
+| Symbol                                                             | What you use it for            |
+|--------------------------------------------------------------------|--------------------------------|
+| [`IAnswerResponse`](../30-api/index/interfaces/IAnswerResponse.md) | `text`, `structured`, `issues` |
+
+### 6.5 Estimate the cost
+
+Example: [8.5](#85-estimate-the-cost-before-you-send-a-long-document).
+
+| Symbol                                                                                                                                            | What you use it for                                                    |
+|---------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------|
+| [`AIGateway.modelRegistry`](../30-api/index/classes/AIGateway.md#modelregistry), [`IModelRegistry`](../30-api/index/interfaces/IModelRegistry.md) | `estimateCostUsd`: the cost of token counts at the model's list prices |
 
 ## 7. Advanced API
 
@@ -274,7 +282,7 @@ A text that is not a file goes in `context`, as data, not instructions. `EOutput
 > **The bigger picture:** A report stored in your database gets a three-sentence summary for a list view or a plain-text field, with no upload.
 
 ```ts
-import {EOutputFormat} from "dyna-ai-gateway";
+import {EGatewayResponseKind, EOutputFormat} from "dyna-ai-gateway";
 
 declare const report: {text: string}; // a text your application holds
 
@@ -286,6 +294,8 @@ const {response} = gateway.ask({
   outputFormat: EOutputFormat.PLAIN, // for a plain-text field
   kbFilters: {libraryIds: [], bookIds: []},
 });
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // plain text
 ```
 
 ### 8.3 A contract summary as structured fields
@@ -295,8 +305,8 @@ With an `outputSchema`, the summary comes back as parties, term, obligations, de
 > **The bigger picture:** The contract screen fills its fields from the summary, and the deadlines can go to the calendar of your application.
 
 ```ts
-import {IFileRef} from "dyna-ai-gateway";
 import {z} from "zod";
+import {EGatewayResponseKind, IFileRef} from "dyna-ai-gateway";
 
 declare const pdf: IFileRef; // the PDF the user uploaded (uploadFile)
 
@@ -316,6 +326,10 @@ const {response} = gateway.ask({
   outputSchema: contractSummary, // with a schema, outputFormat does not apply
   kbFilters: {libraryIds: [], bookIds: []},
 });
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER && result.structured) {
+  const {deadlines} = result.structured; // typed from the schema
+}
 ```
 
 ### 8.4 The decisions and open points of a conversation
@@ -326,7 +340,7 @@ const {response} = gateway.ask({
 
 ```ts
 import {z} from "zod";
-import {EPartKind} from "dyna-ai-gateway";
+import {EGatewayResponseKind, EPartKind} from "dyna-ai-gateway";
 
 declare const threadId: string; // the thread your screen has open
 
@@ -343,6 +357,10 @@ const {response} = gateway.ask({
   outputSchema: z.object({decisions: z.array(z.string()), openPoints: z.array(z.string())}),
   kbFilters: {libraryIds: [], bookIds: []},
 });
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER && result.structured) {
+  const {decisions, openPoints} = result.structured;
+}
 ```
 
 ### 8.5 Estimate the cost before you send a long document
@@ -391,7 +409,7 @@ if (result.kind === EGatewayResponseKind.ANSWER && result.issues.some(issue => i
 
 ## 10. Summary
 
-- A file in `files`, a text in `context`, a thread by its `threadId`.
+- A file in `files`, a text in `context`, a thread's turns through `getTurns`, as `context`.
 - `outputFormat` for text, `outputSchema` for a typed summary.
 - The model's context window and `maxOutputTokens` bound what goes in and what comes out.
 

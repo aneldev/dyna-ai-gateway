@@ -90,7 +90,7 @@ Examples: [8.2](#82-route-a-message-by-its-intent), [8.3](#83-a-triage-decision-
 
 ### 6.3 Read the decision
 
-Example: [8.2](#82-route-a-message-by-its-intent).
+Examples: [8.2](#82-route-a-message-by-its-intent), [8.5](#85-the-model-answers-outside-the-enum-and-a-human-takes-the-message), [8.6](#86-delete-the-thread-of-each-classified-message).
 
 | Symbol                                                                                                               | What you use it for           |
 |----------------------------------------------------------------------------------------------------------------------|-------------------------------|

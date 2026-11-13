@@ -14,7 +14,7 @@ Installation, `gpt-5-mini` and `text-embedding-3-small`. Example [8.7](#87-three
 ## 1. About
 
 One `ask()` that writes for the user: a reply to an email, a product description, a follow-up message. The data comes
-from the screen as `context`; the tone and the rules come from the profile and the call's `instructions`.
+from the screen as `context`; the tone and the conventions come from the profile and the call's `instructions`.
 
 ## 2. Description
 
@@ -45,7 +45,7 @@ screen in `instructions`, the record in `context`. The output format follows the
 
 ```mermaid
 flowchart LR
-  P["the tenant's voice and rules: the profile's promptAddendum"] --> M["The model"]
+  P["the tenant's voice and conventions: the profile's promptAddendum"] --> M["The model"]
   I["what this screen asks: the call's instructions"] --> M
   C["the record on screen: the call's context, as data"] --> M
   U["the user's own words: prompt"] --> M
@@ -56,7 +56,7 @@ flowchart LR
 
 | Text                                  | Layer                          | Kept                  |
 |---------------------------------------|--------------------------------|-----------------------|
-| the tenant's voice and rules          | the profile's `promptAddendum` | stored on the profile |
+| the tenant's voice and conventions    | the profile's `promptAddendum` | stored on the profile |
 | what this screen asks the model to do | the call's `instructions`      | this call only        |
 | the record the user is looking at     | the call's `context`, as data  | this call only        |
 | the user's own words, if any          | `prompt`                       | the thread            |
@@ -73,10 +73,11 @@ Grouped by the step of your code where you meet them, in the order of the exampl
 
 Examples: [8.0](#80-the-configuration), [8.1](#81-an-output-rule-blocks-a-draft-that-promises-a-discount), [8.2](#82-the-tenants-admin-sets-the-voice-of-every-draft).
 
-| Symbol                                                     | What you use it for  |
-|------------------------------------------------------------|----------------------|
-| [`IAIProfile`](../30-api/index/interfaces/IAIProfile.md)   | `promptAddendum`     |
-| [`IOutputRule`](../30-api/index/interfaces/IOutputRule.md) | a check on the draft |
+| Symbol                                                                                                                                                | What you use it for                                     |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|
+| [`IAIProfile`](../30-api/index/interfaces/IAIProfile.md)                                                                                              | `promptAddendum`                                        |
+| [`AIGateway.aiProfileStore`](../30-api/index/classes/AIGateway.md#aiprofilestore), [`IAIProfileStore`](../30-api/index/interfaces/IAIProfileStore.md) | `upsertProfile`: the admin changes the voice at runtime |
+| [`IOutputRule`](../30-api/index/interfaces/IOutputRule.md)                                                                                            | a check on the draft                                    |
 
 ### 6.2 Make the call
 
@@ -119,9 +120,9 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The profiles carry the tenant's voice; `support-claude` runs on a model that takes a temperature (8.7); 8.1 builds it with an output rule. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The profiles carry the tenant's voice; `support-claude` runs on a model that takes a temperature (8.7); 8.1 builds it with an output rule, which 8.4 needs to show a withdrawn draft. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
-> **The bigger picture:** Your server builds this gateway once at startup. The voice of each tenant lives in its profiles; the output rule is registered here once and checks the draft of every call.
+> **The bigger picture:** Your server builds this gateway once at startup. The voice of each tenant lives in its profiles; an output rule, registered once at startup, checks the draft of every call (8.1).
 
 <details>
 <summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
@@ -308,7 +309,7 @@ await gateway.aiProfileStore.upsertProfile({
 
 ### 8.3 The agent asks for a reply to a customer email
 
-`ask()` gets the email as `context` and the rules of this screen as `instructions`; the request itself is the `prompt`. An `ANSWER` response carries the draft in `text`, which goes into the editor.
+`ask()` gets the email as `context` and the conventions of this screen as `instructions`; the request itself is the `prompt`. An `ANSWER` response carries the draft in `text`, which goes into the editor.
 
 > **The bigger picture:** The "Draft reply" button of the support inbox: the agent opens an email, clicks, and edits the draft before sending it. The gateway sends nothing.
 
@@ -331,7 +332,7 @@ if (result.kind === EGatewayResponseKind.ANSWER) editor.setDraft(result.text);
 
 ### 8.4 The draft streams into the editor as the model writes it
 
-The same call, read through `events`: each `TEXT_DELTA` appends to the editor. When an output rule blocks the finished draft, `ANSWER_WITHDRAWN` arrives last and the editor clears what it showed.
+The same call, read through `events`: each `TEXT_DELTA` appends to the editor. When an output rule blocks the finished draft, `ANSWER_WITHDRAWN` arrives last and the editor clears what it showed. On the gateway of 8.0, which has no rule, it arrives only when the call is stopped; build it with the rule of 8.1 to see it.
 
 > **The bigger picture:** The same "Draft reply" button, with the text appearing as it is written instead of after a wait; the withdrawn event is the moment the rule of 8.1 says no.
 
@@ -350,7 +351,7 @@ const {events, response} = gateway.ask({
 });
 for await (const event of events) {
   if (event.kind === ELLMClientEventKind.TEXT_DELTA) editor.append(event.text ?? "");
-  if (event.kind === ELLMClientEventKind.ANSWER_WITHDRAWN) editor.setDraft(""); // an output rule blocked the draft
+  if (event.kind === ELLMClientEventKind.ANSWER_WITHDRAWN) editor.setDraft(""); // an output rule blocked the draft, or the call was stopped
 }
 ```
 

@@ -27,7 +27,7 @@ The run, the question card, the resume and the submit tool are all in this path.
 
 - Switch on the model's questions to the user. Example: [8.0](#80-the-configuration).
 - Render a `USER_QUESTION` card and resume with the answers. Example: [8.3](#83-the-screen-renders-the-question-card-and-resumes-with-the-answers).
-- Return the completed form as `structured`, or store it with a tool that ends the run. Examples: [8.1](#81-the-form-as-a-zod-schema-and-a-submit-tool-that-ends-the-run), [8.5](#85-the-form-as-the-structured-answer-of-one-message-without-a-tool).
+- Return the completed form as `structured`, or store it with a tool that ends the run. Examples: [8.4](#84-resume-until-the-report-is-filed), [8.5](#85-the-form-as-the-structured-answer-of-one-message-without-a-tool).
 - Require a check tool before the submit tool. Example: [8.0](#80-the-configuration).
 
 ## 4. The parts
@@ -80,7 +80,6 @@ Examples: [8.0](#80-the-configuration), [8.1](#81-the-form-as-a-zod-schema-and-a
 | [`IHumanGateConfig`](../30-api/index/interfaces/IHumanGateConfig.md)                                          | `userQuestions.enabled`    |
 | [`defineTool`](../30-api/index/functions/defineTool.md), [`IToolDef`](../30-api/index/interfaces/IToolDef.md) | the submit tool, `endsRun` |
 | [`IToolPolicyConfig`](../30-api/index/interfaces/IToolPolicyConfig.md)                                        | `requires`                 |
-| [`BUILT_IN_TOOL_NAMES`](../30-api/index/variables/BUILT_IN_TOOL_NAMES.md)                                     | `ASK_USER_QUESTION`        |
 
 ### 6.2 Start the conversation
 

@@ -24,9 +24,11 @@ by the model through two built-in tools, and by your application. Both are data 
 ## 3. What you will be able to do
 
 - Choose the strategy of a thread's memory: `SLIDING_WINDOW` or `SUMMARY_BUFFER`, per gateway or per profile. Examples: [8.0](#80-the-configuration), [8.1](#81-a-profile-keeps-the-exact-words-of-the-thread-without-a-summary).
+- Continue a conversation on its thread, and tell the user when its start is out of sight. Example: [8.2](#82-the-user-continues-a-conversation-on-the-same-thread).
 - Show and reset "the memory of this chat". Example: [8.4](#84-the-memory-of-this-chat-panel-shows-and-resets-the-thread-memory).
 - Let the model remember and forget user facts, with the user's approval. Example: [8.3](#83-the-user-asks-the-model-to-remember-a-fact-and-approves-it).
 - Read, set and remove the facts from your application. Example: [8.5](#85-the-what-you-know-about-me-screen-reads-sets-and-removes-the-facts).
+- Wait in a test for the memory the call wrote in the background. Example: [8.6](#86-a-test-waits-for-the-background-memory-update-before-reading-it).
 - Erase or pseudonymise a user on request. Example: [8.7](#87-a-users-data-is-erased-or-pseudonymised-on-request).
 
 ## 4. The parts

@@ -27,12 +27,12 @@ chapter 8 writes them.
 
 ## 3. What you will be able to do
 
-- Make a tool call wait for an approver, always or per input. Example: [8.1](#81-a-tool-whose-every-call-waits-for-an-approver).
+- Make every call of a tool wait for an approver. Example: [8.1](#81-a-tool-whose-every-call-waits-for-an-approver).
 - Require approval per tenant with the profile's `approvals`. Example: [8.2](#82-one-tenant-requires-approval-where-the-tools-policy-allows-the-call).
 - Render the cards of a `PAUSED` response and resume with `APPROVE`, `EDIT`, `REJECT` or `ANSWER`. Examples: [8.3](#83-the-run-pauses-and-the-approver-approves), [8.4](#84-the-approver-edits-or-rejects-the-call).
 - Let the model ask the user questions and continue with the answers. Example: [8.6](#86-the-model-asks-the-user-a-question).
 - Send every answer of a profile to a reviewer. Example: [8.7](#87-a-reviewer-checks-the-answer-before-the-user-sees-it).
-- List, cancel and expire the paused runs. Example: [8.9](#89-the-pending-approvals-inbox-the-cancel-button-the-expiry-job).
+- List, cancel and expire the paused runs. Example: [8.9](#89-the-users-waiting-runs-the-cancel-button-the-expiry-job).
 
 ## 4. The parts
 
@@ -113,11 +113,11 @@ Examples: [8.3](#83-the-run-pauses-and-the-approver-approves), [8.4](#84-the-app
 
 ### 6.4 The paused runs afterwards
 
-Examples: [8.0](#80-the-configuration), [8.7](#87-a-reviewer-checks-the-answer-before-the-user-sees-it), [8.9](#89-the-pending-approvals-inbox-the-cancel-button-the-expiry-job).
+Examples: [8.0](#80-the-configuration), [8.7](#87-a-reviewer-checks-the-answer-before-the-user-sees-it), [8.9](#89-the-users-waiting-runs-the-cancel-button-the-expiry-job).
 
 | Symbol                                                                                                                                                                                                                         | What you use it for                |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
-| [`AIGateway.getPausedRun`](../30-api/index/classes/AIGateway.md#getpausedrun), [`listPausedRuns`](../30-api/index/classes/AIGateway.md#listpausedruns), [`IPausedRunSummary`](../30-api/index/interfaces/IPausedRunSummary.md) | the approval inbox                 |
+| [`AIGateway.getPausedRun`](../30-api/index/classes/AIGateway.md#getpausedrun), [`listPausedRuns`](../30-api/index/classes/AIGateway.md#listpausedruns), [`IPausedRunSummary`](../30-api/index/interfaces/IPausedRunSummary.md) | the asker's waiting runs           |
 | [`AIGateway.cancelRun`](../30-api/index/classes/AIGateway.md#cancelrun), [`expirePausedRuns`](../30-api/index/classes/AIGateway.md#expirepausedruns)                                                                           | closing a pause without a decision |
 | [`IRunRepository`](../30-api/index/interfaces/IRunRepository.md), [`InMemoryRunRepository`](../30-api/index/classes/InMemoryRunRepository.md)                                                                                  | where paused runs are kept         |
 
@@ -435,25 +435,28 @@ Instead of approving, the approver changes the input of the call (the policy dec
 ```ts
 import {EResumeAction} from "dyna-ai-gateway";
 
-// the ids of a post_credit_note card the approver opened: from the PAUSED response of 8.2 or listPausedRuns (8.9)
+// the ids of a post_credit_note card the approver opened: from the PAUSED response of 8.2 your server passed on to the approver (listPausedRuns lists only the asker's own runs)
 declare const runId: string;
 declare const pauseId: string;
+declare const choice: "edit" | "reject"; // the button the approver pressed
 
-// The approver lowers the amount: the policy decides again on the edited input
-await gateway.resume({
-  userContext: approverContext,
-  runId,
-  pauseId,
-  decisions: [{action: EResumeAction.EDIT, editedInput: {invoiceNo: "2024-1187", amount: 150, reason: "Double shipping fee"}}],
-}).response;
-
-// Or refuses it: the tool does not run, the model reads the text and answers without it
-await gateway.resume({
-  userContext: approverContext,
-  runId,
-  pauseId,
-  decisions: [{action: EResumeAction.REJECT, text: "Shipping was charged once; check the bank statement."}],
-}).response;
+if (choice === "edit") {
+  // The approver lowers the amount: the policy decides again on the edited input
+  await gateway.resume({
+    userContext: approverContext,
+    runId,
+    pauseId,
+    decisions: [{action: EResumeAction.EDIT, editedInput: {invoiceNo: "2024-1187", amount: 150, reason: "Double shipping fee"}}],
+  }).response;
+} else {
+  // Or refuses it: the tool does not run, the model reads the text and answers without it
+  await gateway.resume({
+    userContext: approverContext,
+    runId,
+    pauseId,
+    decisions: [{action: EResumeAction.REJECT, text: "Shipping was charged once; check the bank statement."}],
+  }).response;
+} // one decision per pause: a second resume of the same pause is a 409
 ```
 
 A pause with one card takes its decision without `callId`.
@@ -467,7 +470,7 @@ The decision names another `profileId`: the run continues on that profile, and t
 ```ts
 import {EResumeAction} from "dyna-ai-gateway";
 
-// the ids of the card the approver opened: from the PAUSED response or listPausedRuns (8.9)
+// the ids of the card the approver opened: from the PAUSED response your server passed on to the approver (listPausedRuns lists only the asker's own runs)
 declare const runId: string;
 declare const pauseId: string;
 
@@ -541,7 +544,7 @@ const asked = await gateway.run({
 
 if (asked.kind === EGatewayResponseKind.PAUSED) {
   const {runId} = asked.envelopes[0];
-  const {pauseId} = asked; // or both from listPausedRuns (8.9)
+  const {pauseId} = asked; // your server passes both on to the reviewer
 
   const run = await gateway.getPausedRun({tenantId: "acme", runId}); // raw ids: your host decides who may review
   for (const envelope of run.pending ?? []) {
@@ -583,7 +586,7 @@ const settle = async (
 };
 ```
 
-### 8.9 The pending-approvals inbox, the cancel button, the expiry job
+### 8.9 The user's waiting runs, the cancel button, the expiry job
 
 `listPausedRuns` lists the calling user's paused runs, `cancelRun` closes one, and `expirePausedRuns` closes those that waited longer than `humanGate.timeoutMs`.
 

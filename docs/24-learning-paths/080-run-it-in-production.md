@@ -83,10 +83,10 @@ Examples: [8.0](#80-the-configuration), [8.1](#81-your-own-database-behind-every
 
 Examples: [8.2](#82-a-per-tenant-budget-decides-every-model-call), [8.5](#85-the-budget-refuses-a-call-and-the-user-reads-why).
 
-| Symbol                                                                                                                                                                                                                                                                     | What you use it for |
-|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------|
-| [`IUsageAdapter`](../30-api/index/interfaces/IUsageAdapter.md), [`IUsageCheckArgs`](../30-api/index/interfaces/IUsageCheckArgs.md), [`IUsageCheckResult`](../30-api/index/interfaces/IUsageCheckResult.md), [`IUsageAddArgs`](../30-api/index/interfaces/IUsageAddArgs.md) | the spend decision  |
-| [`USAGE_DENIED_ISSUE_CODE`](../30-api/index/variables/USAGE_DENIED_ISSUE_CODE.md), [`isUsageDeniedError`](../30-api/index/functions/isUsageDeniedError.md)                                                                                                                 | a denial            |
+| Symbol                                                                                                                                                                                                                                                                                                                       | What you use it for |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------|
+| [`IUsageAdapter`](../30-api/index/interfaces/IUsageAdapter.md), [`IUsageCheckArgs`](../30-api/index/interfaces/IUsageCheckArgs.md), [`IUsageCheckResult`](../30-api/index/interfaces/IUsageCheckResult.md), [`IUsageAddArgs`](../30-api/index/interfaces/IUsageAddArgs.md), [`IUsage`](../30-api/index/interfaces/IUsage.md) | the spend decision  |
+| [`USAGE_DENIED_ISSUE_CODE`](../30-api/index/variables/USAGE_DENIED_ISSUE_CODE.md), [`isUsageDeniedError`](../30-api/index/functions/isUsageDeniedError.md)                                                                                                                                                                   | a denial            |
 
 ### 6.3 Stop a call, and its time limits
 
@@ -151,7 +151,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The in-memory stores of Installation with the settings that matter in production; 8.1 replaces the stores with yours, 8.3 builds it with a tool. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The in-memory stores of Installation with the settings that matter in production; 8.1 replaces the stores with yours; `fetch_bank_statement` is the tool 8.3 explains. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup, with the timeouts, the thread lease and the stores it needs in production; every request of every tenant goes through it.
 
@@ -213,8 +213,10 @@ const baseConfig = {
 </details>
 
 ```ts
+import {z} from "zod";
 import {
   AIGateway,
+  defineTool,
   IAIProfile,
   IUserContext,
   InMemoryAIProfileRepository,
@@ -225,13 +227,24 @@ import {
   InMemoryUsageAdapter,
 } from "dyna-ai-gateway";
 
+// 8.3: the signal of the call reaches the HTTP request
+const fetchStatement = defineTool({
+  name: "fetch_bank_statement",
+  description: "Returns the bank statement of a month: {lines}.",
+  inputSchema: z.object({month: z.string()}),
+  tags: ["bank"],
+  timeoutMs: 20_000,
+  execute: async ({input, abortSignal}) =>
+    (await fetch(`https://bank.example/statements/${input.month}`, {signal: abortSignal})).json(), // the signal reaches the HTTP call
+});
+
 const accounting: IAIProfile = {
   id: "accounting",
   tenantId: "acme",
   name: "Accounting assistant",
   modelId: "gpt-5-mini",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
-  allowedTools: ["fetch_bank_statement"], // the tool of 8.3
+  allowedTools: ["fetch_bank_statement"],
   approvals: [],
   limits: {maxStepsPerRun: 6, maxOutputTokens: 2_000},
 };
@@ -251,7 +264,7 @@ const config: IAIGatewayConfig = {
   humanGate: {timeoutMs: 24 * 60 * 60_000, userQuestions: {enabled: false}},
   // one model call: its timeout and its retries
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}, timeoutMs: 60_000, maxRetries: 2},
-  toolRegistry: {tools: [], toolTimeoutMs: 15_000}, // the timeout of one tool call; 8.3 adds a tool
+  toolRegistry: {tools: [fetchStatement], toolTimeoutMs: 15_000}, // the timeout of one tool call; a tool's own timeoutMs wins
   // the stable prompt block is cached, per tenant
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
 
@@ -360,26 +373,20 @@ const gateway = new AIGateway({...config, usageGuard: {adapter: new TenantBudget
 
 ### 8.3 A tool that stops when the call is stopped
 
-The tool's `execute` passes its `abortSignal` to `fetch`, so the HTTP request ends when the tool passes its own `timeoutMs` (it wins over `toolTimeoutMs`) or when the call is stopped. A tool that ignores the signal keeps running, and its late result is dropped.
+`fetch_bank_statement` (8.0) passes its `abortSignal` to `fetch`, so the HTTP request ends when the tool passes its own `timeoutMs` (it wins over `toolTimeoutMs`) or when the call is stopped. A tool that ignores the signal keeps running, and its late result is dropped.
 
 > **The bigger picture:** Registered at startup in `toolRegistry.tools`; it matters when a user presses stop, or a deadline passes, in the middle of a slow request to the bank.
 
 ```ts
-import {z} from "zod";
-import {defineTool} from "dyna-ai-gateway";
+import {EGatewayResponseKind} from "dyna-ai-gateway";
 
-const fetchStatement = defineTool({
-  name: "fetch_bank_statement",
-  description: "Returns the bank statement of a month: {lines}.",
-  inputSchema: z.object({month: z.string()}),
-  tags: ["bank"],
-  timeoutMs: 20_000,
-  execute: async ({input, abortSignal}) =>
-    (await fetch(`https://bank.example/statements/${input.month}`, {signal: abortSignal})).json(), // the signal reaches the HTTP call
-});
-
-// the gateway of 8.0 with this tool, in place of the gateway line of 8.0
-const gateway = new AIGateway({...config, toolRegistry: {...config.toolRegistry, tools: [fetchStatement]}});
+const result = await gateway.run({
+  userContext,
+  profileId: "accounting",
+  prompt: "What came in on the bank account in October?",
+  kbFilters: {libraryIds: [], bookIds: []},
+}).response; // the model calls fetch_bank_statement; stopping the call (8.4) ends its HTTP request too
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text);
 ```
 
 ### 8.4 The user stops a run, or its deadline passes

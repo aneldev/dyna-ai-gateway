@@ -80,12 +80,11 @@ Grouped by the step of your code where you meet them, in the order of the exampl
 
 Example: [8.0](#80-the-configuration).
 
-| Symbol                                                                                                                                                                                                                     | What you use it for               |
-|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|
-| [`IEmbedderConfig`](../30-api/index/interfaces/IEmbedderConfig.md), [`IVectorStoreConfig`](../30-api/index/interfaces/IVectorStoreConfig.md), [`IQueryRewriterConfig`](../30-api/index/interfaces/IQueryRewriterConfig.md) | the three required config keys    |
-| [`IKbRetrieverConfig`](../30-api/index/interfaces/IKbRetrieverConfig.md), [`IMdChunkerConfig`](../30-api/index/interfaces/IMdChunkerConfig.md), [`IKbIngestorConfig`](../30-api/index/interfaces/IKbIngestorConfig.md)     | the optional tuning               |
-| [`IVectorIndexAdapter`](../30-api/index/interfaces/IVectorIndexAdapter.md), [`InMemoryVectorIndexAdapter`](../30-api/index/classes/InMemoryVectorIndexAdapter.md)                                                          | the index                         |
-| [`IChunkRecord`](../30-api/index/interfaces/IChunkRecord.md), [`IChunkHit`](../30-api/index/interfaces/IChunkHit.md)                                                                                                       | what the index stores and returns |
+| Symbol                                                                                                                                                                                                                     | What you use it for            |
+|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------|
+| [`IEmbedderConfig`](../30-api/index/interfaces/IEmbedderConfig.md), [`IVectorStoreConfig`](../30-api/index/interfaces/IVectorStoreConfig.md), [`IQueryRewriterConfig`](../30-api/index/interfaces/IQueryRewriterConfig.md) | the three required config keys |
+| [`IKbRetrieverConfig`](../30-api/index/interfaces/IKbRetrieverConfig.md), [`IMdChunkerConfig`](../30-api/index/interfaces/IMdChunkerConfig.md), [`IKbIngestorConfig`](../30-api/index/interfaces/IKbIngestorConfig.md)     | the optional tuning            |
+| [`IVectorIndexAdapter`](../30-api/index/interfaces/IVectorIndexAdapter.md), [`InMemoryVectorIndexAdapter`](../30-api/index/classes/InMemoryVectorIndexAdapter.md)                                                          | the index                      |
 
 ### 6.2 Ingest the documents
 
@@ -121,11 +120,12 @@ Grouped by the part of the gateway you replace.
 
 ### 7.2 The search
 
-| Symbol                                                           | Replace it when                                                             |
-|------------------------------------------------------------------|-----------------------------------------------------------------------------|
-| [`IVectorStore`](../30-api/index/interfaces/IVectorStore.md)     | chunks are stored and searched your way; an adapter is enough in most cases |
-| [`IQueryRewriter`](../30-api/index/interfaces/IQueryRewriter.md) | the follow-up is rewritten your way                                         |
-| [`IKbRetriever`](../30-api/index/interfaces/IKbRetriever.md)     | you decide which chunks reach the model                                     |
+| Symbol                                                                                                               | Replace it when                                                              |
+|----------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
+| [`IVectorStore`](../30-api/index/interfaces/IVectorStore.md)                                                         | chunks are stored and searched your way; an adapter is enough in most cases  |
+| [`IQueryRewriter`](../30-api/index/interfaces/IQueryRewriter.md)                                                     | the follow-up is rewritten your way                                          |
+| [`IKbRetriever`](../30-api/index/interfaces/IKbRetriever.md)                                                         | you decide which chunks reach the model                                      |
+| [`IChunkRecord`](../30-api/index/interfaces/IChunkRecord.md), [`IChunkHit`](../30-api/index/interfaces/IChunkHit.md) | you write an `IVectorIndexAdapter`: what it stores and what a search returns |
 
 ### 7.3 Plugging your class in
 
@@ -328,7 +328,7 @@ const everyLibrary = gateway.ask({
 
 ### 8.4 A call that searches no document
 
-With empty `libraryIds` and `bookIds` the call runs no search: the model gets no excerpts and the answer has no citations.
+With an empty `libraryIds` the call runs no search: the model gets no excerpts and the answer has no citations.
 
 > **The bigger picture:** A feature of the same application that has nothing to do with the documents, such as writing a newsletter greeting, on the same profile.
 
@@ -384,7 +384,7 @@ const followUp = await gateway.ask({
 
 ### 8.7 The index follows the moves, deletions and rebuilds of the editor
 
-`moveBook` changes the library of a book's chunks without embedding them again, `removeDocument` deletes a document's chunks, and `reindexBook` ingests every document you pass, with one report per document; a failed one keeps its old chunks.
+`moveBook` changes the library of a book's chunks without embedding them again, `removeDocument` deletes a document's chunks, and `reindexBook` ingests every document you pass, with one report per document; a failed one keeps its old chunks. A refusal of your usage adapter is not reported: it throws and stops the book, and the documents done before it stay.
 
 > **The bigger picture:** The other endpoints of your documents editor (move a book, delete a page) and a maintenance job that rebuilds a book, for example after the embedding model changed.
 

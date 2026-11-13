@@ -218,7 +218,7 @@ export interface IAIGatewayConfig {
    * @default {}
    */
   kbIngestor?: IKbIngestorConfig;
-  /** Platform-wide cheap model for the helper calls (memory, query rewrite, judge) when a profile names none. */
+  /** Platform-wide cheap model for the helper calls (memory, query rewrite) when a profile names none; a judge falls back to the profile's own model. */
   defaultCheapModelId: string;
 }
 
