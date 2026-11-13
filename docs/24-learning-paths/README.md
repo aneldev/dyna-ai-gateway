@@ -58,5 +58,8 @@ The examples run on the `gateway` of the path's 8.0, built from the stores of [I
 and on the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices.load` or `ledger`
 stand for your application's own code.
 
+Every example is server code: the gateway is [server-only](../10-getting-started/20-installation.md). Its bigger-picture
+line says where on your server it sits, for example the start-up, the route behind a screen, or a scheduled job.
+
 Each part, with all its options, is in [Learn the Gateway](../20-learn-the-gateway/000-intro.md). How the parts are
 built is in [Architecture](../60-architecture/10-architecture-and-trade-offs.md); reading it is optional.

@@ -315,7 +315,7 @@ const shown = await Promise.all((await gateway.getTurns({userContext, threadId})
 
 `AIGatewayVercelUi` serves the endpoints of the AI SDK's `useChat`: `chat` streams the answer to the last user message, `history` returns the messages of a thread. The user comes from your session, never from the request body.
 
-> **The bigger picture:** A front end built on `useChat`: two routes take the place of the client code of 8.4 and the `getTurns` of 8.2.
+> **The bigger picture:** A front end built on `useChat`: two routes take the place of the socket code of 8.4 and the `getTurns` of 8.2.
 
 ```ts
 import {AIGatewayVercelUi} from "dyna-ai-gateway/vercel-ui";
