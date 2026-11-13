@@ -115,20 +115,22 @@ Grouped by the part of the gateway you replace.
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The profiles carry the tenant's voice; `support-claude` runs on a model that takes a temperature (8.7); the rule is the one of 8.1. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The profiles carry the tenant's voice; `support-claude` runs on a model that takes a temperature (8.7); 8.1 builds it with an output rule. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup. The voice of each tenant lives in its profiles; the output rule is registered here once and checks the draft of every call.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryBlobAdapter,
   InMemoryPromptTemplateRepository,
   InMemoryRunRepository,
@@ -138,6 +140,33 @@ import {
   InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -166,6 +195,7 @@ import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   IModelInfo,
   EModelProvider,
   InMemoryAIProfileRepository,
@@ -218,11 +248,20 @@ const config: IAIGatewayConfig = {
   modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small, claudeHaiku]})},
   // the promptAddendum of each profile is the tenant's voice
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [support, supportClaude]})},
-  guardrails: {outputRules: [noDiscountPromises]}, // 8.1: a check on every draft
   ...baseConfig, // the other required keys, collapsed above
 };
 
 const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
 ```
 
 ### 8.1 An output rule blocks a draft that promises a discount
@@ -232,7 +271,7 @@ An `IOutputRule` in `guardrails.outputRules` runs on the answer after the model 
 > **The bigger picture:** A rule of the business, written by your developers and registered at startup: whatever the model writes, support never promises a discount the shop did not decide.
 
 ```ts
-import {EIssueSeverity, IIssue, IOutputRule} from "dyna-ai-gateway";
+import {EIssueSeverity, IIssue, IOutputRule, AIGateway} from "dyna-ai-gateway";
 
 const noDiscountPromises: IOutputRule = {
   name: "no_discount_promises",
@@ -241,6 +280,9 @@ const noDiscountPromises: IOutputRule = {
       ? [{code: "discount_promise", message: "The draft promises a discount", severity: EIssueSeverity.ERROR}]
       : [],
 };
+
+// the gateway of 8.0 with this rule, in place of the gateway line of 8.0
+const gateway = new AIGateway({...config, guardrails: {...config.guardrails, outputRules: [noDiscountPromises]}});
 ```
 
 ### 8.2 The tenant's admin sets the voice of every draft
@@ -250,19 +292,10 @@ const noDiscountPromises: IOutputRule = {
 > **The bigger picture:** The settings screen of one tenant: its admin adds a sign-off to the voice once, and every draft written afterwards for that tenant carries it.
 
 ```ts
-import {IAIProfile} from "dyna-ai-gateway";
-
-const support: IAIProfile = {
-  id: "support",
+await gateway.aiProfileStore.upsertProfile({
   tenantId: "acme",
-  name: "Customer support writer",
-  modelId: "gpt-5-mini",
-  promptAddendum: "You write for Acme, a family-run shop. Warm, short sentences, no exclamation marks. Sign as 'The Acme team'.",
-  allowedTools: [],
-  approvals: [],
-  limits: {maxStepsPerRun: 1, maxOutputTokens: 1_200},
-};
-await gateway.aiProfileStore.upsertProfile({tenantId: "acme", profile: support});
+  profile: {...support, promptAddendum: `${support.promptAddendum} Sign as 'The Acme team'.`}, // the profile of 8.0, stored whole
+});
 ```
 
 ### 8.3 The agent asks for a reply to a customer email
@@ -273,6 +306,9 @@ await gateway.aiProfileStore.upsertProfile({tenantId: "acme", profile: support})
 
 ```ts
 import {EGatewayResponseKind} from "dyna-ai-gateway";
+
+declare const email: {from: string; subject: string; body: string; order: string}; // the email on screen
+declare const editor: {setDraft(text: string): void; append(text: string): void}; // your editor
 
 const result = await gateway.ask({
   userContext,
@@ -294,6 +330,9 @@ The same call, read through `events`: each `TEXT_DELTA` appends to the editor. W
 ```ts
 import {ELLMClientEventKind} from "dyna-ai-gateway";
 
+declare const email: {from: string; subject: string; body: string; order: string}; // the email on screen
+declare const editor: {setDraft(text: string): void; append(text: string): void}; // your editor
+
 const {events, response} = gateway.ask({
   userContext,
   profileId: "support",
@@ -314,6 +353,8 @@ The product's data is the `context`, and `instructions` forbid any fact that is 
 > **The bigger picture:** The product editor of the shop's back office: a merchant fills the fields of a product and asks for the description of the shop page.
 
 ```ts
+declare const product: object; // the product record: name, material, sizes, care
+
 const {response} = gateway.ask({
   userContext,
   profileId: "support",
@@ -332,6 +373,8 @@ const {response} = gateway.ask({
 
 ```ts
 import {EOutputFormat} from "dyna-ai-gateway";
+
+declare const invoice: {invoiceNo: string; totalCents: number; currency: string}; // the invoice on screen
 
 const {response} = gateway.ask({
   userContext,

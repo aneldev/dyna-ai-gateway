@@ -135,20 +135,22 @@ Grouped by the part of the gateway you replace.
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The examples ingest documents and ask within their scope. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The examples ingest documents and ask within their scope. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup. The index is shared by the whole server; the documents of each tenant are kept apart in it, by `tenantId`.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryBlobAdapter,
   InMemoryPromptTemplateRepository,
   InMemoryRunRepository,
@@ -157,6 +159,33 @@ import {
   InMemoryUsageAdapter,
   InMemoryUserMemoryRepository,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -180,6 +209,7 @@ import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
@@ -218,6 +248,16 @@ const config: IAIGatewayConfig = {
 };
 
 const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
 ```
 
 ### 8.1 A document is ingested when the editor saves it
@@ -368,7 +408,9 @@ Each embedding call of an ingestion is checked by your usage adapter. A refusal 
 > **The bigger picture:** The save endpoint of the editor, when the tenant has used up its budget: the admin sees that the document was not indexed, instead of a silent gap in the answers.
 
 ```ts
-import {isUsageDeniedError} from "dyna-ai-gateway";
+import {isUsageDeniedError, IKbDocument} from "dyna-ai-gateway";
+
+declare const refunds: IKbDocument; // the document of 8.1, edited by your editor
 
 try {
   await gateway.kbIngestor.ingestDocument({tenantId: "acme", doc: refunds, userId: "admin-3"});

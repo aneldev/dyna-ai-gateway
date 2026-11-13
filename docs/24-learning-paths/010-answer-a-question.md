@@ -90,7 +90,7 @@ Examples: [8.0](#80-the-configuration), [8.7](#87-an-admin-adds-a-model-and-a-pr
 
 ### 6.2 Make the call
 
-Examples: [8.1](#81-the-user-asks-a-question-and-gets-one-answer), [8.2](#82-the-answer-streams-to-the-screen-as-the-model-writes-it), [8.3](#83-the-screen-passes-the-open-record-and-its-own-instructions), [8.4](#84-the-answer-comes-back-as-typed-data), [8.5](#85-the-answer-is-plain-text-for-an-sms), [8.6](#86-the-user-asks-a-follow-up-on-the-same-thread), [8.8](#88-the-next-question-goes-to-another-model), [8.9](#89-the-call-sets-a-sampling-temperature), [8.10](#810-the-call-fails-or-is-rejected).
+Examples: [8.0](#80-the-configuration), [8.1](#81-the-user-asks-a-question-and-gets-one-answer), [8.2](#82-the-answer-streams-to-the-screen-as-the-model-writes-it), [8.3](#83-the-screen-passes-the-open-record-and-its-own-instructions), [8.4](#84-the-answer-comes-back-as-typed-data), [8.5](#85-the-answer-is-plain-text-for-an-sms), [8.6](#86-the-user-asks-a-follow-up-on-the-same-thread), [8.8](#88-the-next-question-goes-to-another-model), [8.9](#89-the-call-sets-a-sampling-temperature), [8.10](#810-the-call-fails-or-is-rejected).
 
 | Symbol                                                               | What you use it for                                                                         |
 |----------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
@@ -145,20 +145,22 @@ The pattern: [What can be injected](../60-architecture/50-live-adjustment-and-de
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The examples ask on one profile; 8.7 adds a model and a second profile while the server runs. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The examples ask on one profile; 8.7 adds a model and a second profile while the server runs. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup, with the providers, the models and the profile of the tenant; every question of every user goes through it.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryBlobAdapter,
   InMemoryPromptTemplateRepository,
   InMemoryRunRepository,
@@ -167,6 +169,33 @@ import {
   InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -193,6 +222,7 @@ import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
@@ -227,6 +257,16 @@ const config: IAIGatewayConfig = {
 };
 
 const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
 ```
 
 ### 8.1 The user asks a question and gets one answer
@@ -278,6 +318,8 @@ const result = await response; // the stream ended because the response settled
 > **The bigger picture:** The invoice screen: the user clicks "check this invoice", and your code sends the invoice on screen and the format that screen wants.
 
 ```ts
+declare const invoice: object; // the invoice on screen, from your database
+
 const result = await gateway.ask({
   userContext,
   profileId: "accounting",
@@ -297,6 +339,8 @@ With an `outputSchema`, the answer carries `structured`, an object of the schema
 ```ts
 import {z} from "zod";
 import {EGatewayResponseKind} from "dyna-ai-gateway";
+
+declare const invoice: object; // the invoice on screen, from your database
 
 const result = await gateway.ask({
   userContext,
@@ -380,11 +424,11 @@ await gateway.modelRegistry.upsertModel({
   },
 });
 
-const accounting = await gateway.aiProfileStore.getProfile({tenantId: "acme", profileId: "accounting"});
+const stored = await gateway.aiProfileStore.getProfile({tenantId: "acme", profileId: "accounting"});
 await gateway.aiProfileStore.upsertProfile({
   tenantId: "acme",
   profile: {
-    ...accounting, // the profile is stored whole: read, spread, save
+    ...stored, // the profile is stored whole: read, spread, save
     id: "accounting-claude",
     name: "Accounting on Claude",
     modelId: "claude-haiku-4-5",
@@ -401,6 +445,8 @@ A thread is bound to no profile. The call names `accounting-claude`, the profile
 > **The bigger picture:** A "try another model" button in the chat, or a second opinion on an answer the user doubts.
 
 ```ts
+declare const threadId: string; // the thread your screen has open
+
 const {response} = gateway.ask({
   userContext,
   profileId: "accounting-claude", // a second profile of the tenant, on another model
@@ -434,6 +480,9 @@ const {response} = gateway.ask({
 
 ```ts
 import {EGatewayResponseKind} from "dyna-ai-gateway";
+
+declare const invoice: object; // the invoice on screen, from your database
+declare function showToUser(text: string): void; // your UI
 
 try {
   const result = await gateway.ask({

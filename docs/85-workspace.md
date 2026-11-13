@@ -80,11 +80,12 @@ pnpm docs:check-samples [folder…]   # type-check the TypeScript samples (defau
   index that drifted from its files. Mermaid renders in the browser, so without this check a broken diagram only shows on
   the live page. The index is the "The paths" table of `docs/24-learning-paths/README.md`: every `<number>-<name>.md` of
   the folder once, in file order, its link text the page's `h1`. A new path is a file and a row.
-- **The sample check** (`scripts/check-doc-samples/check.mjs`) turns each page into one `.ts` file under
-  `temp/check-doc-samples/` and runs `tsc` on them with the root `tsconfig.base.json`; `dyna-ai-gateway` resolves to the
-  gateway's `src/`, so a sample is checked against the code as it is now. The samples of a page run in nested blocks, so a
-  later sample sees the names of the earlier ones. What a page takes as given (your application's objects, the ids your
-  screen holds) is declared in `scripts/check-doc-samples/prelude.ts`: a new name a sample uses goes there. The learning
+- **The sample check** (`scripts/check-doc-samples/check.mjs`) compiles each example as a developer pastes it: one `.ts`
+  file under `temp/check-doc-samples/` per `### 8.N`, holding the samples of 8.0 and then those of 8.N at the top level of
+  one module, and runs `tsc` on them with the root `tsconfig.base.json`; `dyna-ai-gateway` resolves to the gateway's
+  `src/`, so a sample is checked against the code as it is now. An example that declares its own `const gateway` replaces
+  the `const gateway = new AIGateway(config);` line of 8.0. There is no prelude: a name an example takes from the
+  application is a `declare` line of the example, and a name several examples run on is defined in 8.0. The learning
   paths hold whole samples; the other folders hold fragments that do not compile on their own, so they are not checked.
 - **Mermaid's node tooltips need d3-transition** (flowcharts, class and state diagrams):
   `website/src/clientModules/d3-transition.js` (a `clientModules` entry of the config) imports it before any diagram

@@ -59,6 +59,8 @@
     #   grouped by the part that is replaced; the last group says how a class is plugged in (IAIGatewayOverrides)
     # - Examples (8.0 is the IAIGatewayConfig the examples run on, each key commented with why)
     #   the required keys the path does not use go into baseConfig, a collapsed <details> block above it
+    #   8.0 + one example, pasted into one file, compile: what several examples run on is in 8.0,
+    #   what comes from the application is a `declare` line of the example (checked by docs:check-samples)
     #   each 8.x: a title that says what it does, a short description, a "The bigger picture" quote;
     #   in the order the application meets them (setup, the call, its variants, what follows)
     # - Pitfalls (What you shouldn't do)

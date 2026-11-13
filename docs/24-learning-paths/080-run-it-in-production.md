@@ -145,25 +145,54 @@ Grouped by the part of the gateway you replace.
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The in-memory stores of Installation with the settings that matter in production; 8.1 replaces the stores with yours, the tool is the one of 8.3. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The in-memory stores of Installation with the settings that matter in production; 8.1 replaces the stores with yours, 8.3 builds it with a tool. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup, with the timeouts, the thread lease and the stores it needs in production; every request of every tenant goes through it.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryBlobAdapter,
   InMemoryPromptTemplateRepository,
   InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -186,6 +215,7 @@ import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
@@ -219,7 +249,7 @@ const config: IAIGatewayConfig = {
   humanGate: {timeoutMs: 24 * 60 * 60_000, userQuestions: {enabled: false}},
   // one model call: its timeout and its retries
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}, timeoutMs: 60_000, maxRetries: 2},
-  toolRegistry: {tools: [fetchStatement], toolTimeoutMs: 15_000}, // one tool call: its timeout (8.3)
+  toolRegistry: {tools: [], toolTimeoutMs: 15_000}, // the timeout of one tool call; 8.3 adds a tool
   // the stable prompt block is cached, per tenant
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
 
@@ -230,6 +260,16 @@ const config: IAIGatewayConfig = {
 };
 
 const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
 ```
 
 ### 8.1 Your own database behind every store
@@ -239,7 +279,33 @@ Every in-memory store and adapter of 8.0 is replaced by a class of your applicat
 > **The bigger picture:** The step from development to production: the same configuration at startup, with the stores pointed at the database and the blob storage your application already runs.
 
 ```ts
-import {AIGateway} from "dyna-ai-gateway";
+import {
+  AIGateway,
+  IModelRegistryRepository,
+  IAIProfileRepository,
+  IPromptTemplateRepository,
+  IThreadRepository,
+  IRunRepository,
+  IUserMemoryRepository,
+  ITraceRepository,
+  IBlobAdapter,
+  IVectorIndexAdapter,
+  IUsageAdapter,
+} from "dyna-ai-gateway";
+
+// your database and your implementations of the store interfaces
+declare const db: unknown;
+declare const s3: unknown;
+declare const MyModelRegistryRepository: new (db: unknown) => IModelRegistryRepository;
+declare const MyAIProfileRepository: new (db: unknown) => IAIProfileRepository;
+declare const MyPromptTemplateRepository: new (db: unknown) => IPromptTemplateRepository;
+declare const MyThreadRepository: new (db: unknown) => IThreadRepository;
+declare const MyRunRepository: new (db: unknown) => IRunRepository;
+declare const MyUserMemoryRepository: new (db: unknown) => IUserMemoryRepository;
+declare const MyTraceRepository: new (db: unknown) => ITraceRepository;
+declare const MyBlobAdapter: new (s3: unknown) => IBlobAdapter;
+declare const MyVectorIndexAdapter: new (db: unknown) => IVectorIndexAdapter;
+declare const MyUsageAdapter: new (db: unknown) => IUsageAdapter;
 
 const gateway = new AIGateway({
   ...config,
@@ -263,7 +329,12 @@ const gateway = new AIGateway({
 > **The bigger picture:** The billing side of your product: the plan of each customer company sets its monthly budget, and the ledger the adapter writes feeds the usage page and the invoice.
 
 ```ts
-import {IUsageAdapter, IUsageAddArgs, IUsageCheckArgs, IUsageCheckResult} from "dyna-ai-gateway";
+import {IUsageAdapter, IUsageAddArgs, IUsageCheckArgs, IUsageCheckResult, IUsage} from "dyna-ai-gateway";
+
+declare const budgets: {
+  tokensLeft(tenantId: string): Promise<number>;
+  record(args: {tenantId: string; traceId: string; usage: IUsage; costUsd: number}): Promise<void>;
+}; // your budget table
 
 class TenantBudget implements IUsageAdapter {
   public async check(args: IUsageCheckArgs): Promise<IUsageCheckResult> {
@@ -283,11 +354,11 @@ class TenantBudget implements IUsageAdapter {
 
 The tool's `execute` passes its `abortSignal` to `fetch`, so the HTTP request ends when the tool passes its own `timeoutMs` (it wins over `toolTimeoutMs`) or when the call is stopped. A tool that ignores the signal keeps running, and its late result is dropped.
 
-> **The bigger picture:** Registered at startup in `toolRegistry.tools` of 8.0; it matters when a user presses stop, or a deadline passes, in the middle of a slow request to the bank.
+> **The bigger picture:** Registered at startup in `toolRegistry.tools`; it matters when a user presses stop, or a deadline passes, in the middle of a slow request to the bank.
 
 ```ts
 import {z} from "zod";
-import {defineTool} from "dyna-ai-gateway";
+import {defineTool, AIGateway} from "dyna-ai-gateway";
 
 const fetchStatement = defineTool({
   name: "fetch_bank_statement",
@@ -298,6 +369,9 @@ const fetchStatement = defineTool({
   execute: async ({input, abortSignal}) =>
     (await fetch(`https://bank.example/statements/${input.month}`, {signal: abortSignal})).json(), // the signal reaches the HTTP call
 });
+
+// the gateway of 8.0 with this tool, in place of the gateway line of 8.0
+const gateway = new AIGateway({...config, toolRegistry: {...config.toolRegistry, tools: [fetchStatement]}});
 ```
 
 ### 8.4 The user stops a run, or its deadline passes
@@ -335,6 +409,8 @@ When your `check` refuses a call, the response carries an issue with the code `U
 ```ts
 import {EGatewayResponseKind, USAGE_DENIED_ISSUE_CODE} from "dyna-ai-gateway";
 
+declare function showToUser(text: string): void; // your UI
+
 const result = await gateway.ask({userContext, profileId: "accounting", prompt: "Summarise October.", kbFilters: {libraryIds: [], bookIds: []}}).response;
 const denied = result.kind === EGatewayResponseKind.PAUSED ? undefined : result.issues.find(issue => issue.code === USAGE_DENIED_ISSUE_CODE);
 if (denied) showToUser(denied.userMessage ?? ""); // your denyUserMessage; denied.data?.denyCode is your denyCode
@@ -348,6 +424,8 @@ if (denied) showToUser(denied.userMessage ?? ""); // your denyUserMessage; denie
 
 ```ts
 import {ETraceKind} from "dyna-ai-gateway";
+
+declare const threadId: string; // the thread the operator opened
 
 const entries = await gateway.trace.query({
   tenantId: "acme",
@@ -365,6 +443,8 @@ On `SIGTERM`, `shutdown` refuses new calls with a 503, gives the calls in flight
 > **The bigger picture:** A deploy or a scale-down stops an instance while users are chatting; the jobs run on a timer of the server, or on your scheduler, and clean up what nobody finished.
 
 ```ts
+declare const tenantIds: string[]; // your tenants
+
 process.on("SIGTERM", async () => {
   await gateway.shutdown({timeoutMs: 20_000}); // new calls get a 503, the running ones 20 s, then the background work lands
   process.exit(0);

@@ -80,7 +80,7 @@ Grouped by the step of your code where you meet them, in the order of the exampl
 
 ### 6.1 Decide what waits
 
-Examples: [8.0](#80-the-configuration), [8.1](#81-a-tool-whose-every-call-waits-for-an-approver), [8.2](#82-one-tenant-requires-approval-where-the-tools-policy-allows-the-call).
+Examples: [8.0](#80-the-configuration), [8.2](#82-one-tenant-requires-approval-where-the-tools-policy-allows-the-call).
 
 | Symbol                                                                 | What you use it for          |
 |------------------------------------------------------------------------|------------------------------|
@@ -90,7 +90,7 @@ Examples: [8.0](#80-the-configuration), [8.1](#81-a-tool-whose-every-call-waits-
 
 ### 6.2 Read the pause
 
-Examples: [8.3](#83-the-run-pauses-and-the-approver-approves), [8.6](#86-the-model-asks-the-user-a-question), [8.7](#87-a-reviewer-checks-the-answer-before-the-user-sees-it), [8.8](#88-resume-until-the-run-stops-pausing).
+Examples: [8.1](#81-a-tool-whose-every-call-waits-for-an-approver), [8.3](#83-the-run-pauses-and-the-approver-approves), [8.6](#86-the-model-asks-the-user-a-question), [8.7](#87-a-reviewer-checks-the-answer-before-the-user-sees-it), [8.8](#88-resume-until-the-run-stops-pausing).
 
 | Symbol                                                                                                                                                                                                                                                                 | What you use it for                               |
 |------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------|
@@ -145,20 +145,22 @@ Grouped by the part of the gateway you replace.
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-`getInvoice` and `postCreditNote` are the tools of [Example: a human in the loop](../10-getting-started/45-example-HITL.md), `sendEmail` the one of 8.1; the profiles are those the examples run and resume on. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+`getInvoice` and `postCreditNote` are the tools of [Example: a human in the loop](../10-getting-started/45-example-HITL.md) and `sendEmail` the one 8.1 explains, all three defined here; the profiles are those the examples run and resume on. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup and serves every tenant and every user with it. The tools and the policies are the same for all tenants; what one tenant changes lives in its own profiles.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryBlobAdapter,
   InMemoryPromptTemplateRepository,
   InMemoryThreadRepository,
@@ -167,6 +169,33 @@ import {
   InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -189,15 +218,51 @@ const baseConfig = {
 </details>
 
 ```ts
+import {z} from "zod";
 import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   EModelProvider,
+  EToolCallVerdict,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
   InMemoryRunRepository,
+  defineTool,
 } from "dyna-ai-gateway";
+
+// your application's own code
+declare const invoices: {load(tenantId: string, invoiceNo: string): Promise<object | null>};
+declare const ledger: {postCreditNote(tenantId: string, input: {invoiceNo: string; amount: number; reason: string}): Promise<{creditNoteNo: string}>};
+declare const mailer: {send(tenantId: string, email: {invoiceNo: string; subject: string; body: string}): Promise<{messageId: string}>};
+
+// the tools every example runs on
+const getInvoice = defineTool({
+  name: "get_invoice",
+  description: "Returns one invoice by its number: customer, totalCents (integer, cents), currency, paid.",
+  inputSchema: z.object({invoiceNo: z.string()}),
+  tags: ["billing"],
+  execute: async ({input, userContext}) => invoices.load(userContext.tenantId, input.invoiceNo),
+});
+
+const postCreditNote = defineTool({
+  name: "post_credit_note",
+  description: "Posts a credit note against an invoice. Call get_invoice first. Returns {creditNoteNo}.",
+  inputSchema: z.object({invoiceNo: z.string(), amount: z.number().positive(), reason: z.string()}),
+  tags: ["billing"],
+  execute: async ({input, userContext}) => ledger.postCreditNote(userContext.tenantId, input), // no policy: allowed, unless a profile lists it in approvals (8.2)
+});
+
+const sendEmail = defineTool({
+  name: "send_customer_email",
+  description: "Sends an email to the customer of an invoice. Returns {messageId}.",
+  inputSchema: z.object({invoiceNo: z.string(), subject: z.string(), body: z.string()}),
+  tags: ["email"],
+  policy: EToolCallVerdict.NEEDS_APPROVAL, // a human approves every email
+  execute: async ({input, userContext}) => mailer.send(userContext.tenantId, input),
+});
+
 
 const accounting: IAIProfile = {
   id: "accounting",
@@ -250,26 +315,41 @@ const config: IAIGatewayConfig = {
 };
 
 const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
+
+// The approver: per request too, from the approver's own session
+const approverContext: IUserContext = {...userContext, userId: "u-42"};
 ```
 
 ### 8.1 A tool whose every call waits for an approver
 
-The tool's own `policy` is `NEEDS_APPROVAL`, so no call of it runs before a human approves it, on every profile and for every tenant.
+The own `policy` of `send_customer_email` (8.0) is `NEEDS_APPROVAL`, so no call of it runs before a human approves it, on every profile and for every tenant.
 
 > **The bigger picture:** A rule of the product itself: no email reaches a customer without a human, whoever the tenant is. It is written once, with the tool, at startup.
 
 ```ts
-import {z} from "zod";
-import {EToolCallVerdict, defineTool} from "dyna-ai-gateway";
+import {EGatewayResponseKind, EPauseKind} from "dyna-ai-gateway";
 
-const sendEmail = defineTool({
-  name: "send_customer_email",
-  description: "Sends an email to the customer of an invoice. Returns {messageId}.",
-  inputSchema: z.object({invoiceNo: z.string(), subject: z.string(), body: z.string()}),
-  tags: ["email"],
-  policy: EToolCallVerdict.NEEDS_APPROVAL, // a human approves every email
-  execute: async ({input, userContext}) => mailer.send(userContext.tenantId, input),
-});
+const result = await gateway.run({
+  userContext,
+  profileId: "accounting",
+  prompt: "Email the customer of invoice 2024-1187 that the payment is ten days late.",
+  kbFilters: {libraryIds: [], bookIds: []},
+}).response;
+if (result.kind === EGatewayResponseKind.PAUSED) {
+  for (const envelope of result.envelopes) {
+    if (envelope.kind === EPauseKind.TOOL_APPROVAL) console.log("waits for an approver:", envelope.toolCall.toolName);
+  }
+}
 ```
 
 ### 8.2 One tenant requires approval where the tool's policy allows the call
@@ -302,12 +382,21 @@ The `run()` stops before the tool call and settles as `PAUSED`, one envelope per
 > **The bigger picture:** The accountant asks in the chat and sees "waiting for approval"; the approver opens the card in their own screen, approves, and the accountant's chat receives the answer.
 
 ```ts
-import {EGatewayResponseKind, EPauseKind, EResumeAction, IResumeDecision} from "dyna-ai-gateway";
+import {
+  EGatewayResponseKind,
+  EPauseKind,
+  EResumeAction,
+  IResumeDecision,
+  IUserAnswer,
+  IUserQuestions,
+} from "dyna-ai-gateway";
+
+declare function answersFrom(form: IUserQuestions): IUserAnswer[]; // your question card (8.6)
 
 const paused = await gateway.run({
   userContext,
-  profileId: "accounting-strict",
-  prompt: "Credit 300 NOK on invoice 2024-1187, shipping was charged twice.",
+  profileId: "accounting",
+  prompt: "Email the customer of invoice 2024-1187 that the payment is ten days late.", // send_customer_email waits (8.1)
   kbFilters: {libraryIds: [], bookIds: []},
 }).response;
 
@@ -342,6 +431,10 @@ Instead of approving, the approver changes the input of the call (the policy dec
 ```ts
 import {EResumeAction} from "dyna-ai-gateway";
 
+// the ids of a post_credit_note card the approver opened: from the PAUSED response or listPausedRuns (8.9)
+declare const runId: string;
+declare const pauseId: string;
+
 // The approver lowers the amount: the policy decides again on the edited input
 await gateway.resume({
   userContext: approverContext,
@@ -370,6 +463,10 @@ The decision names another `profileId`: the run continues on that profile, and t
 ```ts
 import {EResumeAction} from "dyna-ai-gateway";
 
+// the ids of the card the approver opened: from the PAUSED response or listPausedRuns (8.9)
+declare const runId: string;
+declare const pauseId: string;
+
 await gateway.resume({
   userContext: approverContext,
   runId,
@@ -388,7 +485,16 @@ With `humanGate.userQuestions` enabled, the model can pause the run with a card 
 `paused` is the response of 8.3.
 
 ```ts
-import {EGatewayResponseKind, EPauseKind, EResumeAction, EUserQuestionMode, IUserAnswer} from "dyna-ai-gateway";
+import {
+  EGatewayResponseKind,
+  EPauseKind,
+  EResumeAction,
+  EUserQuestionMode,
+  IUserAnswer,
+  TGatewayResponse,
+} from "dyna-ai-gateway";
+
+declare const paused: TGatewayResponse; // the response of a run() that paused, as in 8.3
 
 if (paused.kind === EGatewayResponseKind.PAUSED) {
   const [card] = paused.envelopes;
@@ -417,6 +523,11 @@ On a profile with `reviewAnswers: true`, the finished answer of every `run()` wa
 
 ```ts
 import {EPauseKind, EResumeAction} from "dyna-ai-gateway";
+
+// the ids of the review card: from the PAUSED response or listPausedRuns (8.9)
+declare const runId: string;
+declare const pauseId: string;
+declare function showToUser(text: string): void; // your UI
 
 const run = await gateway.getPausedRun({tenantId: "acme", runId}); // raw ids: your host decides who may review
 for (const envelope of run.pending ?? []) {
@@ -464,6 +575,8 @@ const settle = async (
 > **The bigger picture:** What happens after the pause: the user's "waiting" list in the UI, the button to give up, and the scheduled job on the server that cleans up what nobody decided.
 
 ```ts
+declare const tenantIds: string[]; // your tenants
+
 const inbox = await gateway.listPausedRuns({userContext}); // the calling user's paused runs
 for (const summary of inbox) {
   // summary.runId, summary.pauseId, summary.envelopes, summary.expiresAt

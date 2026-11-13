@@ -134,20 +134,22 @@ Grouped by the part of the gateway you replace.
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The tools are your `getOrder` lookup and the submit tool of 8.1. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The tools, your `getOrder` lookup and the submit tool 8.1 explains, are defined here with the form. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup. The `claims` profile and its two tools are the whole form flow; the questions the model asks go through `humanGate.userQuestions`.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryBlobAdapter,
   InMemoryPromptTemplateRepository,
   InMemoryThreadRepository,
@@ -156,6 +158,33 @@ import {
   InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -178,54 +207,31 @@ const baseConfig = {
 </details>
 
 ```ts
+import {z} from "zod";
 import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
   InMemoryRunRepository,
+  defineTool,
 } from "dyna-ai-gateway";
 
-const claimsProfile: IAIProfile = {
-  id: "claims",
-  tenantId: "acme",
-  name: "Damage reports",
-  modelId: "gpt-5-mini",
-  promptAddendum: "You take damage reports of the Acme web shop.",
-  allowedTools: ["get_order", "submit_damage_report"],
-  approvals: [],
-  limits: {maxStepsPerRun: 10, maxOutputTokens: 2_000},
-};
+// your application's own code
+declare const orders: {load(tenantId: string, orderNo: string): Promise<object | null>};
+declare const claims: {create(tenantId: string, form: object): Promise<{claimNo: string}>};
 
-const config: IAIGatewayConfig = {
-  // What this path uses
-  humanGate: {userQuestions: {enabled: true}}, // every run() on a model with caps.tools offers dyna_aigw_ask_user_question
-  runStore: {repository: new InMemoryRunRepository()}, // the run waits here between the questions and the answers
-  toolRegistry: {tools: [getOrder, submitDamageReport]}, // the lookup and the submit tool (8.1)
-  toolPolicy: {requires: {submit_damage_report: ["get_order"]}}, // the model looks the order up before it may submit
-  // allowedTools lists both tools; maxStepsPerRun covers every question round
-  aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [claimsProfile]})},
-
-  // required too, and kept in view: the provider key, the models
-  llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
-  ...baseConfig, // the other required keys, collapsed above
-};
-
-const gateway = new AIGateway(config);
-```
-
-### 8.1 The form as a zod schema, and a submit tool that ends the run
-
-The zod schema is the form and the tool's `inputSchema`, so the model's input is parsed against it. `endsRun: true` ends the run after a successful call: the model gets one last step without tools for its closing sentence.
-
-> **The bigger picture:** Written once at startup, next to your claims service: the same damage report a web form would post, now filled from a conversation.
-
-```ts
-import {z} from "zod";
-import {defineTool} from "dyna-ai-gateway";
+// the lookup, the form and the submit tool every example runs on (8.1 explains the form)
+const getOrder = defineTool({
+  name: "get_order",
+  description: "Returns one order by its number: items, delivery date, status.",
+  inputSchema: z.object({orderNo: z.string()}),
+  tags: ["orders"],
+  execute: async ({input, userContext}) => orders.load(userContext.tenantId, input.orderNo),
+});
 
 const damageReport = z.object({
   orderNo: z.string(),
@@ -242,6 +248,56 @@ const submitDamageReport = defineTool({
   endsRun: true,             // after it, the model writes one closing sentence and the run ends
   execute: async ({input, userContext}) => claims.create(userContext.tenantId, input),
 });
+
+
+const claimsProfile: IAIProfile = {
+  id: "claims",
+  tenantId: "acme",
+  name: "Damage reports",
+  modelId: "gpt-5-mini",
+  promptAddendum: "You take damage reports of the Acme web shop.",
+  allowedTools: ["get_order", "submit_damage_report"],
+  approvals: [],
+  limits: {maxStepsPerRun: 10, maxOutputTokens: 2_000},
+};
+
+const config: IAIGatewayConfig = {
+  // What this path uses
+  humanGate: {userQuestions: {enabled: true}}, // every run() on a model with caps.tools offers dyna_aigw_ask_user_question
+  runStore: {repository: new InMemoryRunRepository()}, // the run waits here between the questions and the answers
+  toolRegistry: {tools: [getOrder, submitDamageReport]}, // the lookup and the submit tool, defined above
+  toolPolicy: {requires: {submit_damage_report: ["get_order"]}}, // the model looks the order up before it may submit
+  // allowedTools lists both tools; maxStepsPerRun covers every question round
+  aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [claimsProfile]})},
+
+  // required too, and kept in view: the provider key, the models
+  llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  ...baseConfig, // the other required keys, collapsed above
+};
+
+const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
+```
+
+### 8.1 The form as a zod schema, and a submit tool that ends the run
+
+The zod schema `damageReport` (8.0) is the form and the `inputSchema` of `submit_damage_report`, so the model's input is parsed against it. `endsRun: true` ends the run after a successful call: the model gets one last step without tools for its closing sentence.
+
+> **The bigger picture:** Written once at startup, next to your claims service: the same damage report a web form would post, now filled from a conversation.
+```ts
+// the parse the model's input goes through: a missing field fails, and the model reads which one
+const check = damageReport.safeParse({orderNo: "88231", damage: "broken"});
+if (!check.success) console.log(check.error.issues.map(issue => issue.path.join("."))); // ["description", "wantsReplacement"]
 ```
 
 The `claims` profile lists `submit_damage_report` in `allowedTools`.
@@ -270,7 +326,17 @@ Each question has a `mode`: `RADIO` and `CHECK` pick among `options`, `FREE_TEXT
 > **The bigger picture:** The chat draws the card as a small form; the customer picks "broken", types a description and presses send.
 
 ```ts
-import {EGatewayResponseKind, EPauseKind, EResumeAction, EUserQuestionMode, IUserAnswer} from "dyna-ai-gateway";
+import {
+  EGatewayResponseKind,
+  EPauseKind,
+  EResumeAction,
+  EUserQuestionMode,
+  IUserAnswer,
+  TGatewayResponse,
+} from "dyna-ai-gateway";
+
+declare const first: TGatewayResponse; // the response of the run() of 8.2
+declare const formValues: Record<string, string>; // what the user typed into the card, by question
 
 if (first.kind === EGatewayResponseKind.PAUSED) {
   const [card] = first.envelopes;
@@ -300,7 +366,18 @@ A loop drives the conversation to the end: it resumes while the response is `PAU
 The model may ask again; each answer card is a new pause of the same run.
 
 ```ts
-import {EGatewayResponseKind, EPauseKind, EResumeAction, TGatewayResponse} from "dyna-ai-gateway";
+import {
+  EGatewayResponseKind,
+  EPauseKind,
+  EResumeAction,
+  TGatewayResponse,
+  IUserAnswer,
+  IUserQuestions,
+} from "dyna-ai-gateway";
+
+declare const first: TGatewayResponse; // the response of the run() of 8.2
+declare function renderCard(form: IUserQuestions): Promise<IUserAnswer[]>; // your question card
+declare function showToUser(text: string): void; // your UI
 
 let response: TGatewayResponse = first;
 while (response.kind === EGatewayResponseKind.PAUSED) {

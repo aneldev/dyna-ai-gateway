@@ -122,20 +122,22 @@ The pattern: [What can be injected](../60-architecture/50-live-adjustment-and-de
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The classifier has a profile of its own; `triage-claude` runs on a model that takes a temperature (8.4). The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The classifier has a profile of its own; `triage-claude` runs on a model that takes a temperature (8.4). The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup; the classifier calls of every tenant go through it, next to or instead of the chat.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryBlobAdapter,
   InMemoryPromptTemplateRepository,
   InMemoryRunRepository,
@@ -145,6 +147,33 @@ import {
   InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -172,6 +201,7 @@ import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   IModelInfo,
   EModelProvider,
   InMemoryAIProfileRepository,
@@ -229,28 +259,26 @@ const config: IAIGatewayConfig = {
 };
 
 const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
 ```
 
 ### 8.1 A profile of its own for the classifier
 
-`upsertProfile` stores the `triage` profile: a small, fast model, no tools, one step and a short output limit. The classifier's rule, to classify and never answer, lives in its `promptAddendum`.
+`upsertProfile` stores the `triage` profile of 8.0, which the configuration also seeds at startup: a small, fast model, no tools, one step and a short output limit. The classifier's rule, to classify and never answer, lives in its `promptAddendum`.
 
 > **The bigger picture:** Done once per tenant, at startup or from the admin screen that manages the profiles; every message classified later runs on it.
 
 ```ts
-import {IAIProfile} from "dyna-ai-gateway";
-
-const triage: IAIProfile = {
-  id: "triage",
-  tenantId: "acme",
-  name: "Ticket triage",
-  modelId: "gpt-5-mini", // a small, fast model
-  promptAddendum: "You classify support messages of a web shop. You never answer them.",
-  allowedTools: [],
-  approvals: [],
-  limits: {maxStepsPerRun: 1, maxOutputTokens: 300},
-};
-await gateway.aiProfileStore.upsertProfile({tenantId: "acme", profile: triage});
+await gateway.aiProfileStore.upsertProfile({tenantId: "acme", profile: triage}); // the profile of 8.0, stored at runtime
 ```
 
 ### 8.2 Route a message by its intent
@@ -262,6 +290,9 @@ With an `outputSchema`, the answer carries `structured`, parsed and checked agai
 ```ts
 import {z} from "zod";
 import {EGatewayResponseKind} from "dyna-ai-gateway";
+
+declare const message: string; // the customer's text, from your inbox
+declare const queues: {orderBot(text: string): Promise<void>; refunds(text: string): Promise<void>; humans(text: string): Promise<void>}; // your queues
 
 const intent = z.object({intent: z.enum(["order_status", "refund", "complaint", "other"])});
 
@@ -291,6 +322,8 @@ One call returns several fields at once. `context` gives the model what your sys
 ```ts
 import {z} from "zod";
 
+declare const ticket: {body: string; customerTier: string; openTickets: number}; // the ticket on screen
+
 const ticketTriage = z.object({
   priority: z.enum(["P1", "P2", "P3"]),
   team: z.enum(["billing", "logistics", "tech"]),
@@ -315,6 +348,12 @@ const {response} = gateway.ask({
 > **The bigger picture:** A classifier whose decisions must be repeatable, for example when the routing is audited or the same message is classified again after a retry.
 
 ```ts
+import {z} from "zod";
+
+declare const message: string; // the customer's text, from your inbox
+
+const intent = z.object({intent: z.enum(["order_status", "refund", "complaint", "other"])}); // the classes of 8.2
+
 const {response} = gateway.ask({
   userContext,
   profileId: "triage-claude", // a profile whose model has caps.temperature: true
@@ -332,7 +371,13 @@ An answer that is not JSON or that the schema rejects ends the call as `FAILED` 
 > **The bigger picture:** The fallback of the routing: a message the model could not classify within the schema lands in the human queue, not in a queue picked by guesswork.
 
 ```ts
+import {z} from "zod";
 import {EGatewayResponseKind} from "dyna-ai-gateway";
+
+declare const message: string; // the customer's text, from your inbox
+declare const queues: {orderBot(text: string): Promise<void>; refunds(text: string): Promise<void>; humans(text: string): Promise<void>}; // your queues
+
+const intent = z.object({intent: z.enum(["order_status", "refund", "complaint", "other"])}); // the classes of 8.2
 
 const result = await gateway.ask({userContext, profileId: "triage", prompt: message, outputSchema: intent, kbFilters: {libraryIds: [], bookIds: []}}).response;
 if (result.kind === EGatewayResponseKind.FAILED) {
@@ -348,7 +393,12 @@ Every `ask` stores its turns in a thread. Once the intent is known, `gateway.del
 > **The bigger picture:** After the routing: a classifier that handles every incoming message would otherwise leave one thread per message in your database.
 
 ```ts
+import {z} from "zod";
 import {EGatewayResponseKind} from "dyna-ai-gateway";
+
+declare const message: string; // the customer's text, from your inbox
+
+const intent = z.object({intent: z.enum(["order_status", "refund", "complaint", "other"])}); // the classes of 8.2
 
 const result = await gateway.ask({userContext, profileId: "triage", prompt: message, outputSchema: intent, kbFilters: {libraryIds: [], bookIds: []}}).response;
 if (result.kind !== EGatewayResponseKind.PAUSED && result.threadId) { // a call refused before it started has no thread

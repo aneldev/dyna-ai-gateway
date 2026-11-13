@@ -77,7 +77,7 @@ Grouped by the step of your code where you meet them, in the order of the exampl
 
 ### 6.1 Configure the checks
 
-Example: [8.0](#80-the-configuration).
+Examples: [8.0](#80-the-configuration), [8.1](#81-an-input-rule-blocks-a-prompt-that-carries-an-iban), [8.2](#82-a-judge-on-the-cheap-model-keeps-one-profile-on-its-topic), [8.3](#83-an-input-rule-screens-the-images-before-the-model-sees-them), [8.4](#84-an-output-rule-blocks-an-answer-that-leaks-the-system-prompt), [8.5](#85-a-grounding-judge-marks-unsupported-claims-without-blocking-the-answer).
 
 | Symbol                                                                 | What you use it for                                                           |
 |------------------------------------------------------------------------|-------------------------------------------------------------------------------|
@@ -130,20 +130,22 @@ Grouped by the part of the gateway you replace.
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The rules are those of 8.1 to 8.5. They are fixed at construction and apply to every profile: a rule picks its use case through `evidence.profile`. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+Each of 8.1 to 8.5 defines one rule and builds this gateway with it. Rules are fixed at construction and apply to every profile: a rule picks its use case through `evidence.profile`. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup with every rule of every use case; from then on, each `ask()` and `run()` of every tenant passes through the same input and output checks.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryBlobAdapter,
   InMemoryPromptTemplateRepository,
   InMemoryRunRepository,
@@ -151,6 +153,33 @@ import {
   InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -176,6 +205,7 @@ import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
@@ -197,8 +227,8 @@ const accounting: IAIProfile = {
 const config: IAIGatewayConfig = {
   // What this path uses
   guardrails: {
-    inputRules: [noPaymentData, accountingScope, imageModeration], // 8.1 to 8.3: before anything is stored
-    outputRules: [noSystemPrompt, grounding],                      // 8.4, 8.5: before the answer is stored
+    inputRules: [],  // 8.1 to 8.3 each add one: before anything is stored
+    outputRules: [], // 8.4, 8.5 each add one: before the answer is stored
     maxPromptChars: 8_000, // the built-in length rule
     ruleTimeoutMs: 8_000,  // a rule's own timeoutMs wins
     onRuleError: (report): void => console.error("rule failed", report.ruleName, report.stage, report.failure),
@@ -215,6 +245,16 @@ const config: IAIGatewayConfig = {
 };
 
 const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
 ```
 
 ### 8.1 An input rule blocks a prompt that carries an IBAN
@@ -224,7 +264,7 @@ const gateway = new AIGateway(config);
 > **The bigger picture:** A user pastes a bank account number into the chat; the message never reaches the model or the thread, and the chat asks them not to send it.
 
 ```ts
-import {EIssueSeverity, IIssue, IInputRule} from "dyna-ai-gateway";
+import {AIGateway, EIssueSeverity, IIssue, IInputRule} from "dyna-ai-gateway";
 
 const IBAN = /\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]){11,30}\b/;
 
@@ -240,6 +280,9 @@ const noPaymentData: IInputRule = {
     }]
     : [],
 };
+
+// the gateway of 8.0 with this rule, in place of the gateway line of 8.0
+const gateway = new AIGateway({...config, guardrails: {...config.guardrails, inputRules: [noPaymentData]}});
 ```
 
 ### 8.2 A judge on the cheap model keeps one profile on its topic
@@ -249,7 +292,7 @@ const noPaymentData: IInputRule = {
 > **The bigger picture:** The accounting assistant refuses a question about the weather or a poem, while the other profiles of the same server answer what they are for.
 
 ```ts
-import {EJudgeModel, IIssue, IInputRule} from "dyna-ai-gateway";
+import {AIGateway, EJudgeModel, IIssue, IInputRule} from "dyna-ai-gateway";
 
 const accountingScope: IInputRule = {
   name: "accounting_scope",
@@ -263,6 +306,9 @@ const accountingScope: IInputRule = {
     });
   },
 };
+
+// the gateway of 8.0 with this rule, in place of the gateway line of 8.0
+const gateway = new AIGateway({...config, guardrails: {...config.guardrails, inputRules: [accountingScope]}});
 ```
 
 ### 8.3 An input rule screens the images before the model sees them
@@ -272,7 +318,7 @@ const accountingScope: IInputRule = {
 > **The bigger picture:** The user attaches a photo to a question; an image that shows an identity document or violence fails the call before the main model reads it.
 
 ```ts
-import {IInputRule} from "dyna-ai-gateway";
+import {AIGateway, IInputRule} from "dyna-ai-gateway";
 
 const imageModeration: IInputRule = {
   name: "image_moderation",
@@ -283,6 +329,9 @@ const imageModeration: IInputRule = {
     })
     : [], // a question without images costs no judge call
 };
+
+// the gateway of 8.0 with this rule, in place of the gateway line of 8.0
+const gateway = new AIGateway({...config, guardrails: {...config.guardrails, inputRules: [imageModeration]}});
 ```
 
 ### 8.4 An output rule blocks an answer that leaks the system prompt
@@ -292,7 +341,7 @@ const imageModeration: IInputRule = {
 > **The bigger picture:** A user tries to make the assistant repeat its instructions; the answer that quotes them never stays in the chat or on the thread.
 
 ```ts
-import {EIssueSeverity, IIssue, IOutputRule} from "dyna-ai-gateway";
+import {AIGateway, EIssueSeverity, IIssue, IOutputRule} from "dyna-ai-gateway";
 
 const noSystemPrompt: IOutputRule = {
   name: "no_system_prompt",
@@ -300,6 +349,9 @@ const noSystemPrompt: IOutputRule = {
     ? [{code: "prompt_leak", message: "The answer quotes the system prompt", severity: EIssueSeverity.ERROR}]
     : [],
 };
+
+// the gateway of 8.0 with this rule, in place of the gateway line of 8.0
+const gateway = new AIGateway({...config, guardrails: {...config.guardrails, outputRules: [noSystemPrompt]}});
 ```
 
 ### 8.5 A grounding judge marks unsupported claims without blocking the answer
@@ -309,7 +361,7 @@ const noSystemPrompt: IOutputRule = {
 > **The bigger picture:** An answer from your documents that the screen shows with a "check this" mark next to the claims no document supports.
 
 ```ts
-import {EIssueSeverity, IIssue, IOutputRule} from "dyna-ai-gateway";
+import {AIGateway, EIssueSeverity, IIssue, IOutputRule} from "dyna-ai-gateway";
 
 const grounding: IOutputRule = {
   name: "grounding",
@@ -323,6 +375,9 @@ const grounding: IOutputRule = {
     return issues.map(issue => ({...issue, severity: EIssueSeverity.WARNING})); // travels on the answer, blocks nothing
   },
 };
+
+// the gateway of 8.0 with this rule, in place of the gateway line of 8.0
+const gateway = new AIGateway({...config, guardrails: {...config.guardrails, outputRules: [grounding]}});
 ```
 
 ### 8.6 A profile limits what an injected prompt can make the model do
@@ -354,6 +409,8 @@ The streamed text is cleared on `ANSWER_WITHDRAWN`. A `FAILED` response carries 
 
 ```ts
 import {EGatewayResponseKind, ELLMClientEventKind} from "dyna-ai-gateway";
+
+declare function showToUser(text: string): void; // your UI
 
 const {events, response} = gateway.ask({
   userContext,

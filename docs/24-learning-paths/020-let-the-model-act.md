@@ -77,7 +77,7 @@ Grouped by the step of your code where you meet them, in the order of the exampl
 
 ### 6.1 Write a tool
 
-Examples: [8.1](#81-a-tool-that-reads-data-and-a-run-that-calls-it), [8.2](#82-a-tool-that-changes-data-with-a-policy-that-decides-each-call), [8.3](#83-a-tool-offered-only-on-the-first-step-and-a-tool-that-ends-the-run), [8.5](#85-one-call-brings-a-tool-of-its-own).
+Examples: [8.0](#80-the-configuration), [8.3](#83-a-tool-offered-only-on-the-first-step-and-a-tool-that-ends-the-run), [8.5](#85-one-call-brings-a-tool-of-its-own).
 
 | Symbol                                                                                                                                                               | What you use it for                |
 |----------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
@@ -103,7 +103,7 @@ Examples: [8.0](#80-the-configuration), [8.6](#86-the-model-loads-a-skill-when-t
 
 ### 6.3 Make the call
 
-Examples: [8.1](#81-a-tool-that-reads-data-and-a-run-that-calls-it), [8.4](#84-one-call-offers-fewer-tools-than-the-profile-allows), [8.5](#85-one-call-brings-a-tool-of-its-own), [8.6](#86-the-model-loads-a-skill-when-the-task-needs-it), [8.7](#87-the-ui-shows-the-tool-calls-and-reads-how-the-run-ended).
+Examples: [8.1](#81-a-tool-that-reads-data-and-a-run-that-calls-it), [8.2](#82-a-tool-that-changes-data-with-a-policy-that-decides-each-call), [8.4](#84-one-call-offers-fewer-tools-than-the-profile-allows), [8.5](#85-one-call-brings-a-tool-of-its-own), [8.6](#86-the-model-loads-a-skill-when-the-task-needs-it), [8.7](#87-the-ui-shows-the-tool-calls-and-reads-how-the-run-ended).
 
 | Symbol                                                               | What you use it for                                                   |
 |----------------------------------------------------------------------|-----------------------------------------------------------------------|
@@ -150,20 +150,22 @@ Grouped by the part of the gateway you replace.
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The tools are those of 8.1, 8.2 and 8.3; 8.5 adds one for a single call. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The two tools every example runs on are defined here; 8.3 builds its own gateway with two more, and 8.5 adds one for a single call. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup: the tools are registered here and fixed for its lifetime, and each profile lists in `allowedTools` which of them its model may see.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryBlobAdapter,
   InMemoryPromptTemplateRepository,
   InMemoryThreadRepository,
@@ -172,6 +174,33 @@ import {
   InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -195,15 +224,48 @@ const baseConfig = {
 </details>
 
 ```ts
+import {z} from "zod";
 import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   EModelProvider,
+  EToolCallVerdict,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
   InMemoryRunRepository,
+  TToolCallPolicyResult,
+  defineTool,
 } from "dyna-ai-gateway";
+
+// your application's own code
+declare const invoices: {load(tenantId: string, invoiceNo: string): Promise<object | null>};
+declare const ledger: {
+  isPeriodClosed(args: {invoiceNo: string}): Promise<boolean>;
+  postCreditNote(tenantId: string, input: {invoiceNo: string; amount: number; reason: string}): Promise<{creditNoteNo: string}>;
+};
+
+// the tools every example runs on: 8.1 reads with get_invoice, 8.2 explains the policy of post_credit_note
+const getInvoice = defineTool({
+  name: "get_invoice",
+  description: "Returns one invoice by its number: customer, totalCents (integer, cents), currency, paid.",
+  inputSchema: z.object({invoiceNo: z.string()}),
+  tags: ["billing"],
+  execute: async ({input, userContext}) => invoices.load(userContext.tenantId, input.invoiceNo),
+});
+
+const postCreditNote = defineTool({
+  name: "post_credit_note",
+  description: "Posts a credit note against an invoice. Call get_invoice first. Returns {creditNoteNo}.",
+  inputSchema: z.object({invoiceNo: z.string(), amount: z.number().positive(), reason: z.string()}),
+  tags: ["billing"],
+  policy: async ({input}): Promise<TToolCallPolicyResult> =>
+    (await ledger.isPeriodClosed({invoiceNo: input.invoiceNo}))
+      ? {verdict: EToolCallVerdict.DENY, reason: "The accounting period is closed. Tell the user to contact finance."}
+      : {verdict: input.amount > 5_000 ? EToolCallVerdict.NEEDS_APPROVAL : EToolCallVerdict.ALLOW},
+  execute: async ({input, userContext}) => ledger.postCreditNote(userContext.tenantId, input),
+});
 
 const accounting: IAIProfile = {
   id: "accounting",
@@ -219,7 +281,7 @@ const accounting: IAIProfile = {
 const config: IAIGatewayConfig = {
   // What this path uses
   toolRegistry: {
-    tools: [getInvoice, postCreditNote, classifyIntent, handOver], // 8.1, 8.2, 8.3: fixed at construction
+    tools: [getInvoice, postCreditNote], // fixed at construction; 8.3 builds a gateway with two more
     toolTimeoutMs: 15_000,  // each tool without its own timeoutMs
     maxOutputChars: 20_000, // a larger result is a 413 the model reads
     onToolError: (report): void => console.warn("tool failed", report.toolName, report.modelText), // you are told; the model reads modelText
@@ -240,25 +302,26 @@ const config: IAIGatewayConfig = {
 };
 
 const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: ["billing.credit"], // unlocks post_credit_note (toolPolicy.permissionsToTools)
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
 ```
 
 ### 8.1 A tool that reads data, and a run that calls it
 
-`get_invoice` is a tool with no `policy`, so every call of it is allowed. The `run()` on `accounting` lets the model call it and answers with what it returned.
+`get_invoice` (8.0) is a tool with no `policy`, so every call of it is allowed. The `run()` on `accounting` lets the model call it and answers with what it returned.
 
 > **The bigger picture:** The user asks in the chat about an invoice; the model looks it up in your system instead of guessing, and the answer quotes the real data.
 
 ```ts
-import {z} from "zod";
-import {EGatewayResponseKind, defineTool} from "dyna-ai-gateway";
-
-const getInvoice = defineTool({
-  name: "get_invoice",
-  description: "Returns one invoice by its number: customer, totalCents (integer, cents), currency, paid.",
-  inputSchema: z.object({invoiceNo: z.string()}),
-  tags: ["billing"],
-  execute: async ({input, userContext}) => invoices.load(userContext.tenantId, input.invoiceNo),
-});
+import {EGatewayResponseKind} from "dyna-ai-gateway";
 
 const result = await gateway.run({
   userContext,
@@ -271,25 +334,21 @@ if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text);
 
 ### 8.2 A tool that changes data, with a policy that decides each call
 
-The `policy` of `post_credit_note` runs on every call, before the tool: it denies a call on a closed period, asks for an approval above 5 000 and allows the rest.
+The `policy` of `post_credit_note` (8.0) runs on every call, before the tool: it denies a call on a closed period, asks for an approval above 5 000 and allows the rest.
 
 > **The bigger picture:** The rules of your accounting, written once with the tool at startup: the model can propose a credit note, but your code decides whether it is posted.
 
 ```ts
-import {z} from "zod";
-import {EToolCallVerdict, TToolCallPolicyResult, defineTool} from "dyna-ai-gateway";
+import {EGatewayResponseKind} from "dyna-ai-gateway";
 
-const postCreditNote = defineTool({
-  name: "post_credit_note",
-  description: "Posts a credit note against an invoice. Call get_invoice first. Returns {creditNoteNo}.",
-  inputSchema: z.object({invoiceNo: z.string(), amount: z.number().positive(), reason: z.string()}),
-  tags: ["billing"],
-  policy: async ({input}): Promise<TToolCallPolicyResult> =>
-    (await ledger.isPeriodClosed({invoiceNo: input.invoiceNo}))
-      ? {verdict: EToolCallVerdict.DENY, reason: "The accounting period is closed. Tell the user to contact finance."}
-      : {verdict: input.amount > 5_000 ? EToolCallVerdict.NEEDS_APPROVAL : EToolCallVerdict.ALLOW},
-  execute: async ({input, userContext}) => ledger.postCreditNote(userContext.tenantId, input),
-});
+const result = await gateway.run({
+  userContext, // its permissions hold billing.credit: post_credit_note is offered
+  profileId: "accounting",
+  prompt: "Credit 6000 NOK on invoice 2024-1187: the delivery arrived damaged.",
+  kbFilters: {libraryIds: [], bookIds: []},
+}).response;
+if (result.kind === EGatewayResponseKind.PAUSED) console.log("above 5 000: waits for an approver", result.pauseId);
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // a DENY reason reaches the model, which tells the user
 ```
 
 `DENY` gives the model the reason; `NEEDS_APPROVAL` pauses the run ([Keep a human in control](030-keep-a-human-in-control.md)).
@@ -302,7 +361,9 @@ const postCreditNote = defineTool({
 
 ```ts
 import {z} from "zod";
-import {defineTool} from "dyna-ai-gateway";
+import {AIGateway, defineTool} from "dyna-ai-gateway";
+
+declare const tickets: {open(reason: string): Promise<{ticketId: string; accepted: boolean}>}; // your helpdesk
 
 const classifyIntent = defineTool({
   name: "classify_intent",
@@ -321,6 +382,9 @@ const handOver = defineTool({
   execute: async ({input}) => tickets.open(input.reason),
   endsRun: ({output}) => output.accepted, // after execute: output is typed from its return type
 });
+
+// the gateway of 8.0 with the two tools, in place of the gateway line of 8.0
+const gateway = new AIGateway({...config, toolRegistry: {...config.toolRegistry, tools: [getInvoice, postCreditNote, classifyIntent, handOver]}});
 ```
 
 ### 8.4 One call offers fewer tools than the profile allows
@@ -348,6 +412,8 @@ const {response} = gateway.run({
 ```ts
 import {z} from "zod";
 import {defineTool} from "dyna-ai-gateway";
+
+declare const drafts: {replaceText(args: {tenantId: string; draftId: string; text: string}): Promise<{saved: boolean}>}; // your editor's storage
 
 const replaceDraft = defineTool({
   name: "replace_draft_text",
@@ -398,6 +464,8 @@ Each `TOOL_REQUEST` event names the tool being called, so the screen can show pr
 
 ```ts
 import {BUILT_IN_TOOL_NAME_PREFIX, EGatewayResponseKind, ELLMClientEventKind} from "dyna-ai-gateway";
+
+declare function showProgress(text: string): void; // your UI
 
 const {events, response} = gateway.run({
   userContext,

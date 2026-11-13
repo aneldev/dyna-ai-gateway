@@ -54,9 +54,11 @@ it has one.
 | Summary                     | the path in a few lines                                                                                                                                                                                                                                                                                             |
 | FAQ                         | the questions of this goal, linked to their answers                                                                                                                                                                                                                                                                 |
 
-The examples run on the `gateway` of the path's 8.0, built from the stores of [Installation](../10-getting-started/20-installation.md),
-and on the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices.load` or `ledger`
-stand for your application's own code.
+Each example is complete with 8.0: the two, pasted in that order into one file, are a TypeScript module that compiles. 8.0 builds the `gateway` from the
+stores of [Installation](../10-getting-started/20-installation.md) and defines the `userContext` of a request
+([Example: ask](../10-getting-started/30-example-ask.md)); an example that declares its own `gateway` takes the place
+of the `const gateway = new AIGateway(config);` line of 8.0. What comes from your application (`invoices.load`, `ledger`, the `threadId` your screen holds) is a `declare` line
+at the top of the example: replace it with your own code.
 
 Every example is server code: the gateway is [server-only](../10-getting-started/20-installation.md). Its bigger-picture
 line says where on your server it sits, for example the start-up, the route behind a screen, or a scheduled job.

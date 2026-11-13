@@ -125,20 +125,22 @@ The pattern: [What can be injected](../60-architecture/50-live-adjustment-and-de
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The profile runs on `gpt-5-mini`, whose caps have `pdf: true` and a context of 400 000 tokens. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The profile runs on `gpt-5-mini`, whose caps have `pdf: true` and a context of 400 000 tokens. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup; the summaries of every screen and every tenant are calls to it.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryPromptTemplateRepository,
   InMemoryRunRepository,
   InMemoryTraceRepository,
@@ -146,6 +148,33 @@ import {
   InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -172,6 +201,7 @@ import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryBlobAdapter,
@@ -205,6 +235,16 @@ const config: IAIGatewayConfig = {
 };
 
 const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
 ```
 
 ### 8.1 Summarise an uploaded PDF in a few paragraphs
@@ -214,7 +254,9 @@ The PDF goes in `files` and the length and the reader in `prompt`. The answer is
 > **The bigger picture:** A user uploads a contract and presses "Summarise"; the manager reads five paragraphs instead of twenty pages.
 
 ```ts
-import {EGatewayResponseKind} from "dyna-ai-gateway";
+import {EGatewayResponseKind, IFileRef} from "dyna-ai-gateway";
+
+declare const pdf: IFileRef; // the PDF the user uploaded (uploadFile)
 
 const result = await gateway.ask({
   userContext,
@@ -235,6 +277,8 @@ A text that is not a file goes in `context`, as data, not instructions. `EOutput
 ```ts
 import {EOutputFormat} from "dyna-ai-gateway";
 
+declare const report: {text: string}; // a text your application holds
+
 const {response} = gateway.ask({
   userContext,
   profileId: "accounting",
@@ -252,7 +296,10 @@ With an `outputSchema`, the summary comes back as parties, term, obligations, de
 > **The bigger picture:** The contract screen fills its fields from the summary, and the deadlines can go to the calendar of your application.
 
 ```ts
+import {IFileRef} from "dyna-ai-gateway";
 import {z} from "zod";
+
+declare const pdf: IFileRef; // the PDF the user uploaded (uploadFile)
 
 const contractSummary = z.object({
   parties: z.array(z.string()),
@@ -281,6 +328,8 @@ const {response} = gateway.ask({
 ```ts
 import {z} from "zod";
 import {EPartKind} from "dyna-ai-gateway";
+
+declare const threadId: string; // the thread your screen has open
 
 const turns = await gateway.getTurns({userContext, threadId}); // every turn, not only the memory's window
 const transcript = turns
@@ -318,7 +367,9 @@ When the model stops at the profile's `limits.maxOutputTokens`, the answer is st
 > **The bigger picture:** After the call: your code asks again for a shorter summary or raises the limit, instead of showing the user a text that ends mid-sentence.
 
 ```ts
-import {EGatewayResponseKind} from "dyna-ai-gateway";
+import {EGatewayResponseKind, IFileRef} from "dyna-ai-gateway";
+
+declare const pdf: IFileRef; // the PDF the user uploaded (uploadFile)
 
 const result = await gateway.ask({userContext, profileId: "accounting", prompt: "Summarise this report.", files: [pdf], kbFilters: {libraryIds: [], bookIds: []}}).response;
 if (result.kind === EGatewayResponseKind.ANSWER && result.issues.some(issue => issue.code === "output_truncated")) {

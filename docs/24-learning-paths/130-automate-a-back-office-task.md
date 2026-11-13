@@ -76,7 +76,7 @@ Grouped by the step of your code where you meet them, in the order of the exampl
 
 ### 6.1 The job's tools and identity
 
-Examples: [8.0](#80-the-configuration), [8.1](#81-the-jobs-tools-read-the-bank-match-the-payments-file-the-report), [8.2](#82-the-service-user-the-job-runs-as).
+Example: [8.0](#80-the-configuration).
 
 | Symbol                                                                                                        | What you use it for                |
 |---------------------------------------------------------------------------------------------------------------|------------------------------------|
@@ -128,20 +128,22 @@ Grouped by the part of the gateway you replace.
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The tools are those of 8.1; the job runs as the service user of 8.2. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The tools (8.1) and the service user the job runs as (8.2) are defined here. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your worker process builds this gateway once at startup. Nobody watches its runs, so a failed tool call goes to the log through `onToolError`, and `toolPolicy` fixes which tools the job may use and in which order.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryBlobAdapter,
   InMemoryPromptTemplateRepository,
   InMemoryTraceRepository,
@@ -149,6 +151,33 @@ import {
   InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -171,64 +200,30 @@ const baseConfig = {
 </details>
 
 ```ts
+import {z} from "zod";
 import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryModelRegistryRepository,
   InMemoryRunRepository,
   InMemoryThreadRepository,
+  EToolCallVerdict,
+  defineTool,
 } from "dyna-ai-gateway";
 
-const reconciliation: IAIProfile = {
-  id: "reconciliation",
-  tenantId: "acme",
-  name: "Nightly reconciliation",
-  modelId: "gpt-5-mini",
-  promptAddendum: "You reconcile bank lines with open invoices.",
-  allowedTools: ["fetch_bank_statement", "match_payment", "file_reconciliation_report"],
-  approvals: [],
-  limits: {maxStepsPerRun: 20, maxOutputTokens: 2_000},
+// your application's own code
+declare const bank: {statement(accountId: string, signal: AbortSignal): Promise<{lines: object[]}>};
+declare const ledger: {
+  isLargeAmount(bankLineId: string): Promise<boolean>;
+  match(tenantId: string, input: {bankLineId: string; invoiceNo: string}): Promise<{matched: boolean}>;
 };
+declare const reports: {file(tenantId: string, report: object): Promise<{reportId: string}>};
 
-const config: IAIGatewayConfig = {
-  // What this path uses
-  toolRegistry: {
-    tools: [fetchStatement, matchPayment, fileReport], // 8.1
-    onToolError: (report): void => console.error("job tool failed", report.toolName, report.modelText), // nobody watches the run
-  },
-  toolPolicy: {
-    permissionsToTools: {"bank.read": ["fetch_bank_statement"], "ledger.write": ["match_payment", "file_reconciliation_report"]},
-    requires: {match_payment: ["fetch_bank_statement"], file_reconciliation_report: ["fetch_bank_statement"]},
-  },
-  // maxStepsPerRun bounds the job
-  aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [reconciliation]})},
-  runStore: {repository: new InMemoryRunRepository()}, // a job that waits for an approver is stored here
-  threadStore: {repository: new InMemoryThreadRepository(), leaseMs: 300_000}, // the job's timeoutMs stays under it
-
-  // required too, and kept in view: the provider key, the models
-  llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
-  ...baseConfig, // the other required keys, collapsed above
-};
-
-const gateway = new AIGateway(config);
-```
-
-### 8.1 The job's tools: read the bank, match the payments, file the report
-
-`fetch_bank_statement` reads, `match_payment` writes and needs an approval when the amount is large, `file_reconciliation_report` ends the run with `endsRun: true`. The policy of `match_payment` is a function, decided on the input of each call.
-
-> **The bigger picture:** Registered once at startup, they wrap your bank integration and your ledger; only a call with a large amount waits for a person.
-
-Their order and their permissions are `toolPolicy` in 8.0.
-
-```ts
-import {z} from "zod";
-import {EToolCallVerdict, defineTool} from "dyna-ai-gateway";
-
+// the job's tools (8.1) and its service user (8.2)
 const fetchStatement = defineTool({
   name: "fetch_bank_statement",
   description: "Returns yesterday's bank lines: {lines: [{id, amountCents, text}]}.",
@@ -256,16 +251,6 @@ const fileReport = defineTool({
   endsRun: true, // the job ends with the report
   execute: async ({input, userContext}) => reports.file(userContext.tenantId, input),
 });
-```
-
-### 8.2 The service user the job runs as
-
-The job has no logged-in user, so it runs with the `IUserContext` of a service user of your host. Its `permissions` decide, through `toolPolicy.permissionsToTools`, which tools the model is offered.
-
-> **The bigger picture:** A technical account your host creates per job: the job's threads and paused runs belong to this user, and its permissions are the only ones the job has.
-
-```ts
-import {IUserContext} from "dyna-ai-gateway";
 
 const jobContext: IUserContext = {
   tenantId: "acme",
@@ -275,7 +260,66 @@ const jobContext: IUserContext = {
   timezone: "Europe/Oslo",
   now: new Date(),
 };
+
+
+const reconciliation: IAIProfile = {
+  id: "reconciliation",
+  tenantId: "acme",
+  name: "Nightly reconciliation",
+  modelId: "gpt-5-mini",
+  promptAddendum: "You reconcile bank lines with open invoices.",
+  allowedTools: ["fetch_bank_statement", "match_payment", "file_reconciliation_report"],
+  approvals: [],
+  limits: {maxStepsPerRun: 20, maxOutputTokens: 2_000},
+};
+
+const config: IAIGatewayConfig = {
+  // What this path uses
+  toolRegistry: {
+    tools: [fetchStatement, matchPayment, fileReport], // defined above (8.1)
+    onToolError: (report): void => console.error("job tool failed", report.toolName, report.modelText), // nobody watches the run
+  },
+  toolPolicy: {
+    permissionsToTools: {"bank.read": ["fetch_bank_statement"], "ledger.write": ["match_payment", "file_reconciliation_report"]},
+    requires: {match_payment: ["fetch_bank_statement"], file_reconciliation_report: ["fetch_bank_statement"]},
+  },
+  // maxStepsPerRun bounds the job
+  aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [reconciliation]})},
+  runStore: {repository: new InMemoryRunRepository()}, // a job that waits for an approver is stored here
+  threadStore: {repository: new InMemoryThreadRepository(), leaseMs: 300_000}, // the job's timeoutMs stays under it
+
+  // required too, and kept in view: the provider key, the models
+  llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  ...baseConfig, // the other required keys, collapsed above
+};
+
+const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
 ```
+
+### 8.1 The job's tools: read the bank, match the payments, file the report
+
+`fetch_bank_statement` reads, `match_payment` writes and needs an approval when the amount is large, `file_reconciliation_report` ends the run with `endsRun: true`. The policy of `match_payment` is a function, decided on the input of each call.
+
+> **The bigger picture:** Registered once at startup, they wrap your bank integration and your ledger; only a call with a large amount waits for a person.
+
+The three are defined in 8.0; their order and their permissions are its `toolPolicy`.
+
+### 8.2 The service user the job runs as
+
+The job has no logged-in user, so it runs with the `IUserContext` of a service user of your host: `jobContext`, defined in 8.0. Its `permissions` decide, through `toolPolicy.permissionsToTools`, which tools the model is offered.
+
+> **The bigger picture:** A technical account your host creates per job: the job's threads and paused runs belong to this user, and its permissions are the only ones the job has.
 
 ### 8.3 The job starts the run and handles its three outcomes
 
@@ -285,6 +329,8 @@ The job awaits `response` and never reads `events`; `timeoutMs` stays under `thr
 
 ```ts
 import {EGatewayResponseKind} from "dyna-ai-gateway";
+
+declare const notify: {approvers(args: {runId: string; pauseId: string}): Promise<void>}; // your notifications
 
 const result = await gateway.run({
   userContext: {...jobContext, now: new Date()},
@@ -313,7 +359,10 @@ switch (result.kind) {
 > **The bigger picture:** The approvals screen of the accounting team the next morning: a person checks the large payments the night job left open and lets the job finish.
 
 ```ts
-import {EResumeAction} from "dyna-ai-gateway";
+import {EResumeAction, IUserContext} from "dyna-ai-gateway";
+
+// per request, from the approver's own session
+const approverContext: IUserContext = {...jobContext, userId: "u-42", permissions: ["ledger.write"]};
 
 const waiting = await gateway.listPausedRuns({userContext: jobContext}); // the runs of the job's user
 for (const run of waiting) {

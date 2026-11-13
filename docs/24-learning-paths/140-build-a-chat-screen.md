@@ -124,26 +124,55 @@ Grouped by the part of the gateway you replace.
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The screen runs on one profile, with the knowledge base of the help center. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The screen runs on one profile, with the knowledge base of the help center. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup, and the routes of the chat screen call it for every user. Threads, files and paused runs are kept per tenant and per user.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryPromptTemplateRepository,
   InMemoryTraceRepository,
   InMemoryUsageAdapter,
   InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -174,6 +203,7 @@ import {
   InMemoryModelRegistryRepository,
   InMemoryRunRepository,
   InMemoryThreadRepository,
+  IUserContext,
 } from "dyna-ai-gateway";
 
 const support: IAIProfile = {
@@ -202,6 +232,16 @@ const config: IAIGatewayConfig = {
 };
 
 const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask); a route reads it from the session (8.3)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
 ```
 
 ### 8.1 The sidebar lists the user's conversations, page by page
@@ -227,6 +267,8 @@ const older = lastShown
 > **The bigger picture:** A click on a thread of the sidebar, and the rename and delete entries of its menu.
 
 ```ts
+declare const threadId: string; // the thread your screen has open
+
 const turns = await gateway.getTurns({userContext, threadId}); // every turn, oldest first
 
 await gateway.renameThread({userContext, threadId, title: "VAT of the March invoices"});
@@ -241,7 +283,9 @@ The route takes the user from the session, reads the file of the form and calls 
 > **The bigger picture:** The paperclip of the message box: the browser uploads the file first, then sends the message with the reference it got back.
 
 ```ts
-import {IFileRef} from "dyna-ai-gateway";
+import {IFileRef, IUserContext} from "dyna-ai-gateway";
+
+declare function sessionOf(request: Request): Promise<IUserContext>; // your authentication
 
 const uploadRoute = async (request: Request): Promise<IFileRef> => {
   const userContext = await sessionOf(request);
@@ -258,7 +302,12 @@ const uploadRoute = async (request: Request): Promise<IFileRef> => {
 > **The bigger picture:** The send button of the message box, on a screen with your own client and transport instead of `useChat`.
 
 ```ts
-import {EGatewayResponseKind, ELLMClientEventKind} from "dyna-ai-gateway";
+import {EGatewayResponseKind, ELLMClientEventKind, IFileRef} from "dyna-ai-gateway";
+
+declare const threadId: string; // the thread your screen has open
+declare const text: string; // what the user typed
+declare const attachments: IFileRef[]; // the pointers the upload route returned (8.3)
+declare const socket: {send(message: object): void}; // your transport to the screen
 
 const {events, response} = gateway.run({
   userContext,
@@ -286,6 +335,10 @@ One call at a time runs on a thread: a `run()` on a thread with a call in flight
 > **The bigger picture:** A user who presses send twice, or writes on in a second tab while the answer still streams.
 
 ```ts
+declare const threadId: string; // the thread your screen has open
+declare const text: string; // what the user typed
+declare function showToUser(text: string): void; // your UI
+
 try {
   await gateway.run({userContext, profileId: "support", threadId, prompt: text, kbFilters: {libraryIds: [], bookIds: []}}).response;
 } catch (error) {
@@ -304,6 +357,8 @@ The `FILE` parts of the turns name the uploaded files; `getFileUrl` signs a URL 
 ```ts
 import {EPartKind} from "dyna-ai-gateway";
 
+declare const threadId: string; // the thread your screen has open
+
 const shown = await Promise.all((await gateway.getTurns({userContext, threadId}))
   .flatMap(turn => turn.parts)
   .flatMap(part => part.kind === EPartKind.FILE
@@ -318,7 +373,10 @@ const shown = await Promise.all((await gateway.getTurns({userContext, threadId})
 > **The bigger picture:** A front end built on `useChat`: two routes take the place of the socket code of 8.4 and the `getTurns` of 8.2.
 
 ```ts
+import {IUserContext} from "dyna-ai-gateway";
 import {AIGatewayVercelUi} from "dyna-ai-gateway/vercel-ui";
+
+declare function sessionOf(request: Request): Promise<IUserContext>; // your authentication
 
 const supportChat = new AIGatewayVercelUi({
   mode: "run",
@@ -344,6 +402,10 @@ An approval card is the SDK's own and goes back through `chat`. What it cannot e
 question, an `EDIT`, a `REJECT` with the user's text) goes through `resume`, built from the message's `metadata.pause`.
 
 ```ts
+import {AIGatewayVercelUi} from "dyna-ai-gateway/vercel-ui";
+
+declare const supportChat: AIGatewayVercelUi; // the instance of 8.7
+
 // POST /api/chat/resume
 export const POST = async (request: Request): Promise<Response> => {
   const {runId, pauseId, decisions} = await request.clone().json();

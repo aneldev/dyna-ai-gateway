@@ -132,26 +132,55 @@ Grouped by the part of the gateway you replace.
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The examples continue threads and keep facts about the user. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The examples continue threads and keep facts about the user. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup. The memory settings here are the default of every profile; the facts of each user and the memory of each thread are kept in the two repositories.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryBlobAdapter,
   InMemoryPromptTemplateRepository,
   InMemoryTraceRepository,
   InMemoryUsageAdapter,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -175,6 +204,7 @@ import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   EModelProvider,
   EWorkingMemoryStrategy,
   InMemoryAIProfileRepository,
@@ -218,6 +248,16 @@ const config: IAIGatewayConfig = {
 };
 
 const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
 ```
 
 ### 8.1 A profile keeps the exact words of the thread, without a summary
@@ -251,6 +291,8 @@ The first `ask()` opens a thread; the second passes its `threadId` and the model
 
 ```ts
 import {EGatewayResponseKind} from "dyna-ai-gateway";
+
+declare function showToUser(text: string): void; // your UI
 
 const first = await gateway.ask({
   userContext,
@@ -305,6 +347,8 @@ if (paused.kind === EGatewayResponseKind.PAUSED) {
 > **The bigger picture:** A side panel of the chat screen: the user sees what the assistant has kept of this conversation and clears it when it is wrong or out of date.
 
 ```ts
+declare const threadId: string; // the thread your screen has open
+
 const memory = await gateway.getThreadMemory({userContext, threadId});
 // {summary: "The user files VAT every two months …", facts: {vatPeriod: "two months"}, updatedAtTurn: 4}
 
@@ -332,6 +376,8 @@ The summary and the facts are written in the background after the answer. `whenI
 > **The bigger picture:** Your test suite or a script; a request handler of your server does not wait for the background work.
 
 ```ts
+declare const threadId: string; // the thread your screen has open
+
 await gateway.ask({userContext, profileId: "accounting", threadId, prompt: "We moved to monthly VAT.", kbFilters: {libraryIds: [], bookIds: []}}).response;
 await gateway.whenIdle(); // the memory is written in the background after the answer
 const {summary, facts} = await gateway.getThreadMemory({userContext, threadId});

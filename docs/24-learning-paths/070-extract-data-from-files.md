@@ -121,20 +121,22 @@ Grouped by the part of the gateway you replace.
 
 ## 8. Examples
 
-The examples run on the `gateway` of 8.0 and the `userContext` of [Example: ask](../10-getting-started/30-example-ask.md). Names such as `invoices` or `ledger` stand for your application's code.
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
 
 ### 8.0 The configuration
 
-The profile runs on `gpt-5-mini`, whose caps have `images: true` and `pdf: true`; the rule is the one of 8.1. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation.
+The profile runs on `gpt-5-mini`, whose caps have `images: true` and `pdf: true`; 8.1 builds it with an input rule. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup. The file store and its limits are the same for every tenant; each file is kept under its tenant and its user.
 
 <details>
-<summary><code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
 
 ```ts
 import {
   IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
   InMemoryPromptTemplateRepository,
   InMemoryRunRepository,
   InMemoryThreadRepository,
@@ -143,6 +145,33 @@ import {
   InMemoryUserMemoryRepository,
   InMemoryVectorIndexAdapter,
 } from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt5Mini: IModelInfo = {
+  id: "gpt-5-mini",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-5-mini",
+  label: "GPT-5 mini",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
 
 // Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
 // and the features this path does not need switched off
@@ -170,6 +199,7 @@ import {
   AIGateway,
   IAIGatewayConfig,
   IAIProfile,
+  IUserContext,
   EModelProvider,
   InMemoryAIProfileRepository,
   InMemoryBlobAdapter,
@@ -197,7 +227,6 @@ const config: IAIGatewayConfig = {
   },
   // caps.images and caps.pdf decide which files reach the model
   modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
-  guardrails: {inputRules: [noIdDocuments]}, // 8.1: the file is screened before the model sees it
 
   // required too, and kept in view: the provider key, the profiles
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
@@ -206,6 +235,16 @@ const config: IAIGatewayConfig = {
 };
 
 const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
 ```
 
 ### 8.1 An input rule screens every file before the model sees it
@@ -215,7 +254,7 @@ An `IInputRule` in `guardrails.inputRules` runs before the model call. This one 
 > **The bigger picture:** A rule of your product, written once at startup: passports and ID cards are never sent to the model, whatever the user uploads.
 
 ```ts
-import {IInputRule} from "dyna-ai-gateway";
+import {IInputRule, AIGateway} from "dyna-ai-gateway";
 
 const noIdDocuments: IInputRule = {
   name: "no_id_documents",
@@ -226,6 +265,9 @@ const noIdDocuments: IInputRule = {
       fileFilter: () => true, // the judge reads every file of the question
     }),
 };
+
+// the gateway of 8.0 with this rule, in place of the gateway line of 8.0
+const gateway = new AIGateway({...config, guardrails: {...config.guardrails, inputRules: [noIdDocuments]}});
 ```
 
 ### 8.2 The upload route stores the file and returns its pointer
@@ -253,7 +295,11 @@ The uploaded file goes into `files` and a zod schema into `outputSchema`. The an
 
 ```ts
 import {z} from "zod";
-import {EGatewayResponseKind} from "dyna-ai-gateway";
+import {EGatewayResponseKind, IFileRef} from "dyna-ai-gateway";
+
+declare const request: Request; // the upload request
+declare function uploadRoute(request: Request): Promise<IFileRef>; // the route of 8.2
+declare const bookkeeping: {saveDraft(fields: object): Promise<void>}; // your bookkeeping
 
 const invoiceFields = z.object({
   invoiceNo: z.string(),
@@ -286,7 +332,10 @@ The same call reads an image: the schema here is a list of rows and a total.
 > **The bigger picture:** An expense app on a phone: the user takes a picture of a receipt and the rows appear in the expense form.
 
 ```ts
+import {IFileRef} from "dyna-ai-gateway";
 import {z} from "zod";
+
+declare const photo: IFileRef; // the receipt photo the user uploaded (8.2)
 
 const receipt = z.object({
   rows: z.array(z.object({description: z.string(), quantity: z.number(), amountCents: z.number().int()})),
@@ -310,6 +359,13 @@ const {response} = gateway.ask({
 > **The bigger picture:** A check before a payment: the accountant uploads the invoice and the delivery note and gets the rows that differ.
 
 ```ts
+import {z} from "zod";
+import {IFileRef} from "dyna-ai-gateway";
+
+// the two files the user uploaded (8.2)
+declare const invoicePdf: IFileRef;
+declare const deliveryNotePdf: IFileRef;
+
 const {response} = gateway.ask({
   userContext,
   profileId: "accounting",
@@ -327,14 +383,17 @@ A file the model cannot read (its caps have no `pdf` or `images`) is left out wi
 > **The bigger picture:** The error handling of the extraction screen: the user is told to check the fields or to try again, never shown fields the model did not read.
 
 ```ts
-import {EGatewayResponseKind} from "dyna-ai-gateway";
+import {z} from "zod";
+import {EGatewayResponseKind, IFileRef} from "dyna-ai-gateway";
+
+declare const pdf: IFileRef; // the PDF the user uploaded (8.2)
 
 const result = await gateway.ask({
   userContext,
   profileId: "accounting",
   prompt: "Extract the fields of this invoice.",
   files: [pdf],
-  outputSchema: invoiceFields,
+  outputSchema: z.object({invoiceNo: z.string(), totalCents: z.number().int()}), // a short form of the fields of 8.3
   kbFilters: {libraryIds: [], bookIds: []},
 }).response;
 
@@ -353,6 +412,10 @@ if (result.kind === EGatewayResponseKind.FAILED && result.issues.some(issue => i
 > **The bigger picture:** The last step of the extraction flow, once the draft is saved, or a cleanup job of your application.
 
 ```ts
+import {IFileRef} from "dyna-ai-gateway";
+
+declare const file: IFileRef; // the pointer the upload route returned (8.2)
+
 await gateway.deleteFile({userContext, fileId: file.id}); // files have no expiry
 ```
 
