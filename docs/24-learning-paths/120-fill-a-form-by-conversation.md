@@ -138,7 +138,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The tools, your `getOrder` lookup and the submit tool 8.1 explains, are defined here with the form. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The tools, your `getOrder` lookup and the submit tool 8.1 explains, are defined here with the form. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup. The `claims` profile and its two tools are the whole form flow; the questions the model asks go through `humanGate.userQuestions`.
 
@@ -262,6 +262,8 @@ const claimsProfile: IAIProfile = {
 };
 
 const config: IAIGatewayConfig = {
+  ...baseConfig, // the required keys this path does not use, collapsed above; a key below wins over it
+
   // What this path uses
   humanGate: {userQuestions: {enabled: true}}, // every run() on a model with caps.tools offers dyna_aigw_ask_user_question
   runStore: {repository: new InMemoryRunRepository()}, // the run waits here between the questions and the answers
@@ -273,7 +275,6 @@ const config: IAIGatewayConfig = {
   // required too, and kept in view: the provider key, the models
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
   modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
-  ...baseConfig, // the other required keys, collapsed above
 };
 
 const gateway = new AIGateway(config);

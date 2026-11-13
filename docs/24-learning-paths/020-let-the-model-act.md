@@ -154,7 +154,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The two tools every example runs on are defined here; 8.3 builds its own gateway with two more, and 8.5 adds one for a single call. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The two tools every example runs on are defined here; 8.3 builds its own gateway with two more, and 8.5 adds one for a single call. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup: the tools are registered here and fixed for its lifetime, and each profile lists in `allowedTools` which of them its model may see.
 
@@ -279,6 +279,8 @@ const accounting: IAIProfile = {
 };
 
 const config: IAIGatewayConfig = {
+  ...baseConfig, // the required keys this path does not use, collapsed above; a key below wins over it
+
   // What this path uses
   toolRegistry: {
     tools: [getInvoice, postCreditNote], // fixed at construction; 8.3 builds a gateway with two more
@@ -298,7 +300,6 @@ const config: IAIGatewayConfig = {
 
   // required too, and kept in view: the provider key
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
-  ...baseConfig, // the other required keys, collapsed above
 };
 
 const gateway = new AIGateway(config);

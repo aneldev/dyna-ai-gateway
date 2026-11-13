@@ -126,7 +126,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The classifier has a profile of its own; `triage-claude` runs on a model that takes a temperature (8.4). The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The classifier has a profile of its own; `triage-claude` runs on a model that takes a temperature (8.4). The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup; the classifier calls of every tenant go through it, next to or instead of the chat.
 
@@ -244,6 +244,8 @@ const triageClaude: IAIProfile = {
 };
 
 const config: IAIGatewayConfig = {
+  ...baseConfig, // the required keys this path does not use, collapsed above; a key below wins over it
+
   // What this path uses
   // the credentials of both providers
   llmClient: {providers: {
@@ -255,7 +257,6 @@ const config: IAIGatewayConfig = {
   // one profile per classifier
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [triage, triageClaude]})},
   workingMemory: {enabled: false}, // each message is classified alone: no summary calls
-  ...baseConfig, // the other required keys, collapsed above
 };
 
 const gateway = new AIGateway(config);

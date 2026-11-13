@@ -149,7 +149,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The examples ask on one profile; 8.7 adds a model and a second profile while the server runs. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The examples ask on one profile; 8.7 adds a model and a second profile while the server runs. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup, with the providers, the models and the profile of the tenant; every question of every user goes through it.
 
@@ -241,6 +241,8 @@ const accounting: IAIProfile = {
 };
 
 const config: IAIGatewayConfig = {
+  ...baseConfig, // the required keys this path does not use, collapsed above; a key below wins over it
+
   // What this path uses
   // the credentials of each provider; 8.7 adds a Claude model
   llmClient: {providers: {
@@ -253,7 +255,6 @@ const config: IAIGatewayConfig = {
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting]})},
   threadStore: {repository: new InMemoryThreadRepository()}, // the threads a follow-up continues (8.6)
   workingMemory: {enabled: true}, // what a follow-up sees of the thread
-  ...baseConfig, // the other required keys, collapsed above
 };
 
 const gateway = new AIGateway(config);

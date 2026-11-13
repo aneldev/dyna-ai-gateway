@@ -134,7 +134,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-Each of 8.1 to 8.5 defines one rule and builds this gateway with it. Rules are fixed at construction and apply to every profile: a rule picks its use case through `evidence.profile`. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+Each of 8.1 to 8.5 defines one rule and builds this gateway with it. Rules are fixed at construction and apply to every profile: a rule picks its use case through `evidence.profile`. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup with every rule of every use case; from then on, each `ask()` and `run()` of every tenant passes through the same input and output checks.
 
@@ -225,6 +225,8 @@ const accounting: IAIProfile = {
 };
 
 const config: IAIGatewayConfig = {
+  ...baseConfig, // the required keys this path does not use, collapsed above; a key below wins over it
+
   // What this path uses
   guardrails: {
     inputRules: [],  // 8.1 to 8.3 each add one: before anything is stored
@@ -241,7 +243,6 @@ const config: IAIGatewayConfig = {
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
   modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting]})},
-  ...baseConfig, // the other required keys, collapsed above
 };
 
 const gateway = new AIGateway(config);

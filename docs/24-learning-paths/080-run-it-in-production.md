@@ -149,7 +149,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The in-memory stores of Installation with the settings that matter in production; 8.1 replaces the stores with yours, 8.3 builds it with a tool. The keys this path uses come first, each with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration that spreads it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The in-memory stores of Installation with the settings that matter in production; 8.1 replaces the stores with yours, 8.3 builds it with a tool. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup, with the timeouts, the thread lease and the stores it needs in production; every request of every tenant goes through it.
 
@@ -237,6 +237,8 @@ const accounting: IAIProfile = {
 };
 
 const config: IAIGatewayConfig = {
+  ...baseConfig, // the required keys this path does not use, collapsed above; a key below wins over it
+
   // What this path uses
   // your IUsageAdapter decides every model call (8.2); this one allows all
   usageGuard: {adapter: new InMemoryUsageAdapter()},
@@ -256,7 +258,6 @@ const config: IAIGatewayConfig = {
   // required too, and kept in view: the models, the profiles
   modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting]})},
-  ...baseConfig, // the other required keys, collapsed above
 };
 
 const gateway = new AIGateway(config);
