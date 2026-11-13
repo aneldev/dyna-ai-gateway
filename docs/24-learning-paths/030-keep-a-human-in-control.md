@@ -42,6 +42,20 @@ chapter 8 writes them.
 
 ## 5. How the parts connect
 
+```mermaid
+sequenceDiagram
+  participant App as Your server and screens
+  participant GW as AIGateway
+  participant RS as The run repository
+  App->>GW: run()
+  GW->>GW: 1. the tool's policy, then the profile's approvals, decide each call
+  GW->>RS: 2. the run is stored
+  GW-->>App: 2. response settles as PAUSED, one envelope per waiting call
+  App->>App: 3. render the envelopes, collect one decision each
+  App->>GW: 4. resume() continues the loop, and may pause again
+  App->>GW: 5. expirePausedRuns or cancelRun closes a pause nobody answered
+```
+
 1. The tool's `policy`, then the profile's `approvals`, decide each call
    ([Who decides an approval](../20-learn-the-gateway/040-human-in-the-loop.md#21-who-decides-an-approval)). The model's
    question is a built-in tool that always waits ([The model asks the user](../20-learn-the-gateway/040-human-in-the-loop.md#22-the-model-asks-the-user));

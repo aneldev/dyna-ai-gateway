@@ -38,6 +38,17 @@ screen in `instructions`, the record in `context`. The output format follows the
 
 ## 5. How the parts connect
 
+```mermaid
+flowchart LR
+  P["the tenant's voice and rules: the profile's promptAddendum"] --> M["The model"]
+  I["what this screen asks: the call's instructions"] --> M
+  C["the record on screen: the call's context, as data"] --> M
+  U["the user's own words: prompt"] --> M
+  M --> R{"your output rules"}
+  R -->|pass| D(["the draft"])
+  R -->|block| W(["withdrawn from the stream"])
+```
+
 | Text                                  | Layer                          | Kept                  |
 |---------------------------------------|--------------------------------|-----------------------|
 | the tenant's voice and rules          | the profile's `promptAddendum` | stored on the profile |

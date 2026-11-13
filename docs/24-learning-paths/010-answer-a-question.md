@@ -41,6 +41,22 @@ Where it ends: a model that must read or change your data needs [Let the model a
 
 ## 5. How the parts connect
 
+```mermaid
+sequenceDiagram
+  participant App as Your server
+  participant GW as AIGateway
+  participant UA as Your usage adapter
+  participant M as The model
+  App->>GW: 1. ask() names profileId, the profile names the model
+  GW->>GW: 2. the input check screens the prompt
+  GW->>GW: 3. the window and the system prompt are assembled
+  GW->>UA: 4. may this model call run?
+  GW->>M: 5. the model call
+  GW-->>App: 5. the text streams as events
+  GW->>GW: 6. the output check, then stored and traced
+  GW-->>App: 7. response settles as ANSWER or FAILED
+```
+
 1. The call names `profileId`; the profile names the model ([One call](../20-learn-the-gateway/010-models-and-profiles.md#24-one-call)).
 2. The input check screens the prompt ([The input check](../20-learn-the-gateway/050-guardrails.md#21-the-input-check)).
 3. The thread's window and the system prompt are assembled: template, addendum, `instructions`, `context`

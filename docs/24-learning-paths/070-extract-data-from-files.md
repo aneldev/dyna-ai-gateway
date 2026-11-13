@@ -37,6 +37,20 @@ output check rejects an answer that does not match the schema.
 
 ## 5. How the parts connect
 
+```mermaid
+sequenceDiagram
+  participant App as Your server
+  participant GW as AIGateway
+  participant M as The model
+  App->>GW: 1. uploadFile() stores the bytes
+  GW-->>App: 1. the IFileRef
+  App->>GW: 2. ask() with the pointer in files and the fields in outputSchema
+  GW->>GW: 2. the pointer is checked, the bytes are read
+  GW->>GW: 3. the input rules can screen the file
+  GW->>M: 4. the model reads the file when its caps allow it
+  GW-->>App: 5. the output check validates the answer, structured holds the fields
+```
+
 1. `uploadFile` stores the bytes and returns an `IFileRef` ([Upload](../20-learn-the-gateway/092-chat-files.md#21-upload)).
 2. `ask()` passes the pointer in `files` and the fields in `outputSchema`; the gateway checks the pointer and reads the
    bytes ([A question with files](../20-learn-the-gateway/092-chat-files.md#22-a-question-with-files)).

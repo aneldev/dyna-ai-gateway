@@ -41,6 +41,15 @@ each step. Every other path plugs into this screen: tools, approvals, memory, do
 
 ## 5. How the parts connect
 
+```mermaid
+flowchart LR
+  Auth(["Your authentication"]) -->|userContext| Srv["Your server"]
+  Screen(["Your chat screen"]) -->|"your own endpoints"| Srv
+  Screen -->|"useChat: chat, history, resume"| VUI["AIGatewayVercelUi"]
+  Srv -->|"listThreads, getTurns, ask(), run(), uploadFile, resume()"| GW["AIGateway"]
+  VUI --> GW
+```
+
 | Screen element             | Gateway                                                                                                               | `useChat` through `vercel-ui`                                                                                                                                                         |
 |----------------------------|-----------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | the sidebar                | `listThreads`, `renameThread`, `delete`                                                                               | the same methods, from your own endpoints ([What stays the gateway's](../10-getting-started/50-vercel-chat-client.md#6-what-stays-the-gateways))                                      |

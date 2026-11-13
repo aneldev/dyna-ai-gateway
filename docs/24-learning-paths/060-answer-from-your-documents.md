@@ -38,6 +38,22 @@ The gateway does not know who may read what; the scope is the application's deci
 
 ## 5. How the parts connect
 
+```mermaid
+sequenceDiagram
+  participant Ed as Your editor
+  participant App as Your server
+  participant GW as AIGateway
+  participant C as The cheap model
+  participant VS as The vector index
+  participant M as The model
+  Ed->>GW: 1. kbIngestor chunks, embeds and stores a document
+  App->>GW: 2. ask() or run() with kbFilters, the scope
+  GW->>C: 3. a follow-up is rewritten from the summary and the facts
+  GW->>VS: 4. the query is embedded and searched, the cut keeps the best hits
+  GW->>M: 5. the excerpts go into the system prompt as data
+  GW-->>App: 5. the answer carries citations
+```
+
 1. Write side: `gateway.kbIngestor` chunks, embeds and stores a document
    ([Ingesting a document](../20-learn-the-gateway/070-knowledge-base.md#21-ingesting-a-document)).
 2. Read side: the call's `kbFilters` names the scope

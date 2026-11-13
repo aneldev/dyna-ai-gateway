@@ -39,6 +39,22 @@ requires (example 8.6, [How do I protect against prompt injection?](../10-gettin
 
 ## 5. How the parts connect
 
+```mermaid
+sequenceDiagram
+  participant App as Your server
+  participant GW as AIGateway
+  participant J as The judge model
+  participant M as The model
+  participant H as Your onRuleError
+  App->>GW: ask() or run()
+  GW->>GW: 1. the input rules, before a thread or a turn is stored
+  Note over GW,J: 2. any rule, input or output, may ask a judge: one model call, checked by your usage adapter and traced
+  GW->>M: the model call
+  GW->>GW: 3. the output check: outputSchema, then your output rules
+  GW-->>App: 4. the severity decides, a blocked answer is not stored, a streamed one is withdrawn
+  GW->>H: 5. a rule that breaks is an issue and a report
+```
+
 1. The input rules run before a thread is created or a turn is stored: built-in first, then yours in parallel
    ([The input check](../20-learn-the-gateway/050-guardrails.md#21-the-input-check)).
 2. A judge is one model call, on the profile's cheap model unless the rule picks the main one, checked by your usage adapter and traced

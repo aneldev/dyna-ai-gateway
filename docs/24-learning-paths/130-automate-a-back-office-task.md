@@ -39,6 +39,23 @@ and the step limit bound it; your usage adapter decides what it may spend.
 
 ## 5. How the parts connect
 
+```mermaid
+sequenceDiagram
+  participant Job as Your job
+  participant GW as AIGateway
+  participant Ap as Your approver
+  participant T as The trace
+  Job->>Job: 1. builds its userContext, permissionsToTools maps it to tools
+  Job->>GW: 2. run() without a threadId, the job awaits response
+  loop every step
+    GW->>GW: 3. requires and visibleWhen decide what is offered
+    GW->>T: 6. one entry per step
+  end
+  GW-->>Job: 4. a NEEDS_APPROVAL tool pauses the job
+  Ap->>GW: 4. resume() later
+  GW-->>Job: 5. a tool with endsRun closes the job, maxStepsPerRun, timeoutMs and the usage adapter bound it
+```
+
 1. The job builds a `userContext` for itself; `toolPolicy.permissionsToTools` maps its permissions to the tools it may
    use ([Narrow, never widen](../20-learn-the-gateway/030-tools.md#23-narrow-never-widen)).
 2. `run()` without a `threadId` starts a thread for the job; the job awaits `response` and ignores `events`

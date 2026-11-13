@@ -38,6 +38,20 @@ Where it ends: when the model must act on the decision itself, use [Let the mode
 
 ## 5. How the parts connect
 
+```mermaid
+sequenceDiagram
+  participant App as Your server
+  participant GW as AIGateway
+  participant M as The cheap model
+  participant Q as Your queue, agent or screen
+  Note over GW: 1. a profile such as triage names a cheap model
+  App->>GW: 2. ask() with prompt, context and outputSchema
+  GW->>M: the model call
+  GW->>GW: 3. the output check parses and validates, a mismatch is output_schema and FAILED
+  GW-->>App: structured
+  App->>Q: 4. your code switches on structured
+```
+
 1. A profile such as `triage` names a cheap model ([Two profiles, the user picks the model](../20-learn-the-gateway/010-models-and-profiles.md#32-two-profiles-the-user-picks-the-model)
    shows the shape).
 2. The call passes the message as `prompt`, what the screen knows as `context`, and the schema as `outputSchema`.

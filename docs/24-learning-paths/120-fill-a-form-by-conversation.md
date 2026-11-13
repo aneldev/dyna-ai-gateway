@@ -39,6 +39,22 @@ The run, the question card, the resume and the submit tool are all in this path.
 
 ## 5. How the parts connect
 
+```mermaid
+sequenceDiagram
+  participant App as Your server and screen
+  participant GW as AIGateway
+  participant M as The model
+  Note over GW: 1. userQuestions.enabled offers dyna_aigw_ask_user_question in every run()
+  App->>GW: run()
+  loop until the form is complete
+    M->>GW: 2. every open field in one question call
+    GW-->>App: 2. PAUSED with a USER_QUESTION envelope
+    App->>GW: 3. resume() with one ANSWER decision, the answers become the tool's result
+  end
+  M->>GW: 4. the outputSchema object, or the submit tool with endsRun
+  GW-->>App: ANSWER
+```
+
 1. `humanGate.userQuestions.enabled` offers `dyna_aigw_ask_user_question` in every `run()`.
 2. The model puts every open field into one call; the run pauses with a `USER_QUESTION` envelope.
 3. Your screen renders the questions; `resume()` passes one `ANSWER` decision with the answers. The answers become the

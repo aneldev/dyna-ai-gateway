@@ -49,6 +49,7 @@
     #   each item links the 8.x examples that show it
     # - List of the parts
     # - Understanding the connection of parts
+    #   a Mermaid diagram (sequence for numbered steps, flowchart for a table), then the text; numbered steps carry the same numbers in both
     # - API you should know from /30          # List the references
     #   grouped by the step of the developer's code: set up, make the call, read the result, what follows
     #   each group links the 8.x examples that use its symbols

@@ -42,6 +42,16 @@ Where it ends: a call that must wait for a person is [Keep a human in control](0
 
 ## 5. How the parts connect
 
+```mermaid
+flowchart LR
+  R["Resolve: the registry, allowedTools, the user's permissions, activeTools, additionalTools, caps.tools"] --> O["Offer: requires, visibleWhen, the skills"]
+  O --> G["Gate: the tool's policy, then the profile's approvals"]
+  G -->|NEEDS_APPROVAL| P(["the run pauses"])
+  G --> E["Execute: inputSchema, the timeout, the output cap"]
+  E --> L["Loop: the usage adapter, maxStepsPerRun, endsRun"]
+  L -->|next step| O
+```
+
 The path of one tool call is [Tools: The path of a tool call](../20-learn-the-gateway/030-tools.md#21-the-path-of-a-tool-call).
 The parts of this path meet there:
 

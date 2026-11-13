@@ -37,6 +37,19 @@ by the model through two built-in tools, and by your application. Both are data 
 
 ## 5. How the parts connect
 
+```mermaid
+sequenceDiagram
+  participant App as Your server
+  participant GW as AIGateway
+  participant B as The background work
+  App->>GW: ask() or run() on a thread
+  GW->>GW: 1. the window and the notes, the facts into the memory slot
+  GW-->>App: ANSWER
+  GW->>B: 2. the summary and the fact extraction, on the cheap model
+  Note over GW: 3. in a run(), the model writes facts through the built-in tools
+  App->>GW: 4. whenIdle() resolves when the background work is done
+```
+
 1. On each call the thread memory returns the window and the notes; the user facts and the notes go into the `{memory}`
    slot as data ([The `{memory}` slot](../20-learn-the-gateway/080-thread-memory.md#26-the-memory-slot),
    [How the facts reach the prompt](../20-learn-the-gateway/090-user-memory.md#24-how-the-facts-reach-the-prompt)).

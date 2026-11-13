@@ -37,6 +37,14 @@ an image goes through the file store; a text your application already holds goes
 
 ## 5. How the parts connect
 
+```mermaid
+flowchart LR
+  F["an uploaded PDF or image"] -->|"files, when the model has the cap"| M["The model"]
+  C["a text your application holds"] -->|"context, as data"| M
+  T["the thread's own conversation"] -->|"the window and the notes"| M
+  M -->|"outputFormat for text, outputSchema for a typed one"| S(["the summary"])
+```
+
 | Source of the text            | How it reaches the model                      | Read                                                                                        |
 |-------------------------------|-----------------------------------------------|---------------------------------------------------------------------------------------------|
 | an uploaded PDF or image      | `files`, read when the model has the cap      | [A question with files](../20-learn-the-gateway/092-chat-files.md#22-a-question-with-files) |

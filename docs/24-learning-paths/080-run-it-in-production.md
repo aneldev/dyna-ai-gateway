@@ -42,6 +42,16 @@ providers, and runs two jobs next to the server. Nothing in your calls changes.
 
 ## 5. How the parts connect
 
+```mermaid
+flowchart LR
+  App(["Your server"]) -->|"each call: keep timeoutMs at or under threadStore.leaseMs"| GW["AIGateway"]
+  GW --> S["Storage: one repository or adapter per store"]
+  GW --> U["Spend: your IUsageAdapter, before and after every model call"]
+  GW --> T["What happened: one trace entry per model call"]
+  Sig(["Your signal handler"]) -->|"shutdown()"| GW
+  Job(["Your schedule, per tenant"]) -->|"expirePausedRuns, recoverStuckRuns"| GW
+```
+
 | Concern         | Where it is decided                                                  | What ties it to the others                                                                                 |
 |-----------------|----------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
 | Storage         | one repository or adapter per store, in `IAIGatewayConfig`           | a paused run in a shared repository resumes on any instance                                                |
