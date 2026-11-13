@@ -24,6 +24,8 @@ const config = {
     hooks: {onBrokenMarkdownLinks: "throw"},
   },
   themes: ["@docusaurus/theme-mermaid"],
+  // Mermaid's node tooltips need d3-transition loaded first (the file says why)
+  clientModules: ["./src/clientModules/d3-transition.js"],
   plugins: [
     [
       "docusaurus-plugin-typedoc",

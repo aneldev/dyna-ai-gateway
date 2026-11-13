@@ -84,6 +84,11 @@ pnpm docs:check-samples [folder…]   # type-check the TypeScript samples (defau
   later sample sees the names of the earlier ones. What a page takes as given (your application's objects, the ids your
   screen holds) is declared in `scripts/check-doc-samples/prelude.ts`: a new name a sample uses goes there. The learning
   paths hold whole samples; the other folders hold fragments that do not compile on their own, so they are not checked.
+- **Mermaid's node tooltips need d3-transition** (flowcharts, class and state diagrams):
+  `website/src/clientModules/d3-transition.js` (a `clientModules` entry of the config) imports it before any diagram
+  renders. Without it, leaving a node with the mouse throws
+  "tooltipElem.transition is not a function": `d3` declares no side effects, so webpack never runs the import that adds
+  `transition()`. Remove the module and the `d3-transition` dependency once Mermaid imports it itself.
 - **Deploy:** `.github/workflows/docs.yml` runs `pnpm docs:check-samples`, then builds and publishes the site to GitHub
   Pages, on a push to `main` that touches `docs/`, `website/`, the gateway's `src/` or the sample check, and on demand from
   the Actions tab. A sample that no longer compiles stops the deploy.
