@@ -66,5 +66,7 @@ audience rule: never link `docs/internal` or `docs/plans` from a JSDoc. Link a u
       broken anchor with the published page and the anchor (`onBrokenLinks`, `onBrokenAnchors`, `onBrokenMarkdownLinks: "throw"` in
       `website/docusaurus.config.mjs`). The pages it does not publish (`internal/`, `plans/`, `implementation/`,
       `80-backlog.md`, `85-workspace.md`, `docs-structure.txt`) are not checked.
+      The same build checks the learning-paths index: a path added, renamed or retitled without its row in the "The paths"
+      table of `docs/24-learning-paths/README.md` fails it.
 - [ ] Last: the `consistency-pressure-test` skill over the pages written or touched and everything that states the same
       facts; its result goes into the handoff.

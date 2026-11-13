@@ -76,8 +76,10 @@ pnpm docs:check-samples [folder…]   # type-check the TypeScript samples (defau
   the published page and the anchor).
   The documents the site does not publish are not checked.
 - **The output check** (`website/scripts/check-output.mjs`) fails the build on an API page without exactly one `h1`, on
-  any excluded document in the output, and on a Mermaid diagram of a published doc that does not parse. Mermaid renders in
-  the browser, so without this check a broken diagram only shows on the live page.
+  any excluded document in the output, on a Mermaid diagram of a published doc that does not parse, and on a learning-paths
+  index that drifted from its files. Mermaid renders in the browser, so without this check a broken diagram only shows on
+  the live page. The index is the "The paths" table of `docs/24-learning-paths/README.md`: every `<number>-<name>.md` of
+  the folder once, in file order, its link text the page's `h1`. A new path is a file and a row.
 - **The sample check** (`scripts/check-doc-samples/check.mjs`) turns each page into one `.ts` file under
   `temp/check-doc-samples/` and runs `tsc` on them with the root `tsconfig.base.json`; `dyna-ai-gateway` resolves to the
   gateway's `src/`, so a sample is checked against the code as it is now. The samples of a page run in nested blocks, so a
