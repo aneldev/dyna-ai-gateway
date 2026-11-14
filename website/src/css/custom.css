@@ -111,6 +111,28 @@ h6 {
   background-size: 100% 1px;
 }
 
+/* The Material icon before each link (src/theme/Footer/LinkItem): a lavender glyph that lights up with its link. */
+.footer__link-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.footer__link-icon {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: #a071f8;
+  filter: drop-shadow(0 0 6px rgba(160, 113, 248, 0.35));
+  transition: fill 0.2s ease, transform 0.25s ease, filter 0.25s ease;
+}
+
+.footer__link-row:hover .footer__link-icon {
+  fill: #e7d4fd;
+  transform: translateX(2px) scale(1.08);
+  filter: drop-shadow(0 0 8px rgba(231, 212, 253, 0.6));
+}
+
 .footer__bottom {
   margin-top: 2.5rem;
   padding-top: 2rem;
@@ -135,8 +157,24 @@ h6 {
   letter-spacing: 0.02em;
 }
 
+/* The company link in the copyright line (anel.co): the link color, the same grow-in underline as the columns. */
+.footer__company {
+  color: var(--ifm-footer-link-color);
+  font-weight: 600;
+  background: linear-gradient(currentColor, currentColor) left bottom / 0 1px no-repeat;
+  transition: color 0.2s ease, background-size 0.25s ease;
+}
+
+.footer__company:hover {
+  color: var(--ifm-footer-link-hover-color);
+  text-decoration: none;
+  background-size: 100% 1px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .footer__link-item,
+  .footer__link-icon,
+  .footer__company,
   .footer__logo {
     transition: none;
   }

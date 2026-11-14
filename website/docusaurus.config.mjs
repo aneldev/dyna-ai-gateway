@@ -83,29 +83,29 @@ const config = {
         {
           title: "Docs",
           items: [
-            {label: "Getting started", to: "/docs/getting-started/README"},
-            {label: "Architecture", to: "/docs/architecture/decisions"},
-            {label: "API", to: "/docs/api/index/classes/AIGateway"},
+            {label: "Getting started", icon: "rocket", to: "/docs/getting-started/README"},
+            {label: "Architecture", icon: "architecture", to: "/docs/architecture/decisions"},
+            {label: "API", icon: "api", to: "/docs/api/index/classes/AIGateway"},
           ],
         },
         {
           title: "Learn",
           items: [
-            {label: "Learn the gateway", to: "/docs/learn-the-gateway/intro"},
-            {label: "Learning paths", to: "/docs/learning-paths"},
-            {label: "AI best practices", to: "/docs/ai-best-practices"},
+            {label: "Learn the gateway", icon: "school", to: "/docs/learn-the-gateway/intro"},
+            {label: "Learning paths", icon: "route", to: "/docs/learning-paths"},
+            {label: "AI best practices", icon: "sparkles", to: "/docs/ai-best-practices"},
           ],
         },
         {
           title: "Project",
           items: [
-            {label: "GitHub", href: GITHUB_URL},
-            {label: "npm", href: NPM_URL},
-            {label: "Changelog", href: `${GITHUB_URL}/blob/main/packages/dyna-ai-gateway/CHANGELOG.md`},
+            {label: "GitHub", icon: "github", href: GITHUB_URL},
+            {label: "npm", icon: "package", href: NPM_URL},
+            {label: "Changelog", icon: "history", href: `${GITHUB_URL}/blob/main/packages/dyna-ai-gateway/CHANGELOG.md`},
           ],
         },
       ],
-      copyright: `MIT License. © ${new Date().getFullYear()} Anel Invent`,
+      copyright: `MIT License. © ${new Date().getFullYear()} <a class="footer__company" href="https://anel.co" target="_blank" rel="noopener noreferrer">Anel Invent</a>`,
     },
   },
 };
