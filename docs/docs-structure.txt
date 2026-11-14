@@ -224,7 +224,30 @@
       /20-guarded-workflow                    # requires: a tool only after another ran, endsRun closes the job
 
   /50-ai-best-practices
-    README.md                                 # today's index.md, just say there that will come later
+    # One proven practice per file, complete, with only the code of the practice; the folder is the teaser that search finds
+    # Each file opens with front matter (description, keywords, sidebar_label); the h1 is the title a developer searches for
+    # Order of the files: a shuffle, not a ranking
+    # Chapters
+    # - (intro: the problem in one paragraph, what the practice gives)
+    # - The problem
+    # - The practice                          # numbered rules
+    # - In code                               # what the app owns is a `declare` line; each page compiles as one module (docs:check-samples)
+    # - Pitfalls
+    # - Checklist
+    # - Go further                            # the learn page, the learning path with the full setup
+    index.md                                  # one row per practice: the page, what it solves
+    010-context-engineering.md
+    020-stop-llm-hallucinations.md
+    030-structured-output-with-zod.md
+    040-guarded-agent-workflows.md
+    050-control-llm-costs.md
+    060-human-in-the-loop-approvals.md
+    070-agent-skills-on-demand.md
+    080-multi-tenant-rag.md
+    090-prompt-injection-defense.md
+    100-ask-instead-of-guess.md
+    110-prompt-caching.md
+    120-llm-as-a-judge-guardrails.md
 
   /60-architecture
     # These files simply describe the Architecture of this lib, is not for all users, but only thise need to dig how this works.

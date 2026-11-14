@@ -35,7 +35,7 @@ The user's prompt itself (`IGatewayAskInput.prompt`) and the thread's turns are 
 - **Rule for this one call** ("one sentence", "offer the premium plan first", "the user is an admin") → `instructions`. Not stored; pass it on every call that needs it.
 - **What the user is looking at** (the open invoice, the selected rows, the current page) → `context`. It is labelled as data because an app often builds it from user-typed values; the model must not take a "ignore your rules" inside it as a rule.
 - **What should be true across calls** (the user's name, their timezone) → memory, written by the model or by `upsertUserFact`; not the prompt.
-- **Documents** → the knowledge base, never pasted into `instructions` or `context`.
+- **Documents to search** (policies, manuals) → the knowledge base, never pasted into `instructions` or `context`. **The one document a call is about** (a contract to summarise) → `context` or a file of the call: the model reads it whole.
 
 ## Why this order
 

@@ -1,11 +1,11 @@
 // Type-checks the ```ts samples of Markdown pages against the gateway's sources, as a developer pastes them:
-// `pnpm docs:check-samples [folder…]` (default: docs/24-learning-paths). Exits non-zero on the first type error.
+// `pnpm docs:check-samples [folder…]` (default: docs/24-learning-paths and docs/50-ai-best-practices). Exits non-zero on the first type error.
 //
 // Each example of a page becomes one .ts file under temp/check-doc-samples/, nothing else in it:
 //   - a page with a `### 8.0` chapter: one file per `### 8.N` example, holding the samples of 8.0 and then those of 8.N,
 //     in page order, at the top level of one module (what a developer gets by pasting the two into a file). An example
 //     that declares its own `const gateway` replaces the `const gateway = new AIGateway(config);` line of 8.0.
-//   - any other page: one file with all its samples
+//   - any other page: one file with all its samples, in page order (a page of docs/50-ai-best-practices)
 //   - the samples are joined as they are, imports included: a name that 8.0 and the example both import fails, as it
 //     does in the pasted file; `dyna-ai-gateway` and `dyna-ai-gateway/vercel-ui` resolve to packages/dyna-ai-gateway/src,
 //     so a sample is checked against the code as it is now, not against the last build
@@ -20,7 +20,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
 const gatewayDir = path.join(root, 'packages', 'dyna-ai-gateway');
 const outDir = path.join(root, 'temp', 'check-doc-samples');
-const folders = process.argv.length > 2 ? process.argv.slice(2) : ['docs/24-learning-paths'];
+const folders = process.argv.length > 2 ? process.argv.slice(2) : ['docs/24-learning-paths', 'docs/50-ai-best-practices'];
 
 const gatewayLine = /^const gateway = new AIGateway\(config\);\n?/m;
 

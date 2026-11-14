@@ -446,8 +446,9 @@ matched when the chunk has any of them.
   application's document endpoints and jobs, not in the user's turn.
 - **Reading `citations` as proof.** A citation means the model was given the chunk, not that it used it. A grounding check
   belongs in an output rule that reads `evidence.chunks` ([Guardrails](050-guardrails.md)).
-- **Documents in `instructions` or `context`.** They cost tokens on every call, are not searched and are not cited. Put
-  documents in the knowledge base
+- **Documents to search in `instructions` or `context`.** They cost tokens on every call, are not searched and are not
+  cited. Put them in the knowledge base. The one document a call is about, such as a contract to summarise, goes with the
+  call as `context` or a file
   ([Which layer to use](../60-architecture/40-system-prompt-production-layers.md#which-layer-to-use)).
 - **A stored `CHAT_MAIN` template without `{kb}`.** The excerpts are left out of the prompt without a warning, and
   `citations` still lists the chunks. Keep the placeholder after `{cacheBreakpoint}`.
