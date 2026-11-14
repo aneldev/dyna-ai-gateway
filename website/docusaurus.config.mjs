@@ -25,7 +25,7 @@ const config = {
   },
   themes: ["@docusaurus/theme-mermaid"],
   // Mermaid's node tooltips need d3-transition loaded first (the file says why)
-  clientModules: ["./src/clientModules/d3-transition.js"],
+  clientModules: ["./src/clientModules/d3-transition.js", "./src/clientModules/fonts.js"],
   plugins: [
     [
       "docusaurus-plugin-typedoc",
@@ -78,6 +78,7 @@ const config = {
     },
     footer: {
       style: "dark",
+      logo: {alt: "dyna AI Gateway logo", src: "img/logo.svg", width: 56, height: 56},
       links: [
         {
           title: "Docs",
@@ -85,6 +86,14 @@ const config = {
             {label: "Getting started", to: "/docs/getting-started/README"},
             {label: "Architecture", to: "/docs/architecture/decisions"},
             {label: "API", to: "/docs/api/index/classes/AIGateway"},
+          ],
+        },
+        {
+          title: "Learn",
+          items: [
+            {label: "Learn the gateway", to: "/docs/learn-the-gateway/intro"},
+            {label: "Learning paths", to: "/docs/learning-paths"},
+            {label: "AI best practices", to: "/docs/ai-best-practices"},
           ],
         },
         {

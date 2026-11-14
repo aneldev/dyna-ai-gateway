@@ -9,6 +9,10 @@
   --ifm-color-primary-lighter: #7651dd;
   --ifm-color-primary-lightest: #9172e4;
   --ifm-code-font-size: 92%;
+  /* The fonts (loaded by src/clientModules/fonts.js); code keeps the system monospace. */
+  --ifm-font-family-base: "Plus Jakarta Sans Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ifm-heading-font-family: var(--ifm-font-family-base);
+  --ifm-heading-font-weight: 700;
   --ifm-navbar-shadow: 0 1px 0 var(--ifm-toc-border-color);
   --docusaurus-highlighted-code-line-bg: rgba(91, 48, 214, 0.12);
 }
@@ -37,10 +41,103 @@
   height: 2.25rem;
 }
 
-.navbar__title {
-  font-weight: 700;
+/* The display treatment: the text font, heavy and tightly tracked, so headings read compact and modern. */
+h1 {
+  font-weight: 800;
+  letter-spacing: -0.035em;
 }
 
+h2,
+h3 {
+  letter-spacing: -0.025em;
+}
+
+h4,
+h5,
+h6 {
+  letter-spacing: -0.01em;
+}
+
+.navbar__title {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+/* The footer: the logo's night sky — the orbit-and-sparkle backdrop over the logo's violet, in both color modes. */
 .footer--dark {
-  --ifm-footer-background-color: #1e1440;
+  --ifm-footer-background-color: #170f33;
+  --ifm-footer-link-color: #d9ccfb;
+  --ifm-footer-link-hover-color: #ffffff;
+  --ifm-footer-title-color: #ffffff;
+  --ifm-footer-color: #a99bd6;
+  --ifm-footer-padding-vertical: 4rem;
+  position: relative;
+  overflow: hidden;
+  background:
+    url("/img/footer-bg.svg") center / cover no-repeat,
+    linear-gradient(165deg, #170f33 0%, #24135c 55%, #3a1a9a 100%);
+}
+
+/* A thin glowing seam where the page ends and the footer begins. */
+.footer--dark::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #a071f8 30%, #e7d4fd 50%, #a071f8 70%, transparent);
+}
+
+.footer__title {
+  font-family: var(--ifm-heading-font-family);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c5affc;
+  margin-bottom: 0.9rem;
+}
+
+.footer__item {
+  padding: 0.25rem 0;
+}
+
+.footer__link-item {
+  background: linear-gradient(currentColor, currentColor) left bottom / 0 1px no-repeat;
+  transition: color 0.2s ease, background-size 0.25s ease;
+}
+
+.footer__link-item:hover {
+  text-decoration: none;
+  background-size: 100% 1px;
+}
+
+.footer__bottom {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(197, 175, 252, 0.15);
+}
+
+/* The logo SVG stretches to its box, as in the navbar; the glow lifts it off the dark sky. */
+.footer__logo {
+  width: 3.5rem;
+  height: 3.5rem;
+  max-width: none;
+  filter: drop-shadow(0 0 18px rgba(160, 113, 248, 0.55));
+  transition: transform 0.3s ease;
+}
+
+.footer__logo:hover {
+  transform: scale(1.06) rotate(-4deg);
+}
+
+.footer__copyright {
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer__link-item,
+  .footer__logo {
+    transition: none;
+  }
 }
