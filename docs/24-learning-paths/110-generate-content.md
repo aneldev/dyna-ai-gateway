@@ -221,7 +221,7 @@ const support: IAIProfile = {
   promptAddendum: "You write for Acme, a family-run shop. Warm, short sentences, no exclamation marks.",
   allowedTools: [],
   approvals: [],
-  limits: {maxStepsPerRun: 1, maxOutputTokens: 1_200},
+  limits: {maxStepsPerRun: 1, maxOutputTokens: 4_000}, // a reasoning model thinks within this cap
 };
 
 const supportClaude: IAIProfile = {
@@ -232,7 +232,7 @@ const supportClaude: IAIProfile = {
   promptAddendum: "You write for Acme, a family-run shop. Warm, short sentences, no exclamation marks.",
   allowedTools: [],
   approvals: [],
-  limits: {maxStepsPerRun: 1, maxOutputTokens: 1_200},
+  limits: {maxStepsPerRun: 1, maxOutputTokens: 4_000}, // a reasoning model thinks within this cap
 };
 
 const config: IAIGatewayConfig = {
@@ -362,6 +362,8 @@ The product's data is the `context`, and `instructions` forbid any fact that is 
 > **The bigger picture:** The product editor of the shop's back office: a merchant fills the fields of a product and asks for the description of the shop page.
 
 ```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
 declare const product: object; // the product record: name, material, sizes, care
 
 const {response} = gateway.ask({
@@ -372,6 +374,9 @@ const {response} = gateway.ask({
   instructions: "Two short paragraphs, then a bullet list of the facts. Never invent a fact that is not in the data.",
   kbFilters: {libraryIds: [], bookIds: []},
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // Markdown, for the shop page
 ```
 
 ### 8.6 A payment reminder as plain text for an SMS
@@ -381,7 +386,7 @@ const {response} = gateway.ask({
 > **The bigger picture:** The invoice screen or the reminder job of the back office: the reminder goes out by SMS, where Markdown would show as raw symbols.
 
 ```ts
-import {EOutputFormat} from "dyna-ai-gateway";
+import {EGatewayResponseKind, EOutputFormat} from "dyna-ai-gateway";
 
 declare const invoice: {invoiceNo: string; totalCents: number; currency: string}; // the invoice on screen
 
@@ -393,6 +398,9 @@ const {response} = gateway.ask({
   outputFormat: EOutputFormat.PLAIN,
   kbFilters: {libraryIds: [], bookIds: []},
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // plain text, for the SMS
 ```
 
 ### 8.7 Three subject lines with a higher temperature
@@ -402,6 +410,8 @@ Three calls in parallel with `temperature: 1` give more varied variants. `temper
 > **The bigger picture:** The newsletter editor: the marketer asks for suggestions and picks one of the three, or asks again.
 
 ```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
 const variants = await Promise.all([1, 2, 3].map(() => gateway.ask({
   userContext,
   profileId: "support-claude", // its model has caps.temperature: true
@@ -409,6 +419,8 @@ const variants = await Promise.all([1, 2, 3].map(() => gateway.ask({
   temperature: 1,
   kbFilters: {libraryIds: [], bookIds: []},
 }).response));
+
+const subjectLines = variants.flatMap(result => (result.kind === EGatewayResponseKind.ANSWER ? [result.text] : []));
 ```
 
 ## 9. Pitfalls
@@ -419,6 +431,8 @@ const variants = await Promise.all([1, 2, 3].map(() => gateway.ask({
   ([D68](../60-architecture/90-decisions.md#d68-per-call-instructions-and-context)).
 - A `temperature` on a model without the cap is a 400
   ([Models and profiles: Pitfalls](../20-learn-the-gateway/010-models-and-profiles.md#4-pitfalls)).
+- On a reasoning model the thinking counts against `limits.maxOutputTokens`: a low cap ends the draft early or empty, with
+  the WARNING `output_truncated` ([Classify and route requests: Pitfalls](090-classify-and-route-requests.md#9-pitfalls)).
 
 ## 10. Summary
 

@@ -311,6 +311,8 @@ if (result.kind === EGatewayResponseKind.ANSWER) {
 > **The bigger picture:** The filters of the chat screen, or the rights of the user: a German-speaking user in one book's context, or an admin who may read everything.
 
 ```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
 const oneBook = gateway.ask({
   userContext,
   profileId: "accounting",
@@ -324,6 +326,10 @@ const everyLibrary = gateway.ask({
   prompt: "Where is the travel expense policy?",
   kbFilters: {libraryIds: "all", bookIds: []}, // every library of the tenant
 });
+
+const [inOneBook, inEveryLibrary] = await Promise.all([oneBook.response, everyLibrary.response]);
+if (inOneBook.kind === EGatewayResponseKind.ANSWER) console.log(inOneBook.text, inOneBook.citations);
+if (inEveryLibrary.kind === EGatewayResponseKind.ANSWER) console.log(inEveryLibrary.text, inEveryLibrary.citations);
 ```
 
 ### 8.4 A call that searches no document
@@ -333,12 +339,17 @@ With an empty `libraryIds` the call runs no search: the model gets no excerpts a
 > **The bigger picture:** A feature of the same application that has nothing to do with the documents, such as writing a newsletter greeting, on the same profile.
 
 ```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
 const {response} = gateway.ask({
   userContext,
   profileId: "accounting",
   prompt: "Write a friendly greeting for the newsletter.",
   kbFilters: {libraryIds: [], bookIds: []}, // no search, no excerpts, no citations
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text, result.citations); // citations is []
 ```
 
 ### 8.5 One call retrieves more excerpts than the default
@@ -350,6 +361,8 @@ One call asks for more excerpts than the default, here 10, and the other calls k
 `kbRetriever` of 8.0 sets `k` and `minScore` for every call; `kbRetrieval` overrides them for one.
 
 ```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
 const overview = gateway.ask({
   userContext,
   profileId: "accounting",
@@ -357,6 +370,9 @@ const overview = gateway.ask({
   kbFilters: {libraryIds: ["tax"], bookIds: []},
   kbRetrieval: {k: 10}, // this call only
 });
+
+const result = await overview.response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text, result.citations); // up to 10 excerpts cited
 ```
 
 ### 8.6 A follow-up question is rewritten before the search

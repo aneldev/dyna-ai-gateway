@@ -408,6 +408,8 @@ if (result.kind === EGatewayResponseKind.ANSWER && result.endedByTool === "hando
 > **The bigger picture:** A read-only screen: the same profile serves it, but a question asked there can never post a credit note.
 
 ```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
 const {response} = gateway.run({
   userContext,
   profileId: "accounting",
@@ -415,32 +417,42 @@ const {response} = gateway.run({
   activeTools: ["get_invoice"], // the read-only screen: post_credit_note is not offered
   kbFilters: {libraryIds: [], bookIds: []},
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // the total, read with get_invoice
 ```
 
 ### 8.5 One call brings a tool of its own
 
-`additionalTools` adds `replace_draft_text` to this call only, with no entry in `allowedTools`. Permissions, the tool's `policy`, approvals, timeout and output cap apply to it as to every tool.
+`additionalTools` adds `replace_draft_text` to this call only, with no entry in `allowedTools`; `context` carries the letter. Permissions, the tool's `policy`, approvals, timeout and output cap apply to it as to every tool.
 
 > **The bigger picture:** The letter editor: the tool writes into the draft open on the screen, so it exists only for the calls made from that screen.
 
 ```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
 declare const drafts: {replaceText(args: {tenantId: string; draftId: string; text: string}): Promise<{saved: boolean}>}; // your editor's storage
+declare const draft: {id: string; text: string}; // the letter open on the screen
 
 const replaceDraft = defineTool({
   name: "replace_draft_text",
   description: "Replaces the whole text of the letter the user is editing. Returns {saved}.",
   inputSchema: z.object({text: z.string().max(20_000)}),
   tags: ["drafts"],
-  execute: async ({input, userContext}) => drafts.replaceText({tenantId: userContext.tenantId, draftId: "draft-981", text: input.text}),
+  execute: async ({input, userContext}) => drafts.replaceText({tenantId: userContext.tenantId, draftId: draft.id, text: input.text}),
 });
 
 const {response} = gateway.run({
   userContext,
   profileId: "accounting",
   prompt: "Make the letter shorter.",
+  context: draft.text, // the letter itself, as data
   additionalTools: [replaceDraft], // needs no entry in allowedTools
   kbFilters: {libraryIds: [], bookIds: []},
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // the model's note; the new letter is in drafts
 ```
 
 ### 8.6 The model loads a skill when the task needs it
@@ -450,7 +462,7 @@ const {response} = gateway.run({
 > **The bigger picture:** The rulebooks of your company that are too long to put in every prompt: the model reads the refund rules only when a customer asks for a refund.
 
 ```ts
-import {ISkill} from "dyna-ai-gateway";
+import {EGatewayResponseKind, ISkill} from "dyna-ai-gateway";
 
 const refundPolicy: ISkill = {
   name: "refund_policy",
@@ -465,6 +477,9 @@ const {response} = gateway.run({
   skills: [refundPolicy], // or IAIProfile.skills for every call of the profile
   kbFilters: {libraryIds: [], bookIds: []},
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // the answer follows the refund rules the model loaded
 ```
 
 ### 8.7 The UI shows the tool calls, and reads how the run ended

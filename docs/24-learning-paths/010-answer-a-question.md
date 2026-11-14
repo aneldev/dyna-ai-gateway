@@ -333,6 +333,8 @@ const result = await response; // the stream ended because the response settled
 > **The bigger picture:** The invoice screen: the user clicks "check this invoice", and your code sends the invoice on screen and the format that screen wants.
 
 ```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
 declare const invoice: object; // the invoice on screen, from your database
 
 const result = await gateway.ask({
@@ -343,6 +345,8 @@ const result = await gateway.ask({
   instructions: "Answer in at most five bullet points. Name the line numbers.", // this call only
   kbFilters: {libraryIds: [], bookIds: []},
 }).response;
+
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // at most five bullet points
 ```
 
 ### 8.4 The answer comes back as typed data
@@ -378,7 +382,7 @@ if (result.kind === EGatewayResponseKind.ANSWER && result.structured) {
 > **The bigger picture:** A notification job: the text goes to an SMS or a voice message, where Markdown symbols would show as they are.
 
 ```ts
-import {EOutputFormat} from "dyna-ai-gateway";
+import {EGatewayResponseKind, EOutputFormat} from "dyna-ai-gateway";
 
 const {response} = gateway.ask({
   userContext,
@@ -387,6 +391,9 @@ const {response} = gateway.ask({
   outputFormat: EOutputFormat.PLAIN, // no Markdown at all
   kbFilters: {libraryIds: [], bookIds: []},
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // plain text, ready for the SMS
 ```
 
 ### 8.6 The user asks a follow-up on the same thread
@@ -458,6 +465,8 @@ A thread is bound to no profile. The call names `accounting-claude`, the profile
 > **The bigger picture:** A "try another model" button in the chat, or a second opinion on an answer the user doubts.
 
 ```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
 declare const threadId: string; // the thread your screen has open
 
 const {response} = gateway.ask({
@@ -467,6 +476,9 @@ const {response} = gateway.ask({
   prompt: "Check your previous answer once more.",
   kbFilters: {libraryIds: [], bookIds: []},
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // written by the other model, from the same thread
 ```
 
 ### 8.9 The call sets a sampling temperature
@@ -476,6 +488,8 @@ const {response} = gateway.ask({
 > **The bigger picture:** A drafting button such as "suggest subject lines", where varied answers are wanted, on a profile whose model accepts a temperature.
 
 ```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
 const {response} = gateway.ask({
   userContext,
   profileId: "accounting-claude", // its model has caps.temperature: true; otherwise the call is a 400
@@ -483,6 +497,9 @@ const {response} = gateway.ask({
   temperature: 0.9,
   kbFilters: {libraryIds: [], bookIds: []},
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // three subject lines, different on every call
 ```
 
 ### 8.10 The call fails, or is rejected

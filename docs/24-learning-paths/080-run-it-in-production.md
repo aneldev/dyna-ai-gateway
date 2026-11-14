@@ -235,7 +235,7 @@ const fetchStatement = defineTool({
   tags: ["bank"],
   timeoutMs: 20_000,
   execute: async ({input, abortSignal}) =>
-    (await fetch(`https://bank.example/statements/${input.month}`, {signal: abortSignal})).json(), // the signal reaches the HTTP call
+    (await fetch(`https://bank.example/statements/${input.month}`, {signal: abortSignal})).json(), // your bank's API; the signal reaches the HTTP call
 });
 
 const accounting: IAIProfile = {

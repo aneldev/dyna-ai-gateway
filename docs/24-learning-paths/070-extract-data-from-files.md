@@ -332,7 +332,7 @@ The same call reads an image: the schema here is a list of rows and a total.
 > **The bigger picture:** An expense app on a phone: the user takes a picture of a receipt and the rows appear in the expense form.
 
 ```ts
-import {IFileRef} from "dyna-ai-gateway";
+import {EGatewayResponseKind, IFileRef} from "dyna-ai-gateway";
 import {z} from "zod";
 
 declare const photo: IFileRef; // the receipt photo the user uploaded (8.2)
@@ -350,6 +350,12 @@ const {response} = gateway.ask({
   outputSchema: receipt,
   kbFilters: {libraryIds: [], bookIds: []},
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER && result.structured) {
+  const {rows, totalCents} = result.structured; // typed from the schema
+  console.log(rows.length, totalCents);
+}
 ```
 
 ### 8.5 One question compares several files
@@ -360,7 +366,7 @@ const {response} = gateway.ask({
 
 ```ts
 import {z} from "zod";
-import {IFileRef} from "dyna-ai-gateway";
+import {EGatewayResponseKind, IFileRef} from "dyna-ai-gateway";
 
 // the two files the user uploaded (8.2)
 declare const invoicePdf: IFileRef;
@@ -374,6 +380,9 @@ const {response} = gateway.ask({
   outputSchema: z.object({differences: z.array(z.object({row: z.string(), invoice: z.string(), deliveryNote: z.string()}))}),
   kbFilters: {libraryIds: [], bookIds: []},
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER && result.structured) console.log(result.structured.differences); // [] when they match
 ```
 
 ### 8.6 The extraction drops the file or fails the schema

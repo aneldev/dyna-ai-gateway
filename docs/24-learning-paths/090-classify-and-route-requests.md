@@ -320,6 +320,7 @@ One call returns several fields at once. `context` gives the model what your sys
 > **The bigger picture:** A new ticket arrives in the helpdesk: it gets its priority, its team and a one-line summary before it lands in the team's list.
 
 ```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
 import {z} from "zod";
 
 declare const ticket: {body: string; customerTier: string; openTickets: number}; // the ticket on screen
@@ -339,6 +340,12 @@ const {response} = gateway.ask({
   outputSchema: ticketTriage,
   kbFilters: {libraryIds: [], bookIds: []},
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER && result.structured) {
+  const {priority, team, summary} = result.structured; // typed from the schema
+  console.log(priority, team, summary);
+}
 ```
 
 ### 8.4 The same message gets the same intent every time
@@ -348,6 +355,7 @@ const {response} = gateway.ask({
 > **The bigger picture:** A classifier whose decisions must be repeatable, for example when the routing is audited or the same message is classified again after a retry.
 
 ```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
 import {z} from "zod";
 
 declare const message: string; // the customer's text, from your inbox
@@ -362,6 +370,9 @@ const {response} = gateway.ask({
   temperature: 0,
   kbFilters: {libraryIds: [], bookIds: []},
 });
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER && result.structured) console.log(result.structured.intent);
 ```
 
 ### 8.5 The model answers outside the enum, and a human takes the message

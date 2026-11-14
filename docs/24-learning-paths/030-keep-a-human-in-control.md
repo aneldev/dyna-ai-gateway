@@ -341,7 +341,7 @@ import {EGatewayResponseKind, EPauseKind} from "dyna-ai-gateway";
 const result = await gateway.run({
   userContext,
   profileId: "accounting",
-  prompt: "Email the customer of invoice 2024-1187 that the payment is ten days late.",
+  prompt: "Email the customer of invoice 2024-1187 now, subject \"Payment reminder\": a short, polite note that the payment is ten days late.",
   kbFilters: {libraryIds: [], bookIds: []},
 }).response;
 if (result.kind === EGatewayResponseKind.PAUSED) {
@@ -381,7 +381,7 @@ const paused = await gateway.run({
 
 ### 8.3 The run pauses, and the approver approves
 
-The `run()` stops before the tool call and settles as `PAUSED`, one envelope per waiting call. The approver's `resume()` carries one decision per envelope; the run then goes on and ends with the answer.
+The `run()` stops before the tool call and settles as `PAUSED`, one envelope per waiting call. The approver's `resume()` carries one decision per envelope; the run then goes on. With `humanGate.userQuestions` enabled, the model may first ask the user, a `USER_QUESTION` card, when the prompt leaves something open, and a resume can pause again: [8.8](#88-resume-until-the-run-stops-pausing) resumes until the run ends.
 
 > **The bigger picture:** The accountant asks in the chat and sees "waiting for approval"; the approver opens the card in their own screen, approves, and the accountant's chat receives the answer.
 
@@ -400,7 +400,7 @@ declare function answersFrom(form: IUserQuestions): IUserAnswer[]; // your quest
 const paused = await gateway.run({
   userContext,
   profileId: "accounting",
-  prompt: "Email the customer of invoice 2024-1187 that the payment is ten days late.", // send_customer_email waits (8.1)
+  prompt: "Email the customer of invoice 2024-1187 now, subject \"Payment reminder\": a short, polite note that the payment is ten days late.", // send_customer_email waits (8.1)
   kbFilters: {libraryIds: [], bookIds: []},
 }).response;
 
@@ -428,7 +428,7 @@ if (paused.kind === EGatewayResponseKind.PAUSED) {
 
 ### 8.4 The approver edits or rejects the call
 
-Instead of approving, the approver changes the input of the call (the policy decides again on it) or rejects it with a text the model reads before it answers without the tool.
+Instead of approving, the approver changes the input of the call (the policy decides again on it) or rejects it with a text the model reads; the run goes on without the tool, and the model answers or asks the user ([8.8](#88-resume-until-the-run-stops-pausing)).
 
 > **The bigger picture:** The approval card has three buttons: approve, edit, reject. These are the other two.
 
@@ -485,7 +485,7 @@ await gateway.resume({
 
 ### 8.6 The model asks the user a question
 
-With `humanGate.userQuestions` enabled, the model can pause the run with a card of questions. The asker answers with `EResumeAction.ANSWER`, and the run goes on with the answers.
+With `humanGate.userQuestions` enabled, the model can pause the run with a card of questions. The asker answers with `EResumeAction.ANSWER`, and the run goes on with the answers. The model may ask again, so the resume can return another card ([8.8](#88-resume-until-the-run-stops-pausing)).
 
 > **The bigger picture:** The chat shows a small form ("which invoice do you mean?") instead of a guessed answer; the user picks an option and the conversation continues.
 
