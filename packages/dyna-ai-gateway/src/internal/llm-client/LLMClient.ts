@@ -550,7 +550,8 @@ export class LLMClient implements ILLMClient {
       toolCalls: result.toolCalls,
       finishReason: result.finishReason,
       usage: result.usage,
-      output: options.output ? result.output : undefined,
+      // A step that ends in tool calls has no answer to parse yet: reading `output` would throw and lose its tool calls
+      output: options.output && result.finishReason !== "tool-calls" ? result.output : undefined,
     };
   }
 
@@ -577,12 +578,14 @@ export class LLMClient implements ILLMClient {
     }
     if (streamError !== undefined) throw streamError;
 
+    const finishReason = await result.finishReason;
     return {
       text: await result.text,
       toolCalls: await result.toolCalls,
-      finishReason: await result.finishReason,
+      finishReason,
       usage: await result.usage,
-      output: options.output ? await result.output : undefined,
+      // A step that ends in tool calls has no answer to parse yet: reading `output` would throw and lose its tool calls
+      output: options.output && finishReason !== "tool-calls" ? await result.output : undefined,
     };
   }
 
