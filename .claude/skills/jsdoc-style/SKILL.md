@@ -311,8 +311,8 @@ returns or emits, the callers (`grep` them — "Who needs it" names only callers
 **contradiction**: resolved in the same change, never smoothed over, never averaged into a sentence both sides could
 accept, never left for later.
 
-The contradiction is resolved by the `consistency-pressure-test` skill: §4 says which side is right (the 98 % rule,
-what to do when the code is the wrong side, the odd-but-not-wrong cases), §3 where contradictions hide.
+The contradiction is resolved by the `consistency-pressure-test` skill: §5 says which side is right (the evidence rule,
+what to do when the code is the wrong side, the odd-but-not-wrong cases), §4 where contradictions hide.
 
 ## 11. Self-check before saving
 

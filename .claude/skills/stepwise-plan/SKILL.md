@@ -179,7 +179,7 @@ author: the goal is to find what breaks, not to confirm it works. Check it on fo
    answers each one. Every term the plan uses matches the glossary (`CLAUDE.md`, Terminology); a term used two ways is an
    issue.
 
-**The loop is the `consistency-pressure-test` skill's** (its §5 and §6): a round runs the four axes above together
+**The loop is the `consistency-pressure-test` skill's** (its §6 and §7; its §3 says who runs a round): a round runs the four axes above together
 with the skill's checks of the facts against the code, the docs and the glossary; rounds go on until one finds zero
 issues, **at most 5**, then the open problems go to the developer in the skill's format. Asking him is not a failed
 round. The result goes into the plan's `## Pressure test` chapter: the date, the number of rounds, one line per issue

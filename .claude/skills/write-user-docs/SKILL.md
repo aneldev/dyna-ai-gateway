@@ -42,6 +42,14 @@ The private docs leave the repo before the library is published. A user doc that
   No copy of a paragraph that exists elsewhere.
 - **Names are the code's names.** Classes, config keys, methods and enum members exactly as exported; a backtick on
   each. Internal classes the user never constructs are named only where the user meets them (a config key, an error).
+- **Edge cases before the first sentence.** Before writing a page, list the cases of the pressure test's check 6 (a
+  continuation, each entry point, a stop or failure, several at once, another actor, left out or empty, order) that its
+  claims touch, read in the code what happens in each, and answer each in the page or narrow the claim to where it holds.
+- **No claim stronger than its source.** *Never*, *always*, *every*, *at worst*, *eliminates* only where the code or a
+  current primary source backs it word for word. A fact outside the library (a provider, a price, a standard) names
+  what is known for sure, checked now, never from memory. A title may attract; the body states the limit.
+- **A sample is code that runs.** It handles every kind of result it can get (several items, not only the first), catches
+  in a loop or a timer, and does what its comment says.
 - **Code samples compile.** Imports from `dyna-ai-gateway`, the config shape of `IAIGatewayConfig`, the real method
   signatures. A sample that would not type-check is wrong.
 - **Professional register.** Present tense, active voice, no first person, no jokes, no emoji.
@@ -72,5 +80,9 @@ audience rule: never link `docs/internal` or `docs/plans` from a JSDoc. Link a u
       `80-backlog.md`, `85-workspace.md`, `docs-structure.txt`) are not checked.
       The same build checks the learning-paths index: a path added, renamed or retitled without its row in the "The paths"
       table of `docs/24-learning-paths/README.md` fails it.
+- [ ] Every edge case of the list made before writing is answered in the page, or the claim says where it holds.
+- [ ] `grep -nwiE "never|always|every|only|all|at worst|largest|eliminates|guarantees|cannot"` over the pages: each hit is
+      backed by the code or a named source, or narrowed.
+- [ ] Every fact outside the library is checked against a current primary source; the handoff names the source.
 - [ ] Last: the `consistency-pressure-test` skill over the pages written or touched and everything that states the same
-      facts; its result goes into the handoff.
+      facts, its rounds run by fresh reviewers (its section 3); its result goes into the handoff.
