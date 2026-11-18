@@ -53,7 +53,11 @@ The private docs leave the repo before the library is published. A user doc that
 - **Code samples compile.** Imports from `dyna-ai-gateway`, the config shape of `IAIGatewayConfig`, the real method
   signatures. A sample that would not type-check is wrong.
 - **Professional register.** Present tense, active voice, no first person, no jokes, no emoji.
-- **Headings are navigable.** Numbered `##` chapters when a doc is long enough to cross-link; a chapter per class only in
+- **Headings are navigable.** Folders and files always carry their number prefix (`20-learn-the-gateway/`, `010-…md`).
+  Inside a page, the chapters are numbered only when the page has `###` sub-chapters: then every `##` is numbered
+  (`## 2. Composition`) and its `###` follow it (`### 2.1 …`); a page with `##` only has no numbers. Docusaurus needs no
+  number: the anchor is the slug of the heading's text, so a number added or removed renames the anchor, and every link to
+  it is fixed in the same change (`pnpm docs:build` fails on a broken anchor). A chapter per class only in
   `90-decisions.md`, a chapter per task elsewhere.
 
 ## JSDoc is a user doc
