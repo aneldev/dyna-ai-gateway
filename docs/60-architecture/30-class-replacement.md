@@ -34,7 +34,7 @@ gateway stores its data writes a [storage adapter](20-adapters.md) instead.
   guardrails' judge, the thread and user memory, the query rewriter and the embedder; the getters of the gateway (`gateway.trace`, `gateway.modelRegistry`, …) return the
   replacement too.
 - **Fixed at construction.** The instances cannot be swapped on a running gateway; a new override means a new gateway
-  ([Live adjustment](50-live-adjustment-and-dependency-injection.md#4-what-is-deliberately-not-possible)).
+  ([Live adjustment](50-live-adjustment-and-dependency-injection.md#7-what-is-deliberately-not-possible)).
 
 ## How it can be extended
 

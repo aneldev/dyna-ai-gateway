@@ -49,7 +49,7 @@ factory per part, which returns your own class in its place; the rest of the gat
 const gateway = new AIGateway(config, {kbRetriever: (kbConfig, deps) => new MyKbRetriever(kbConfig, deps)});
 ```
 
-Not needed to start. The details: [Live adjustment and dependency injection](../60-architecture/50-live-adjustment-and-dependency-injection.md),
+Not needed to start. The details: [Class replacement](../60-architecture/30-class-replacement.md),
 the reasons behind each behaviour: [Decisions](../60-architecture/90-decisions.md).
 
 Next: [Installation](20-installation.md).

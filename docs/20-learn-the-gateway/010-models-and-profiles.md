@@ -147,7 +147,7 @@ Every call reads a profile and a model, so both stores cache their repository.
 A write drops the cache of the instance that made it. Another server instance sees the change after its TTL. A host that
 writes the repository directly, past the registry, calls `modelRegistry.refresh()`. The profile store has no `refresh()`.
 The full table of what changes how is in
-[Live adjustment](../60-architecture/50-live-adjustment-and-dependency-injection.md#3-live-adjustment).
+[Live adjustment](../60-architecture/50-live-adjustment-and-dependency-injection.md#6-live-adjustment).
 
 ### 2.8 Repositories
 
@@ -390,7 +390,7 @@ into a `Date` in `loadAll`.
 
 **Can one thread use two models?**
 Yes. A thread stores no profile. Each call names its own, and the history is in the gateway's provider-neutral shape
-([Why a model change is safe mid-conversation](../60-architecture/50-live-adjustment-and-dependency-injection.md#31-why-a-model-change-is-safe-mid-conversation)).
+([Why a model change is safe mid-conversation](../60-architecture/50-live-adjustment-and-dependency-injection.md#61-why-a-model-change-is-safe-mid-conversation)).
 
 **Can a tenant add its own model?**
 Not through the registry: it has no `tenantId`. The platform registers the models. A tenant chooses among them in its

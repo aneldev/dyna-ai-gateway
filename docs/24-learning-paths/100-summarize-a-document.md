@@ -129,7 +129,7 @@ Grouped by the part of the gateway you replace.
 |----------------------------------------------------------------------------|----------------------------------------------------------|
 | [`IAIGatewayOverrides`](../30-api/index/interfaces/IAIGatewayOverrides.md) | the second argument of `AIGateway`: one factory per part |
 
-The pattern: [What can be injected](../60-architecture/50-live-adjustment-and-dependency-injection.md#23-what-can-be-injected).
+The pattern: [Class replacement](../60-architecture/30-class-replacement.md).
 
 ## 8. Examples
 

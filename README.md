@@ -75,7 +75,7 @@ observability stack, a scripted model in a test. The rest of the gateway does no
 const gateway = new AIGateway(config, {kbRetriever: (kbConfig, deps) => new MyKbRetriever(kbConfig, deps)});
 ```
 
-The seams: [Live adjustment and dependency injection](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/60-architecture/50-live-adjustment-and-dependency-injection.md).
+The factories: [Class replacement](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/60-architecture/30-class-replacement.md).
 
 ## Install
 

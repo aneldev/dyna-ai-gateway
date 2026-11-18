@@ -478,7 +478,7 @@ The window is sized in tokens, from what the rendered system prompt leaves of th
 
 - `workingMemory: {enabled: false}` sends the last 20 turns and remembers nothing; no helper model is ever called.
 - `getThreadMemory` shows the stored summary and facts; under `SLIDING_WINDOW` it is the empty state, or the summary an earlier `SUMMARY_BUFFER` period left: a switch never wipes it, a switch back resumes from it. `resetThreadMemory` clears it.
-- Your own memory model: implement `IWorkingMemory` (`load`, `saveContext`, `getState`, `reset`) and pass it in the constructor's `overrides`; it receives the gateway's `workingMemory` config and the shared children (`threadStore`, `turnBuilder`, `llmClient`, `promptTemplateStore`). See [Dependency injection](../60-architecture/50-live-adjustment-and-dependency-injection.md#23-what-can-be-injected).
+- Your own memory model: implement `IWorkingMemory` (`load`, `saveContext`, `getState`, `reset`) and pass it in the constructor's `overrides`; it receives the gateway's `workingMemory` config and the classes it uses (`threadStore`, `turnBuilder`, `llmClient`, `promptTemplateStore`). See [Class replacement](../60-architecture/30-class-replacement.md).
 
 ```ts
 import {IWorkingMemory, IWorkingMemoryConfig, IWorkingMemoryDeps, AIGateway} from "dyna-ai-gateway";

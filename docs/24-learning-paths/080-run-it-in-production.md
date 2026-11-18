@@ -41,7 +41,7 @@ providers, and runs two jobs next to the server. Nothing in your calls changes.
 | 5  | [Human in the loop: Expiry and cancel](../20-learn-the-gateway/040-human-in-the-loop.md#28-expiry-and-cancel), [Storage and restarts](../20-learn-the-gateway/040-human-in-the-loop.md#211-storage-and-restarts)                     | `expirePausedRuns`, the run repository          |
 | 6  | [Every model call leaves an entry](../60-architecture/90-decisions.md#every-model-call-leaves-an-entry), [D63](../60-architecture/90-decisions.md#d63-debug-true-attaches-the-transcript-to-the-answer)                              | the trace and `debug`                           |
 | 7  | [Is the system prompt cached, and what does it cost?](../10-getting-started/90-faq.md#is-the-system-prompt-cached-and-what-does-it-cost)                                                                                             | prompt caching                                  |
-| 8  | [Persistence decisions](../60-architecture/90-decisions.md#16-persistence)                                                                                                                                                           | the seams and the table names                   |
+| 8  | [Storage adapters](../60-architecture/20-adapters.md)                                                                                                                                                                                | the seams and the table names                   |
 | 9  | [What the gateway checks and what it trusts](../60-architecture/10-architecture-and-trade-offs.md#7-what-the-gateway-checks-and-what-it-trusts), [Known limits](../60-architecture/10-architecture-and-trade-offs.md#8-known-limits) | the boundary of your host                       |
 | 10 | [Models and profiles](../20-learn-the-gateway/010-models-and-profiles.md)                                                                                                                                                            | the models and the profiles your database holds |
 
@@ -141,9 +141,9 @@ Grouped by the part of the gateway you replace.
 
 ### 7.4 Plugging your class in
 
-| Symbol                                                                     | What it is                                                                                                                                                       |
-|----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`IAIGatewayOverrides`](../30-api/index/interfaces/IAIGatewayOverrides.md) | the second argument of `AIGateway`: any part ([What can be injected](../60-architecture/50-live-adjustment-and-dependency-injection.md#23-what-can-be-injected)) |
+| Symbol                                                                     | What it is                                                                                                     |
+|----------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| [`IAIGatewayOverrides`](../30-api/index/interfaces/IAIGatewayOverrides.md) | the second argument of `AIGateway`: any part ([Class replacement](../60-architecture/30-class-replacement.md)) |
 
 ## 8. Examples
 

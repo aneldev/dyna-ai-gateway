@@ -202,8 +202,9 @@ gateway's `workingMemory` config and the shared instances
 | `getState`    | `getThreadMemory`                        | the state to show the user                                                 |
 | `reset`       | `resetThreadMemory`                      | forgets the state of the thread                                            |
 
-A window larger than the budget is trimmed by the gateway, oldest message first, with `turns_trimmed`. See
-[Dependency injection](../60-architecture/50-live-adjustment-and-dependency-injection.md#23-what-can-be-injected).
+A window larger than the budget is trimmed by the gateway, oldest message first, with `turns_trimmed`.
+
+How the class is passed to the gateway: [Class replacement](../60-architecture/30-class-replacement.md).
 
 ## 3. Examples
 

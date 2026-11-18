@@ -38,7 +38,7 @@ The private docs leave the repo before the library is published. A user doc that
 - **No fluff.** No praise of the design, no "simply", no "powerful", no restating the heading in the first sentence.
   One idea per sentence. Tables for parallel facts, prose for one line of argument.
 - **DRY, with Markdown links.** A fact lives in one document; every other document links it
-  (`[Resume on another profile](../architecture/50-live-adjustment-and-dependency-injection.md#32-resume-on-another-profile)`).
+  (`[Resume on another profile](../60-architecture/50-live-adjustment-and-dependency-injection.md#62-resume-on-another-profile)`).
   No copy of a paragraph that exists elsewhere.
 - **Names are the code's names.** Classes, config keys, methods and enum members exactly as exported; a backtick on
   each. Internal classes the user never constructs are named only where the user meets them (a config key, an error).

@@ -51,7 +51,7 @@ application. A developer who changes how a part of the gateway behaves, not wher
   on the same three.
 - **Reads may be cached by the store.** The model catalog, the profiles and the prompt templates are cached per gateway
   instance (`cacheTtlMs`); another server instance sees a write once its cache runs out
-  ([Live adjustment](50-live-adjustment-and-dependency-injection.md#3-live-adjustment)).
+  ([Live adjustment](50-live-adjustment-and-dependency-injection.md#6-live-adjustment)).
 
 ## How it can be extended
 

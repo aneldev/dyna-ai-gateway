@@ -50,7 +50,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 **Why.** The internals are constructed by the gateway, never by the application; a class or a helper that is importable is a class that gets called, and its signature then becomes a contract the library did not mean to give. The types stay public because the application implements the repositories and reads what the gateway returns.
 
-**Consequence.** `gateway.modelRegistry`, `gateway.trace` and the other exposed children can be named as types (`const registry: IModelRegistry = gateway.modelRegistry`) but not constructed: `new ModelRegistry(...)` is a type error. The `overrides` argument of the constructor takes a factory of a public interface (`ILLMClient`, `IWorkingMemory`, …): a test's fake, or a host's own implementation ([Live adjustment and dependency injection](50-live-adjustment-and-dependency-injection.md) § 2.3). An application that needs something the entry does not export asks for a facade method instead of a deep import.
+**Consequence.** `gateway.modelRegistry`, `gateway.trace` and the other exposed children can be named as types (`const registry: IModelRegistry = gateway.modelRegistry`) but not constructed: `new ModelRegistry(...)` is a type error. The `overrides` argument of the constructor takes a factory of a public interface (`ILLMClient`, `IWorkingMemory`, …): a test's fake, or a host's own implementation ([Class replacement](30-class-replacement.md)). An application that needs something the entry does not export asks for a facade method instead of a deep import.
 
 ### D106: An enum's value is its member name
 
@@ -219,7 +219,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 **Why.** A model choice is never only a model: tools, limits and prompt go with it.
 
-**Consequence.** Models, profiles and templates are data with a cache; their write methods invalidate it, so a change is read by the next call. The table of what changes how is in [Live adjustment](50-live-adjustment-and-dependency-injection.md#3-live-adjustment).
+**Consequence.** Models, profiles and templates are data with a cache; their write methods invalidate it, so a change is read by the next call. The table of what changes how is in [Live adjustment](50-live-adjustment-and-dependency-injection.md#6-live-adjustment).
 
 ### A profile a paused run waits on cannot be removed
 
@@ -765,7 +765,7 @@ The server-only module `dyna-ai-gateway/vercel-ui` that speaks the Vercel UI mes
 
 **Decision.** `history` folds the assistant and tool turns of one answer, up to the next user turn, into one assistant message with a `step-start` part before each model step. Tools are `dynamic-tool` parts, rendered by their name.
 
-**Why.** A chat screen shows one bubble per answer: "looked up invoice 4521" and the answer text together, not three bubbles for the tool request, its result and the text. The gateway's tools are registered at runtime, so a client cannot know their types at compile time.
+**Why.** A chat screen shows one bubble per answer: "looked up invoice 4521" and the answer text together, not three bubbles for the tool request, its result and the text. The gateway's tools are passed in the configuration, as values, so a client cannot know their types at compile time.
 
 **Consequence.** The id of a streamed answer and the id of the same answer read back from `history` differ (the first turn's id): reload the thread with `history` when you reopen it, never merge the two.
 

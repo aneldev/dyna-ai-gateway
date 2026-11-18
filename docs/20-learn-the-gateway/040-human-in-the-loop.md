@@ -196,7 +196,7 @@ often not the asker, and your application decides who may approve
 system prompt and the messages so far stay. The review and the approvals are those of both profiles for this resume, so
 the switch adds guards. The run is then stored with the new profile: a later pause of the same run, resumed without a
 `profileId`, has the new profile's guards only. A waiting tool the new profile does not allow is a 400, and the run stays paused. See
-[Resume on another profile](../60-architecture/50-live-adjustment-and-dependency-injection.md#32-resume-on-another-profile)
+[Resume on another profile](../60-architecture/50-live-adjustment-and-dependency-injection.md#62-resume-on-another-profile)
 and [D113](../60-architecture/90-decisions.md#d113-a-profile-switch-on-resume-keeps-the-review-and-the-approvals).
 
 A profile that a paused run waits on (the one it is stored with) cannot be removed: `removeProfile` is a 409 that names the runs
