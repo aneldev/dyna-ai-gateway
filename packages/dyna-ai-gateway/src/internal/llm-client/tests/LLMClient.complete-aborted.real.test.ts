@@ -16,7 +16,7 @@ import {
   meta,
 } from "./utils/llmClientFixtures";
 
-const openAiModel = process.env.AIGATEWAY_TEST_OPENAI_MODEL || "gpt-5-mini";
+const openAiModel = process.env.AIGATEWAY_TEST_OPENAI_MODEL || "gpt-6.1-terra";
 
 /**
  * A streaming call is aborted by the caller after its first text delta. The call rejects with the caller's reason within a

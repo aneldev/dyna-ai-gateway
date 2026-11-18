@@ -9,7 +9,7 @@ import {gatewayConfigBase} from "../internal/utils/gatewayConfigBase";
 /** The token the profile makes the model answer with; the test looks for it. */
 export const PLAIN_CHAT_TOKEN = "PONG-7731";
 
-/** Plain chat on OpenAI (`gpt-5-mini`): no tools, no memory, no knowledge base. The profile leaves the model one answer. */
+/** Plain chat on OpenAI (`gpt-6.1-terra`): no tools, no memory, no knowledge base. The profile leaves the model one answer. */
 export const gatewayConfigAskPlainChat: IAIGatewayConfig = {
   ...gatewayConfigBase,
   aiProfileStore: {

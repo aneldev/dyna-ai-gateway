@@ -6,10 +6,10 @@ import {
 /** The models a config registers; a provider's key must be in the repo-root `.env` (see `utils/loadProviderCredentials.ts`). */
 
 export const openAiModel: IModelInfo = {
-  id: "gpt-5-mini",
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "OpenAI GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "OpenAI GPT-6.1 Terra",
   caps: {
     tools: true,
     images: true,
@@ -18,10 +18,12 @@ export const openAiModel: IModelInfo = {
     reasoning: true,
     temperature: false,
     embeddings: false,
-    contextTokens: 400_000,
-    maxOutputTokens: 16_000,
-    costInPerMTokUsd: 0.25,
-    costOutPerMTokUsd: 2,
+    contextTokens: 922_000, // OpenAI's input limit (the context window is 1 050 000)
+    maxOutputTokens: 128_000,
+    costInPerMTokUsd: 1,
+    costOutPerMTokUsd: 5,
+    costCacheReadPerMTokUsd: 0.05,
+    costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,

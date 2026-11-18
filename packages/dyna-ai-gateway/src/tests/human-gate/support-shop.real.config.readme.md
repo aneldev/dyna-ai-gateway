@@ -86,7 +86,7 @@ paused run may `resume` on the other profile, which swaps the model mid-run (D65
 
 | Profile id                                                       | Model              | Provider  | Key in `.env`                      |
 |------------------------------------------------------------------|--------------------|-----------|------------------------------------|
-| `default` (the one the tests and the sandbox name on every call) | `gpt-5-mini`       | OpenAI    | `AIGATEWAY_TEST_OPENAI_API_KEY`    |
+| `default` (the one the tests and the sandbox name on every call) | `gpt-6.1-terra`    | OpenAI    | `AIGATEWAY_TEST_OPENAI_API_KEY`    |
 | `anthropic`                                                      | `claude-haiku-4-5` | Anthropic | `AIGATEWAY_TEST_ANTHROPIC_API_KEY` |
 
 The tests run on the profile `default`. In the sandbox, `useProfile("anthropic")` makes every following helper call pass that id;
@@ -290,7 +290,7 @@ useProfile("anthropic");                         // from now on every call passe
 await start("What did I order recently?");       // the TRACE shows claude-haiku-4-5
 await reply("Refund the monitor.");              // the same thread; the postcode question, from Claude
 useProfile("default");                           // the profile "default", by its id: a resume with a profileId swaps the model
-await resumeWithAnswers("1010");                 // the paused run continues on gpt-5-mini: verification and approval pause, by OpenAI
+await resumeWithAnswers("1010");                 // the paused run continues on gpt-6.1-terra: verification and approval pause, by OpenAI
 useProfile();                                    // back to the config's profile (dynaEnv.profileId) for a new call; a resume keeps the run's profile
 dynaEnv.traces.map(t => t.modelId);              // the models of the calls so far
 ```
