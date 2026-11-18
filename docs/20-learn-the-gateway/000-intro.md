@@ -38,4 +38,4 @@ The examples reuse the `config` of [Installation](../10-getting-started/20-insta
 | [Chat files and their storage](092-chat-files.md)        | the user attaches images or PDFs to a question                                    |
 
 How the parts connect inside the gateway, and why they are built as they are, is in
-[Architecture](../60-architecture/10-architecture-and-trade-offs.md). Reading it is optional.
+[Architecture](../60-architecture/README.md). Reading it is optional.

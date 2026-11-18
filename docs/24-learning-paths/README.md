@@ -64,4 +64,4 @@ Every example is server code: the gateway is [server-only](../10-getting-started
 line says where on your server it sits, for example the start-up, the route behind a screen, or a scheduled job.
 
 Each part, with all its options, is in [Learn the Gateway](../20-learn-the-gateway/000-intro.md). How the parts are
-built is in [Architecture](../60-architecture/10-architecture-and-trade-offs.md); reading it is optional.
+built is in [Architecture](../60-architecture/README.md); reading it is optional.

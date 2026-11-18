@@ -84,7 +84,7 @@ const config = {
           title: "Docs",
           items: [
             {label: "Getting started", icon: "rocket", to: "/docs/getting-started/README"},
-            {label: "Architecture", icon: "architecture", to: "/docs/architecture/decisions"},
+            {label: "Architecture", icon: "architecture", to: "/docs/architecture"},
             {label: "API", icon: "api", to: "/docs/api/index/classes/AIGateway"},
           ],
         },
