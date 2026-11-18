@@ -8,7 +8,7 @@ of the documentation is required. It starts from four pages of Getting started:
 
 **Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
 `OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
-Installation, `gpt-5-mini` and `text-embedding-3-small`. Examples [8.7](#87-the-same-screen-on-usechat-through-dyna-ai-gatewayvercel-ui) and [8.8](#88-the-cards-of-a-paused-run-in-a-usechat-screen) also need a front end built on the Vercel AI
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`. Examples [8.7](#87-the-same-screen-on-usechat-through-dyna-ai-gatewayvercel-ui) and [8.8](#88-the-cards-of-a-paused-run-in-a-usechat-screen) also need a front end built on the Vercel AI
 SDK's `useChat`.
 
 ## 1. About
@@ -130,7 +130,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The screen runs on one profile, with the knowledge base of the help center: the `help-center` library holds your help articles, ingested as in [Answer from your documents](060-answer-from-your-documents.md). `cancel_order` waits for the user's approval, and the model may ask a question: the two cards of 8.8. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The screen runs on one profile, with the knowledge base of the help center: the `help-center` library holds your help articles, ingested as in [Answer from your documents](060-answer-from-your-documents.md). `cancel_order` waits for the user's approval, and the model may ask a question: the two cards of 8.8. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup, and the routes of the chat screen call it for every user. Threads, files and paused runs are kept per tenant and per user.
 
@@ -150,14 +150,15 @@ import {
 } from "dyna-ai-gateway";
 
 // The two models of Installation
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
-    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -170,7 +171,7 @@ const textEmbedding3Small: IModelInfo = {
   label: "text-embedding-3-small",
   caps: {
     tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
-    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
   },
   enabled: true,
   deprecatedAt: null,
@@ -187,7 +188,7 @@ const baseConfig = {
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
-  defaultCheapModelId: "gpt-5-mini",
+  defaultCheapModelId: "gpt-6.1-terra",
 } satisfies Partial<IAIGatewayConfig>;
 ```
 
@@ -224,7 +225,7 @@ const support: IAIProfile = {
   id: "support",
   tenantId: "acme",
   name: "Customer support",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You answer the customers of the Acme web shop.",
   allowedTools: ["cancel_order"],
   approvals: [],
@@ -245,7 +246,7 @@ const config: IAIGatewayConfig = {
 
   // required too, and kept in view: the provider key, the models
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small]})},
 };
 
 const gateway = new AIGateway(config);
@@ -361,6 +362,8 @@ try {
 } catch (error) {
   if (typeof error === "object" && error !== null && "status" in error && error.status === 409) {
     showToUser("Still answering, or a card waits for your decision. Send it again in a moment."); // one call at a time per thread
+  } else {
+    throw error; // a 404, a provider failure: your error handling
   }
 }
 ```
@@ -410,8 +413,16 @@ const supportChat = new AIGatewayVercelUi({
 export const POST = (request: Request): Promise<Response> => supportChat.chat({request});
 
 // GET /api/chat/:threadId: the messages to draw when a thread is opened
-export const GET = async (request: Request, {params}: {params: {threadId: string}}): Promise<Response> =>
-  Response.json(await supportChat.history({request, threadId: params.threadId}));
+export const GET = async (request: Request, {params}: {params: Promise<{threadId: string}>}): Promise<Response> => {
+  const {threadId} = await params; // Next.js 15+: params is a promise
+  try {
+    return Response.json(await supportChat.history({request, threadId}));
+  } catch (error) {
+    const raw = (error as {status?: number}).status; // history throws the gateway's dynaError (404, …) or your hook's (401)
+    const status = typeof raw === "number" && raw >= 400 && raw < 600 ? raw : 500;
+    return Response.json({message: status < 500 ? (error as Error).message : "Internal error"}, {status});
+  }
+};
 ```
 
 ### 8.8 The cards of a paused run in a `useChat` screen

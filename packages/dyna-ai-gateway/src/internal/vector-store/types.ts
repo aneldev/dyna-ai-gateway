@@ -246,7 +246,7 @@ export interface IVectorIndexInfo {
 
 /** A stored chunk: content plus vector plus tenant. */
 export interface IChunkRecord {
-  /** The owner; every search is filtered by it. */
+  /** The owner; every search carries it, and the adapter filters by it. */
   tenantId: string;
   /** The chunk as the `MdChunker` cut it; what a search returns. */
   chunk: IChunk;

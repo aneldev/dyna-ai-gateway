@@ -71,9 +71,9 @@ const FORMAT_INSTRUCTIONS: Record<EOutputFormat, string> = {
  *
  * > The one place where the order and the shape of what the model reads is decided.
  *
- * Renders the tenant's `CHAT_MAIN` template with its slots (output format, addendum, skills, today, locale, timezone, the
- * call's instructions and context, the memory, the knowledge-base chunks), asks the `WorkingMemory` for the thread's window
- * with the budget the system prompt leaves (D122), inlines the files the model can read, trims an overflow and returns the
+ * Renders the `CHAT_MAIN` template (global, one for every tenant) with its slots (output format, addendum, skills,
+ * today, locale, timezone, the call's instructions and context, the memory, the knowledge-base chunks), asks the
+ * `WorkingMemory` for the thread's window with the budget the system prompt leaves (D122), inlines the files the model can read, trims an overflow and returns the
  * `IModelRequest` with its provenance: template version, chunk ids, estimated tokens, warnings. With `promptCaching` the
  * prompt is split at `{cacheBreakpoint}` into the stable block, marked for the provider's cache, and the per-call block
  * (D123); the stable block is scoped to the tenant unless sharing is on.
@@ -92,7 +92,7 @@ const FORMAT_INSTRUCTIONS: Record<EOutputFormat, string> = {
  *
  * # Pitfalls
  *
- * Pure transform, no I/O but the template render and the memory's load. The template is the tenant admin's: a `{skills}`
+ * Pure transform, no I/O but the template render and the memory's load. The template is the platform admin's (global): a `{skills}`
  * placeholder missing or a per-call slot before `{cacheBreakpoint}` is reported as a WARNING, never thrown. The file
  * bytes are not in the token estimate of the trim; `reserveOutputTokens` covers that gap.
  */
@@ -305,7 +305,7 @@ export class ContextAssembler implements IContextAssembler {
   /**
    * Whether this call's system prompt is split at `{cacheBreakpoint}`: the switch is on, the active CHAT_MAIN has the
    * placeholder, and nothing per-call stands before it. A per-call slot before it → off, with the WARNING `prompt_cache_off`
-   * (the template is stored by the tenant's admin, so the fault is reported, not thrown). No placeholder → off, no issue.
+   * (the template is stored by the platform admin, so the fault is reported, not thrown). No placeholder → off, no issue.
    */
   private async isCaching(issues: IIssue[]): Promise<boolean> {
     if (!this.config.promptCaching) return false;

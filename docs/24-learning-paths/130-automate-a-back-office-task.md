@@ -8,7 +8,7 @@ of the documentation is required. It starts from four pages of Getting started:
 
 **Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
 `OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
-Installation, `gpt-5-mini` and `text-embedding-3-small`.
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`.
 
 ## 1. About
 
@@ -140,7 +140,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The tools (8.1) and the service user the job runs as (8.2) are defined here. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The tools (8.1) and the service user the job runs as (8.2) are defined here. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your worker process builds this gateway once at startup. Nobody watches its runs, so a failed tool call goes to the log through `onToolError`, and `toolPolicy` fixes which tools the job may use and in which order.
 
@@ -161,14 +161,15 @@ import {
 } from "dyna-ai-gateway";
 
 // The two models of Installation
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
-    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -181,7 +182,7 @@ const textEmbedding3Small: IModelInfo = {
   label: "text-embedding-3-small",
   caps: {
     tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
-    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
   },
   enabled: true,
   deprecatedAt: null,
@@ -201,7 +202,7 @@ const baseConfig = {
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
-  defaultCheapModelId: "gpt-5-mini",
+  defaultCheapModelId: "gpt-6.1-terra",
 } satisfies Partial<IAIGatewayConfig>;
 ```
 
@@ -272,7 +273,7 @@ const reconciliation: IAIProfile = {
   id: "reconciliation",
   tenantId: "acme",
   name: "Nightly reconciliation",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You reconcile bank lines with open invoices.",
   allowedTools: ["fetch_bank_statement", "match_payment", "file_reconciliation_report"],
   approvals: [],
@@ -294,11 +295,11 @@ const config: IAIGatewayConfig = {
   // maxStepsPerRun bounds the job
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [reconciliation]})},
   runStore: {repository: new InMemoryRunRepository()}, // a job that waits for an approver is stored here
-  threadStore: {repository: new InMemoryThreadRepository(), leaseMs: 300_000}, // the job's timeoutMs stays under it
+  threadStore: {repository: new InMemoryThreadRepository(), leaseMs: 300_000}, // a resume() longer than the lease can be failed by recoverStuckRuns
 
   // required too, and kept in view: the provider key, the models
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small]})},
 };
 
 const gateway = new AIGateway(config);
@@ -362,6 +363,7 @@ switch (result.kind) {
 ### 8.4 An approver lists the job's paused runs and approves them
 
 `listPausedRuns` with the job's context lists the runs of the service user that wait for a human. The approver resumes each with one `EResumeAction.APPROVE` per envelope; the tools then run with the approver's context.
+The approver's permissions must unlock the pending tool (`ledger.write`), or the resume is a 400.
 
 > **The bigger picture:** The approvals screen of the accounting team the next morning: a person checks the large payments the night job left open and lets the job finish.
 
@@ -373,15 +375,19 @@ const approverContext: IUserContext = {...jobContext, userId: "u-42", permission
 
 const waiting = await gateway.listPausedRuns({userContext: jobContext}); // the runs of the job's user
 for (const run of waiting) {
-  await gateway.resume({
-    userContext: approverContext,
-    runId: run.runId,
-    pauseId: run.pauseId,
-    decisions: run.envelopes.map(envelope => ({
-      callId: envelope.kind === EPauseKind.TOOL_APPROVAL ? envelope.callId : undefined, // which card it decides
-      action: EResumeAction.APPROVE,
-    })),
-  }).response;
+  try {
+    await gateway.resume({
+      userContext: approverContext,
+      runId: run.runId,
+      pauseId: run.pauseId,
+      decisions: run.envelopes.map(envelope => ({
+        callId: envelope.kind === EPauseKind.TOOL_APPROVAL ? envelope.callId : undefined, // which card it decides
+        action: EResumeAction.APPROVE,
+      })),
+    }).response;
+  } catch (error) {
+    console.error("approval failed", {runId: run.runId, error}); // e.g. 410: the pause expired; the next runs still go
+  }
 }
 ```
 
@@ -412,9 +418,10 @@ setInterval(async () => {
   ([When a tool fails](../20-learn-the-gateway/030-tools.md#24-when-a-tool-fails)).
 - `listPausedRuns` lists the calling user's own runs: a job's paused runs are listed under the job's `userContext`
   ([Who may read a thread, a file or a paused run?](../10-getting-started/90-faq.md#who-may-read-a-thread-a-file-or-a-paused-run)).
-- `requires` counts only this run: a lookup of an earlier job on the same thread does not unlock the action
+- A fresh `run()` counts only this run for `requires`: a lookup of an earlier job on the same thread does not unlock
+  the action; after a `resume()`, the tool results of earlier runs the thread memory loaded count too
   ([`IToolPolicyConfig.requires`](../30-api/index/interfaces/IToolPolicyConfig.md)).
-- A job's `timeoutMs` above `threadStore.leaseMs` looks stuck to `recoverStuckRuns`
+- A `resume` without `timeoutMs`, or with one above `threadStore.leaseMs`, can be failed by `recoverStuckRuns` while it runs
   ([What happens to the runs a crashed server left behind?](../10-getting-started/90-faq.md#what-happens-to-the-runs-a-crashed-server-left-behind)).
 
 ## 10. Summary

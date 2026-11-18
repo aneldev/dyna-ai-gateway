@@ -8,7 +8,7 @@ of the documentation is required. It starts from four pages of Getting started:
 
 **Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
 `OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
-Installation, `gpt-5-mini` and `text-embedding-3-small`.
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`.
 
 ## 1. About
 
@@ -137,7 +137,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The profile runs on `gpt-5-mini`, whose caps have `pdf: true` and a context of 400 000 tokens. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The profile runs on `gpt-6.1-terra`, whose caps have `pdf: true` and a `contextTokens` of 922 000 (OpenAI's input limit). The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup; the summaries of every screen and every tenant are calls to it.
 
@@ -158,14 +158,15 @@ import {
 } from "dyna-ai-gateway";
 
 // The two models of Installation
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
-    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -178,7 +179,7 @@ const textEmbedding3Small: IModelInfo = {
   label: "text-embedding-3-small",
   caps: {
     tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
-    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
   },
   enabled: true,
   deprecatedAt: null,
@@ -198,7 +199,7 @@ const baseConfig = {
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
-  defaultCheapModelId: "gpt-5-mini",
+  defaultCheapModelId: "gpt-6.1-terra",
 } satisfies Partial<IAIGatewayConfig>;
 ```
 
@@ -219,7 +220,7 @@ const accounting: IAIProfile = {
   id: "accounting",
   tenantId: "acme",
   name: "Accounting assistant",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: [],
   approvals: [],
@@ -231,7 +232,7 @@ const config: IAIGatewayConfig = {
 
   // What this path uses
   // caps.pdf, caps.contextTokens and the prices bound what a summary can take
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small]})},
   // limits.maxOutputTokens bounds the length of a summary
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting]})},
   fileStore: {adapter: new InMemoryBlobAdapter(), path: "ai-files"}, // the uploaded documents
@@ -365,7 +366,7 @@ if (result.kind === EGatewayResponseKind.ANSWER && result.structured) {
 
 ### 8.5 Estimate the cost before you send a long document
 
-`modelRegistry.estimateCostUsd` computes the USD cost of a call from token counts and the list prices of the model, before anything is sent. The gateway exports no token counter: the token counts are your estimate, and the system prompt, the thread and the thinking of a reasoning model come on top, so the result is a lower bound.
+`modelRegistry.estimateCostUsd` computes the USD cost of a call from token counts and the list prices of the model, before anything is sent. The gateway exports no token counter: the token counts are your estimate, and the system prompt, the thread and the thinking of a reasoning model come on top, so the result is a rough estimate, not a quote. It is also low above 272 000 input tokens: OpenAI bills `gpt-6.1-terra` at higher rates for the whole request there, and the registry holds one price per model.
 
 > **The bigger picture:** Before a large PDF is summarised, your server compares the estimate with the tenant's budget, or the UI shows it to the user to confirm.
 
@@ -373,7 +374,7 @@ if (result.kind === EGatewayResponseKind.ANSWER && result.structured) {
 declare const pages: number; // the page count of the PDF, from your PDF library
 
 const costUsd = await gateway.modelRegistry.estimateCostUsd({
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   inputTokens: pages * 2_000, // your estimate: about 2 000 tokens per page
   outputTokens: 1_500,
 });
@@ -381,7 +382,7 @@ const costUsd = await gateway.modelRegistry.estimateCostUsd({
 
 ### 8.6 The summary was cut at the output limit
 
-When the model stops at the profile's `limits.maxOutputTokens`, the answer is still an `ANSWER`, with the warning `output_truncated` in `issues`.
+Without an `outputSchema`, a summary cut at the output limit is still an `ANSWER`, with the warning `output_truncated` in `issues`; with a schema the cut JSON fails the call (`output_invalid_json`).
 
 > **The bigger picture:** After the call: your code asks again for a shorter summary or raises the limit, instead of showing the user a text that ends mid-sentence.
 

@@ -13,9 +13,9 @@ Every page has the same chapters:
 |---------------|-----------------------------------------------------------|
 | About         | what the part is and what it gives the application        |
 | Logic         | how it works, step by step, and the rules it applies      |
-| Examples      | real cases with code that compiles against the package    |
+| Examples      | real cases with code written against the package's API    |
 | Pitfalls      | what not to do, and what happens when you do              |
-| Summary       | the page in five lines                                    |
+| Summary       | the page in a few lines                                   |
 | FAQ           | the questions developers ask about it                     |
 | API reference | links to the generated reference of every symbol it names |
 

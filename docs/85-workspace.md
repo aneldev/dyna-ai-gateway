@@ -25,7 +25,7 @@ the repo. The repo expects it at `docs/internal/`, a **symlink** that git ignore
 once per machine, with your own path to the notes:
 
 ```bash
-ln -s /path-to/docs/internal
+ln -s /path-to/your-notes/docs/internal docs/internal
 ls docs/internal/     # AI Gateway Roadmap.md, AI Gateway Classes.md, AI Gateway Blueprint.md, …
 ```
 
@@ -87,8 +87,9 @@ pnpm docs:check-samples [folder…]   # type-check the TypeScript samples (defau
   `dyna-ai-gateway` resolves to the gateway's `src/`, so a sample is checked against the code as it is now. An example
   that declares its own `const gateway` replaces the `const gateway = new AIGateway(config);` line of 8.0. There is no
   prelude: a name an example takes from the
-  application is a `declare` line of the example, and a name several examples run on is defined in 8.0. The learning
-  paths hold whole samples; the other folders hold fragments that do not compile on their own, so they are not checked.
+  application is a `declare` line of the example, and a name several examples run on is defined in 8.0. A page without
+  an `### 8.0` chapter (the best practices) is one module of all its samples, in page order. Folders outside the default
+  list hold fragments and are not checked by default.
 - **Mermaid's node tooltips need d3-transition** (flowcharts, class and state diagrams):
   `website/src/clientModules/d3-transition.js` (a `clientModules` entry of the config) imports it before any diagram
   renders. Without it, leaving a node with the mouse throws

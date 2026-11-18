@@ -19,12 +19,12 @@ The gateway does the first with a composition root and the second with data. It 
 const gateway = new AIGateway(config, overrides?);
 ```
 
-- `config: IAIGatewayConfig` — settings and persistence seams only: for every store a `repository` or `adapter` interface, the provider credentials, the app's tools and guardrail rules, feature switches. No class instance is in the config.
-- `overrides?: IAIGatewayOverrides` — one factory per child the host builds itself. The gateway calls it with that child's config and deps, exactly as it would call its own class: `(config, deps) => new MyThreadStore(config, deps)`. The factory returns an object that implements the child's `I<Class>` interface (`IThreadStore`, `IWorkingMemory`, …); every child has one.
+- `config: IAIGatewayConfig` — settings and persistence seams only: for every store a `repository` or `adapter` interface, the provider credentials, the app's tools and guardrail rules, feature switches. No child of the gateway is in the config; the children are built from it.
+- `overrides?: IAIGatewayOverrides` — one factory per child the host builds itself. The gateway calls it with that child's config and deps, exactly as it would call its own class: `(config, deps) => new MyWorkingMemory(config, deps)`. The factory returns an object that implements the child's `I<Class>` interface (`IThreadStore`, `IWorkingMemory`, …); every child has one.
 
 ### 2.2 The composition root
 
-`createGatewayDeps({config, overrides})` creates the 23 children once, in dependency order, and hands each the ones it needs:
+`createGatewayDeps({config, overrides})` creates the 24 children once, in dependency order, and hands each the ones it needs:
 
 ```ts
 const modelRegistry = make(overrides.modelRegistry, config.modelRegistry, undefined, config => new ModelRegistry(config));
@@ -37,7 +37,7 @@ const guardrails    = make(overrides.guardrails,    config.guardrails ?? {}, {ll
 
 An override builds the instance for everyone that depends on it: the `llmClient` a factory returns is the one the guardrails' judge, the memory helpers, the query rewriter and the embedder call.
 
-A child takes its config and, when it uses other children, its deps: `constructor(private readonly config, private readonly deps)`. A child without dependencies takes the config only (`ModelRegistry`, `ToolPolicy`, …); `TurnBuilder` takes nothing. No child creates another child; no child has an `addXxx()` or `register()` mutator.
+A child takes its config and, when it uses other children, its deps: `constructor(config, deps)`. A child without dependencies takes the config only (`ModelRegistry`, `ToolPolicy`, …); `TurnBuilder` takes nothing. No child creates another child; no child can be given another child, a tool or a rule after construction (no `register()`).
 
 ### 2.3 What can be injected
 
@@ -64,7 +64,7 @@ Pauses, approvals and resume run through the real code; only the model is script
 
 ## 3. Live adjustment
 
-The model, the tools, the limits and the prompts are data. A change is read on the next call. The model catalog, the profiles and the templates are cached; their write methods invalidate the cache, and `refresh()` on the catalog and the templates drops it by hand.
+The model, the tools, the limits and the prompts are data. A change is read on the next call of the instance that wrote it; other instances read it once their cache TTL runs out (profiles 30 s, models and templates 60 s by default, `cacheTtlMs`). The model catalog, the profiles and the templates are cached; their write methods invalidate the local cache, and `refresh()` on the catalog and the templates drops it by hand.
 
 | What changes                                          | How                                                                                                                                                                                      | Effective                            |
 |-------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------|
@@ -85,7 +85,7 @@ Stored turns, memory and run messages are in the gateway's own provider-neutral 
 
 ### 3.2 Resume on another profile
 
-`resume({profileId})` takes from the new profile what `run()` takes from its profile: the model (`request.modelId`), the output cap (`min(profile.limits.maxOutputTokens, caps.maxOutputTokens)`), the tools (`ToolPolicy.resolve` over the run's tool names) and the limits. The system prompt and the messages so far stay. `reviewAnswers` and `approvals` are those of both profiles together ([decision](90-decisions.md#d113-a-profile-switch-on-resume-keeps-the-review-and-the-approvals)): a switch adds guards, never removes them.
+`resume({profileId})` takes from the new profile what `run()` takes from its profile: the model (`request.modelId`), the output cap (`min(profile.limits.maxOutputTokens, caps.maxOutputTokens)`), the tools (`ToolPolicy.resolve` over the run's tool names) and the limits. The system prompt and the messages so far stay. `reviewAnswers` and `approvals` are those of both profiles together ([decision](90-decisions.md#d113-a-profile-switch-on-resume-keeps-the-review-and-the-approvals)) for that resume: the switch adds guards. The run is then stored with the new profile, so a later pause of it, resumed without `profileId`, has only the new profile's guards.
 
 Checked before the run leaves PAUSED: a pending tool the new profile does not allow is a 400 and nothing changes. The run is stored with the profile and model it continued on.
 
@@ -103,8 +103,8 @@ Tests: `../../packages/dyna-ai-gateway/src/tests/human-gate/resume-on-another-pr
 
 Deterministic: the test above (`gatewayConfigResumeOnAnotherProfile`: two models, the `refund` tool, a scripted model). On real providers: its `.real.test.ts` twin, with both keys in `.env`.
 
-Live, on real models, in the debugger (`pnpm sandbox-debug` with `sandbox.config.ts` pointed at that config, both provider keys in `.env`). The chat (`pnpm sandbox-cli run`) resumes a pause on the profile the run started with, so the resume is typed by hand:
+Live, on real models, in the debugger (`pnpm sandbox-debug` with `sandbox.config.ts` pointed at that config, both provider keys in `.env`). The chat (`pnpm sandbox-cli run`) resumes a pause on the profile the run started with, so the resume is typed by hand. Paste `src/dev-sandbox/dev-tools-helper-methods.js` into the dev-tools console first: it defines `start` and `lastResponse`.
 
 1. `await start("Refund 500 to the customer")` — the run starts on the OpenAI profile; the `refund` tool pauses it.
 2. `await dynaEnv.aiGateway.resume({userContext: dynaEnv.userContext, runId: lastResponse.envelopes[0].runId, pauseId: lastResponse.pauseId, decisions: [{action: "APPROVE"}], profileId: "anthropic-refund"}).response`.
-3. The trace shows one `RUN_STEP` on `gpt-5-mini` and one on `claude-haiku-4-5`; the run is stored with the Anthropic profile; the answer is on the one thread.
+3. The trace shows one `RUN_STEP` on the OpenAI profile's model and one on `claude-haiku-4-5`; the run is stored with the Anthropic profile; the answer is on the one thread.

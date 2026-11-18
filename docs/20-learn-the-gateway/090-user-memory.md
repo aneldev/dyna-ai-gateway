@@ -119,10 +119,10 @@ the model from the next call on.
 
 ### 2.5 The caps
 
-| Cap            | A fact set by hand or by the tool | A fact the extraction writes     |
-|----------------|-----------------------------------|----------------------------------|
-| `maxFactChars` | a 400, nothing stored             | cut to the cap                   |
-| `maxFacts`     | the fact updated longest ago goes | the facts updated longest ago go |
+| Cap            | A fact set by hand or by the tool                                                         | A fact the extraction writes     |
+|----------------|-------------------------------------------------------------------------------------------|----------------------------------|
+| `maxFactChars` | by hand: a 400; by the tool: the model reads the error as the tool result; nothing stored | cut to the cap                   |
+| `maxFacts`     | the fact updated longest ago goes                                                         | the facts updated longest ago go |
 
 An empty key or value is a 400 too. The 400 over `maxFactChars` carries `data.key`, `data.length`, `data.maxFactChars`
 and a `userMessage` the UI can show. The same key replaces the stored fact.
@@ -197,14 +197,15 @@ const paused = await gateway.run({
 }).response;
 
 if (paused.kind === EGatewayResponseKind.PAUSED) {
-  const [card] = paused.envelopes;
-  if (card.kind === EPauseKind.TOOL_APPROVAL && card.toolCall.toolName === "dyna_aigw_remember_user_fact") {
-    // Show the fact, e.g. {key: "location", value: "Vienna"}, with "Remember" / "Don't remember"
+  // A pause can hold several cards (two facts, or a fact next to another tool): one decision per card, by callId
+  const facts = paused.envelopes.filter(card => card.kind === EPauseKind.TOOL_APPROVAL && card.toolCall.toolName === "dyna_aigw_remember_user_fact");
+  if (facts.length === paused.envelopes.length) {
+    // Show each fact, e.g. {key: "location", value: "Vienna"}, with "Remember" / "Don't remember"
     await gateway.resume({
       userContext,
-      runId: card.runId,
+      runId: paused.envelopes[0].runId,
       pauseId: paused.pauseId,
-      decisions: [{action: EResumeAction.APPROVE}],
+      decisions: facts.flatMap(card => card.kind === EPauseKind.TOOL_APPROVAL ? [{callId: card.callId, action: EResumeAction.APPROVE}] : []),
     }).response;
   }
 }
@@ -302,7 +303,8 @@ A 409 with `data.busyThreadIds` means a call of the user still runs on another i
 - **`rememberNeedsApproval: false` on a profile that reads outside content.** Text in a tool result, an excerpt or a file
   can then make the model store an instruction that steers every later answer of the user.
 - **Another user answering the card.** The tools of a resumed step run with the context of the user who resumes
-  ([D32](../60-architecture/90-decisions.md#d32-a-thread-belongs-to-its-user)). The card of
+  ([D32](../60-architecture/90-decisions.md#d32-a-thread-belongs-to-its-user)), so an approved fact is stored under the
+  user who resumed, not the asker (a known gap). The card of
   `dyna_aigw_remember_user_fact` is for the user whose fact it is.
 - **Facts as instructions.** A fact is data about the user. A rule for every call belongs in `promptAddendum`, a rule for
   this call in `instructions`
@@ -310,8 +312,8 @@ A 409 with `data.busyThreadIds` means a call of the user still runs on another i
 - **`delete` as "forget this user".** Deleting threads leaves the facts. The erasure is `deleteUserData` or
   `anonymizeUserData`.
 - **Reading the facts right after the answer.** The extraction runs in the background. A test calls `whenIdle()` first.
-- **Naming the tools in `allowedTools` or `activeTools`.** They are offered by the switch, not by the profile
-  ([D61](../60-architecture/90-decisions.md#d61-built-in-tools-are-always-offered)).
+- **Naming the tools in `allowedTools` or `activeTools`.** They are offered by the switch, not by the profile, and an `activeTools` that names one is
+  a 400 ([D61](../60-architecture/90-decisions.md#d61-built-in-tools-are-always-offered)).
 
 ## 5. Summary
 

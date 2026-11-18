@@ -38,7 +38,7 @@ export interface IToolPolicyConfig {
    * all run is left out of that step's tool list, so the model is not told about it; it appears in the step after they ran.
    * A call to it anyway, by name, is refused with an error result that names the tools it requires (D88), also when its
    * input would need an approval (D79).
-   * Tools not listed are offered from the first step. Earlier runs on the same thread do not count.
+   * Tools not listed are offered from the first step. Earlier runs on the same thread do not count on a fresh run (after a resume they do, a known gap).
    *
    * @example {refund: ["lookup_order"]} - the model must look the order up before it may refund it
    *
@@ -112,7 +112,8 @@ export interface IToolPolicy {
    *
    * # Pitfalls
    *
-   * `executed` is the run's list: tools run in earlier runs of the thread do not count, and a rejected or failed call is
+   * `executed` is the run's list on a fresh run; on a resume it also holds the tool results of earlier runs in the stored
+   * history (a known gap, D76), and a rejected or failed call is
    * not an execution (D76).
    */
   narrowForStep(args: {
@@ -164,8 +165,9 @@ export interface IToolPolicy {
    *
    * # Pitfalls
    *
-   * A tool outside `resolved.tools` is ALLOW here: `ToolRegistry.execute` refuses it (D72). An input the schema rejects is ALLOW
-   * too: it never reaches the predicate, `ToolRegistry.execute` reports it to the model (D50).
+   * A tool outside `resolved.tools` is ALLOW here: `ToolRegistry.execute` refuses it (D72). An input the schema rejects never
+   * reaches the predicate (it counts as ALLOW); a static policy and the approvals still apply, so it can pause before
+   * `ToolRegistry.execute` reports the 400 to the model (D50; a known gap, D87 refuses it first).
    */
   decide(args: {
     name: string;

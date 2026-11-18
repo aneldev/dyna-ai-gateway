@@ -177,7 +177,7 @@ export interface IAIProfile {
   name: string;
   /** Main model; must exist and be enabled in ModelRegistry. */
   modelId: string;
-  /** Model for helper calls (memory, rewrite). Empty = platform default. */
+  /** Model for helper calls (memory, query rewrite, a CHEAP judge). Omitted: memory and query rewrite use `defaultCheapModelId`, a CHEAP judge this profile's `modelId`. */
   cheapModelId?: string;
   /** Tool names the LLM may see. Subset of ToolRegistry. */
   allowedTools: string[];
@@ -221,7 +221,7 @@ export interface IAIProfile {
    * > One tenant, two bots: precise chat on one, cheap long threads on the other.
    *
    * Overrides `IWorkingMemoryConfig.strategy`; `IWorkingMemoryConfig.enabled` stays gateway-wide. A thread keeps its
-   * stored summary when the strategy switches: `SLIDING_WINDOW` ignores it, a switch back resumes from it.
+   * stored summary when the strategy switches: `SLIDING_WINDOW` ignores it (the query rewrite still reads it), a switch back resumes from it.
    * Read by the built-in `WorkingMemory`; a host memory may read it or ignore it.
    *
    * @example {type: EWorkingMemoryStrategy.SLIDING_WINDOW} - a support chat whose answers must quote the user's own words
@@ -253,7 +253,7 @@ export interface IAIProfile {
 
 /** Loop and output limits of a profile; what may be spent is the app's decision (`IAIGatewayConfig.usageGuard`). */
 export interface IAIProfileLimits {
-  /** Model calls per run (agent loop cap). */
+  /** Model calls of one `run()`, and again of each `resume()` (agent loop cap). */
   maxStepsPerRun: number;
   /** Cap for one answer. */
   maxOutputTokens: number;

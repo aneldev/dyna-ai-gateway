@@ -1,4 +1,4 @@
-![dyna AI Gateway logo](assets/dyna-ai-gateway%20banner.png)
+![dyna AI Gateway logo](https://raw.githubusercontent.com/aneldev/dyna-ai-gateway/main/assets/dyna-ai-gateway%20banner.png)
 
 <p align="center">
   <a href="https://aneldev.github.io/dyna-ai-gateway/"><strong>Documentation</strong></a>
@@ -36,7 +36,7 @@ included.
 │  (authenticated) │  response  └──────────────────┬────────────────────┘        │  Bedrock    │
 └──────────────────┘                               │ repository / adapter        └─────────────┘
                                                    ▼ interfaces
-                                    in-memory · MongoDB · PostgreSQL · S3
+                                    in-memory · your own (database adapters planned)
 ```
 
 **No weirdos!**
@@ -60,22 +60,22 @@ symbol carries its JSDoc, so the editor shows the contract of each option.
 | Question                          | Answer                                                                                                                                                                                                                                 |
 |-----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Am I locked into one provider?    | No. Five providers; the model is chosen per call through the profile, so a thread can switch model between two calls.                                                                                                                  |
-| Where does my data live?          | In your database. Every store is an interface (`IAIGatewayConfig.<store>.repository`); in-memory implementations are included.                                                                                                         |
+| Where does my data live?          | In your database. Every store is an interface (`<store>.repository` or `<store>.adapter`); in-memory implementations are included.                                                                                                     |
 | How does the model reach my code? | `defineTool`: a function with a zod schema and a policy that allows, denies or holds each call on its parsed input.                                                                                                                    |
 | Can a human step in?              | Yes. A run pauses on a tool call or on the final answer; `resume()` takes approve, edit or reject.                                                                                                                                     |
 | How do I control the spend?       | In your code. The gateway asks your usage adapter before every model call, with the tenant, user, profile, model, purpose and a token estimate, and reports what the call used after it. It holds no budget, plan or quota of its own. |
-| Can I test without a real model?  | Yes. The agent loop runs on a scripted model; 1,086 of the tests do exactly that.                                                                                                                                                      |
-| Does it fit my auth and tenants?  | The call carries the `userContext` your host authenticated; every store is keyed by its `tenantId`.                                                                                                                                    |
+| Can I test without a real model?  | Yes. The agent loop runs on a scripted model (the library's own tests pass a fake `ILLMClient` in `overrides`); the 1000+ deterministic tests need no key.                                                                             |
+| Does it fit my auth and tenants?  | The call carries the `userContext` your host authenticated; every tenant's data (profiles, threads, runs, memory, files, traces) is keyed by its `tenantId`; the model catalog and the prompt templates are shared.                    |
 
-Every part of the gateway is a class with one job, held behind an interface. The second constructor argument takes your
-own instance in place of any of them: a knowledge-base retriever on your search engine, a trace that writes to your
+Every part of the gateway is a class with one job, held behind an interface. The second constructor argument takes a
+factory per part that returns your own instance in its place: a knowledge-base retriever on your search engine, a trace that writes to your
 observability stack, a scripted model in a test. The rest of the gateway does not notice the swap.
 
 ```ts
-const gateway = new AIGateway(config, {kbRetriever: new MyKbRetriever()});
+const gateway = new AIGateway(config, {kbRetriever: (kbConfig, deps) => new MyKbRetriever(kbConfig, deps)});
 ```
 
-The seams: [Live adjustment and dependency injection](docs/60-architecture/50-live-adjustment-and-dependency-injection.md).
+The seams: [Live adjustment and dependency injection](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/60-architecture/50-live-adjustment-and-dependency-injection.md).
 
 ## Install
 
@@ -140,8 +140,8 @@ import {
 
 const config: IAIGatewayConfig = {
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
-  aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accountingProfile]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small]})}, // the IModelInfo entries of Installation
+  aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accountingProfile]})}, // the profile below
   promptTemplateStore: {repository: new InMemoryPromptTemplateRepository()},
   threadStore: {repository: new InMemoryThreadRepository()},
   fileStore: {adapter: new InMemoryBlobAdapter(), path: "ai-files"},
@@ -155,7 +155,7 @@ const config: IAIGatewayConfig = {
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
-  defaultCheapModelId: "gpt-5-mini",
+  defaultCheapModelId: "gpt-6.1-terra",
 };
 ```
 
@@ -169,7 +169,7 @@ const accountingProfile: IAIProfile = {
   id: "accounting",
   tenantId: "acme",
   name: "Accounting assistant",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: ["get_invoice", "post_credit_note"],
   approvals: [],
@@ -227,7 +227,8 @@ if (paused.kind === EGatewayResponseKind.PAUSED) {
 
 What else a run gives: tools for one call only, a tool that ends the run, a tool offered only after another one ran, a
 question the model asks the user as a form, a review of the final answer by a human before the user sees it, timeouts and
-output caps per tool, a cap on steps and daily tokens per tenant. A paused run survives a restart of the server.
+output caps per tool, a cap on steps per run, and your usage adapter asked before every model call. A paused run
+survives a restart of the server when its `runStore` is your database.
 
 ## A chat screen in one module
 
@@ -246,7 +247,7 @@ const supportChat = new AIGatewayVercelUi({
 export const POST = (request: Request): Promise<Response> => supportChat.chat({request});
 ```
 
-The guide: [Vercel chat client](docs/10-getting-started/50-vercel-chat-client.md).
+The guide: [Vercel chat client](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/10-getting-started/50-vercel-chat-client.md).
 
 ## What is inside
 
@@ -258,7 +259,7 @@ The guide: [Vercel chat client](docs/10-getting-started/50-vercel-chat-client.md
 | Files             | Images and PDFs sent to a model that reads them                                                                               |
 | Skills            | Instructions the model loads only when a task needs them, on the profile or on the call; inlined in an `ask()`                |
 | Human in the loop | Approval of a tool call, the model's questions as a form, review of the answer, expiry of unanswered pauses                   |
-| Guardrails        | Built-in input and output rules, the application's own rules with evidence, a judge on the cheap model                        |
+| Guardrails        | Built-in input and output rules, the application's own rules with evidence, a judge on the cheap model or the main one        |
 | Usage and trace   | Your adapter asked before every model call and told what it used after it; one trace entry per model call with usage and cost |
 | Operations        | Graceful shutdown, recovery of the runs a crashed server left behind, deletion or anonymisation of a user's data              |
 | Providers         | OpenAI, Anthropic, Google, Mistral, Amazon Bedrock                                                                            |
@@ -269,34 +270,34 @@ The guide: [Vercel chat client](docs/10-getting-started/50-vercel-chat-client.md
   the host authenticated and returns events and a response.
 - **Data is passed, services are injected.** A call loads its profile, memory and history once and hands them on as plain
   data; only the stores and the provider client are injected. One class per job.
-- **Nothing is hidden in the model.** Every decision a tool policy, a guardrail or the usage adapter makes is code the
-  application wrote, logged in the trace.
-- **Persistence is a contract.** Every store is an interface; in-memory for tests and small deployments, MongoDB,
-  PostgreSQL and S3 adapters as separate packages.
+- **Nothing is hidden in the model.** Every decision a tool policy, a guardrail or the usage adapter makes is made in code (a
+  guardrail may ask a model through its `judge`, a traced call); every model call is in the trace, with the issues the rules reported on it.
+- **Persistence is a contract.** Every store is an interface; in-memory for tests, the sandbox and a first run; MongoDB,
+  PostgreSQL and S3 adapters planned as separate packages.
 
-The reasons behind each behaviour: [Decisions](docs/60-architecture/90-decisions.md). The composition of the classes:
-[Architecture and trade-offs](docs/60-architecture/10-architecture-and-trade-offs.md).
+The reasons behind each behaviour: [Decisions](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/60-architecture/90-decisions.md). The composition of the classes:
+[Architecture and trade-offs](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/60-architecture/10-architecture-and-trade-offs.md).
 
 ## Documentation
 
-|                                                         |                                                                                                                                                     |
-|---------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Docs site](https://aneldev.github.io/dyna-ai-gateway/) | these docs and the API reference from the JSDoc, with navigation                                                                                    |
-| [Getting started](docs/10-getting-started/00-README.md) | first steps, the examples, the [FAQ](docs/10-getting-started/90-faq.md), the [Vercel chat client](docs/10-getting-started/50-vercel-chat-client.md) |
-| [Roadmap](docs/70-roadmap.md)                           | what works today, what is planned, what is not                                                                                                      |
-| [Terminology](docs/90-terminology.md)                   | the terms of the docs and where they come from                                                                                                      |
-| [Architecture](docs/60-architecture/90-decisions.md)    | the composition, the trade-offs, one chapter of decisions per class                                                                                 |
-| [Practices](docs/50-ai-best-practices/index.md)         | how to apply the library well                                                                                                                       |
-| [Workspace](docs/85-workspace.md)                       | building and testing the packages of this repository                                                                                                |
+|                                                                        |                                                                                                                                                     |
+|------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| [Docs site](https://aneldev.github.io/dyna-ai-gateway/)                | these docs and the API reference from the JSDoc, with navigation                                                                                    |
+| [Getting started](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/10-getting-started/00-README.md)                | first steps, the examples, the [FAQ](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/10-getting-started/90-faq.md), the [Vercel chat client](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/10-getting-started/50-vercel-chat-client.md) |
+| [Roadmap](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/70-roadmap.md)                                          | what works today, what is planned, what is not                                                                                                      |
+| [Terminology](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/90-terminology.md)                                  | the terms of the docs and where they come from                                                                                                      |
+| [Architecture](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/60-architecture/10-architecture-and-trade-offs.md) | the composition, the trade-offs, the [decisions](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/60-architecture/90-decisions.md) per class                                                    |
+| [Practices](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/50-ai-best-practices/index.md)                        | how to apply the library well                                                                                                                       |
+| [Workspace](https://github.com/aneldev/dyna-ai-gateway/blob/main/docs/85-workspace.md)                                      | building and testing the packages of this repository                                                                                                |
 
 ## Packages
 
 | Package                                                                   | What                                                   | Status  |
 |---------------------------------------------------------------------------|--------------------------------------------------------|---------|
-| [`dyna-ai-gateway`](packages/dyna-ai-gateway)                             | the gateway, in-memory stores included                 | beta    |
-| [`dyna-ai-gateway-mongodb`](packages/dyna-ai-gateway-mongodb/README.md)   | MongoDB repositories and the Atlas Vector Search index | planned |
-| [`dyna-ai-gateway-postgres`](packages/dyna-ai-gateway-postgres/README.md) | PostgreSQL repositories                                | planned |
-| [`dyna-ai-gateway-s3`](packages/dyna-ai-gateway-s3/README.md)             | S3 blob store for the files                            | planned |
+| [`dyna-ai-gateway`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway)                             | the gateway, in-memory stores included                 | beta    |
+| [`dyna-ai-gateway-mongodb`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway-mongodb/README.md)   | MongoDB repositories and the Atlas Vector Search index | planned |
+| [`dyna-ai-gateway-postgres`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway-postgres/README.md) | PostgreSQL repositories                                | planned |
+| [`dyna-ai-gateway-s3`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway-s3/README.md)             | S3 blob store for the files                            | planned |
 
 ## About
 

@@ -4,10 +4,10 @@ The classes the gateway is built from, who holds whom, and how one prompt travel
 methods are in the [API reference](../30-api/index.md). [Architecture and trade-offs](10-architecture-and-trade-offs.md) explains why
 the gateway is composed this way.
 
-Legend: solid arrow = holds an instance (constructor injection) · dashed arrow = called back through hooks · `App` = the
+Legend: solid arrow = holds an instance (constructor injection; the gateway builds its children itself) · dashed arrow = called back through hooks · `App` = the
 business service that uses the gateway.
 
-Rule applied everywhere: **data is passed, services are injected.** The gateway loads profile, model facts, memory, turns and chunks once per call and passes them as plain data; only services (stores, LLM helpers) are constructor-injected.
+Rule applied everywhere: **data is passed, services are injected.** The gateway loads profile, model facts, user facts and chunks once per call and passes them as plain data (the working memory loads the thread's window itself); only services (stores, LLM helpers) are constructor-injected.
 
 ---
 
@@ -26,11 +26,11 @@ Rule applied everywhere: **data is passed, services are injected.** The gateway 
 | Thread    | **FileStore**           | uploads (image/PDF) as blobs; turns keep pointers                                                                                                                                                                                                                                                                   |
 | Memory    | **WorkingMemory**       | the thread's window for every request (`IWorkingMemory`, D122): SLIDING_WINDOW (newest turns that fit the budget) or SUMMARY_BUFFER (rolling summary + facts, last N turns), per profile                                                                                                                            |
 | Memory    | **UserMemoryStore**     | durable facts per tenant + user, across threads                                                                                                                                                                                                                                                                     |
-| KB        | **KbIngestor**          | second root of the service: on KB save, chunk → embed → store (async, idempotent per doc)                                                                                                                                                                                                                           |
+| KB        | **KbIngestor**          | second entry point of the service: on KB save, chunk → embed → store (async, idempotent per doc)                                                                                                                                                                                                                    |
 | KB        | **MdChunker**           | MD → chunks (heading path, size, overlap)                                                                                                                                                                                                                                                                           |
 | KB        | **Embedder**            | thin class: holds the one fixed embedding model id + batching; calls LLMClient `embed`                                                                                                                                                                                                                              |
 | KB        | **VectorStore**         | chunks + vectors + metadata, filtered search                                                                                                                                                                                                                                                                        |
-| KB        | **QueryRewriter**       | prompt + thread facts → standalone search query                                                                                                                                                                                                                                                                     |
+| KB        | **QueryRewriter**       | prompt + thread summary and facts → standalone search query                                                                                                                                                                                                                                                         |
 | KB        | **KbRetriever**         | query → top-k chunks above threshold, "no match" signal                                                                                                                                                                                                                                                             |
 | Tools     | **ToolRegistry**        | all tool definitions (name, description, schema, execute); the one place a tool runs, so it normalises every failure (the model reads code / status / userMessage, the developer gets `onToolError`, D100)                                                                                                          |
 | Tools     | **ToolPolicy**          | Registry ∩ Profile ∩ rights ∩ caps; which tools need approval                                                                                                                                                                                                                                                       |
@@ -42,7 +42,7 @@ Rule applied everywhere: **data is passed, services are injected.** The gateway 
 | Execution | **LLMClient**           | one class, all providers; AI SDK sealed inside; `complete`, `run`, `embed` doors; hooks out; asks the UsageGuard before, reports to it after, and records Trace for every call                                                                                                                                      |
 | Ops       | **Trace**               | audit: request, raw, final, cost, latency, verdict                                                                                                                                                                                                                                                                  |
 
-25 classes, two roots: `AIGateway` (query path, per prompt) and `KbIngestor` (ingestion path, per KB save). `App` is not a class of the gateway; it injects its guardrail rules, tools and user context.
+25 classes, two entry points: `AIGateway` (query path, per prompt) and `KbIngestor` (ingestion path, per KB save). `App` is not a class of the gateway; it injects its guardrail rules, tools and user context.
 
 ---
 
@@ -50,7 +50,7 @@ Rule applied everywhere: **data is passed, services are injected.** The gateway 
 ## 2. Composition — who holds whom
 
 
-### 2.1 AIGateway holds (constructor injection)
+### 2.1 AIGateway holds (built by `createGatewayDeps`, the composition root, in its constructor)
 
 | Group           | Children                                          |
 |-----------------|---------------------------------------------------|
@@ -69,7 +69,7 @@ Rule applied everywhere: **data is passed, services are injected.** The gateway 
 Every child is created once by `createGatewayDeps` (the composition root) and held in `IAIGatewayDeps`, the
 leaves included: `PromptTemplateStore`, `Embedder`, `VectorStore`, `RunStore`, `QueryRewriter` and `MdChunker` are
 built by the gateway and injected into the classes that use them, never constructed by those classes. `KbIngestor` is the
-second root, exposed as `gateway.kbIngestor` for the KB write endpoints; a prompt never reaches it.
+second entry point, exposed as `gateway.kbIngestor` for the KB write endpoints; a prompt never reaches it.
 
 
 ### 2.2 Internal dependencies (small graphs, top to bottom)
@@ -81,7 +81,7 @@ Context
 flowchart TB
   CA[ContextAssembler] --> PT[PromptTemplateStore]
   CA --> SR0[SkillRegistry]
-  CA --> TB[TurnBuilder]
+  CA --> WM0[WorkingMemory]
 ```
 
 KB — read side (per prompt)
@@ -96,7 +96,7 @@ flowchart TB
   QR --> DR
 ```
 
-KB — ingestion side (second root; on KB save, not part of a chat call)
+KB — ingestion side (second entry point; on KB save, not part of a chat call)
 
 ```mermaid
 flowchart TB
@@ -122,11 +122,13 @@ Tools, control, config validation
 
 ```mermaid
 flowchart TB
-  TP[ToolPolicy] --> TR[ToolRegistry]
   HG[HumanGate] --> RS[RunStore]
   PS[AIProfileStore] --> MR[ModelRegistry]
-  PS --> TR
+  PS --> TR[ToolRegistry]
   PS --> SR[SkillRegistry]
+  PS --> RS
+  GR[Guardrails] --> DR0[LLMClient]
+  GR --> MR
 ```
 
 LLMClient (one class; every LLM call passes here, so it asks the UsageGuard, reports to it and traces)
@@ -149,9 +151,10 @@ flowchart LR
   GW --> CA[ContextAssembler]
   CA --> PT1[PromptTemplateStore]
   CA --> SR1[SkillRegistry]
-  CA --> TB2[TurnBuilder]
   CA --> WM[WorkingMemory]
   GW --> TS[ThreadStore]
+  GW --> PT0[PromptTemplateStore]
+  GW --> RS0[RunStore]
   GW --> TB[TurnBuilder]
   GW --> FS[FileStore]
   GW --> WM
@@ -172,11 +175,12 @@ flowchart LR
   GW --> TR[ToolRegistry]
   GW --> TP[ToolPolicy]
   GW --> SR[SkillRegistry]
-  TP --> TR2[ToolRegistry]
   GW --> HG[HumanGate]
   HG --> RS[RunStore]
   GW --> UG[UsageGuard]
   GW --> GR[Guardrails]
+  GR --> DR6[LLMClient]
+  GR --> MR4[ModelRegistry]
   GW --> DR[LLMClient]
   DR --> MR2[ModelRegistry]
   DR --> UG2[UsageGuard]
@@ -184,14 +188,19 @@ flowchart LR
   GW --> TRC[Trace]
   PS --> MR3[ModelRegistry]
   PS --> TR3[ToolRegistry]
+  PS --> SR2[SkillRegistry]
+  PS --> RS3[RunStore]
+  GW --> KI
 
   KI[KbIngestor] --> MC[MdChunker]
   KI --> EM2[Embedder]
+  EM2 --> DR7[LLMClient]
   KI --> VS2[VectorStore]
 ```
 
-Shared instances appear more than once in the tree (`LLMClient`, `PromptTemplateStore`, `TurnBuilder`, `ToolRegistry`, `ModelRegistry`, `UsageGuard`, `Trace`, `Embedder`, `VectorStore`); the composition root creates each **once** and injects the same
-instance. `KbIngestor` is the ingestion root (second entry point of the service), outside the gateway tree.
+Shared instances appear more than once in the tree (`LLMClient`, `PromptTemplateStore`, `TurnBuilder`, `ToolRegistry`, `SkillRegistry`, `RunStore`, `ThreadStore`, `WorkingMemory`, `ModelRegistry`, `UsageGuard`, `Trace`, `Embedder`, `VectorStore`); the composition root creates each **once** and injects the same
+instance. `KbIngestor` is built and held by the gateway like every child, but no prompt reaches it: it is the entry point
+of the ingestion path, exposed as `gateway.kbIngestor`.
 
 
 ### 2.4 Same tree as text
@@ -202,15 +211,18 @@ AIGateway
 ├─ AIProfileStore
 │  ├─ ModelRegistry*
 │  ├─ ToolRegistry*
-│  └─ SkillRegistry*
+│  ├─ SkillRegistry*
+│  └─ RunStore*
 ├─ ContextAssembler
 │  ├─ PromptTemplateStore*
-│  ├─ TurnBuilder*
+│  ├─ SkillRegistry*
 │  └─ WorkingMemory*
-├─ ThreadStore
+├─ ThreadStore*
+├─ PromptTemplateStore*
+├─ RunStore*
 ├─ TurnBuilder*
 ├─ FileStore
-├─ WorkingMemory
+├─ WorkingMemory*
 │  ├─ PromptTemplateStore*
 │  ├─ LLMClient*
 │  ├─ ThreadStore*
@@ -222,25 +234,25 @@ AIGateway
 │  ├─ QueryRewriter
 │  │  ├─ PromptTemplateStore*
 │  │  └─ LLMClient*
-│  ├─ Embedder
+│  ├─ Embedder*
 │  │  └─ LLMClient*
 │  └─ VectorStore*
 ├─ ToolRegistry*
 ├─ ToolPolicy
-│  └─ ToolRegistry*
 ├─ SkillRegistry*
 ├─ HumanGate
-│  └─ RunStore
+│  └─ RunStore*
 ├─ UsageGuard*         (the app's adapter inside)
 ├─ Guardrails         (app rules injected)
-│  └─ LLMClient*      (the rules' judge: one completion, checked, reported and traced)
+│  ├─ LLMClient*      (the rules' judge: one completion, checked, reported and traced)
+│  └─ ModelRegistry*  (the judge model's caps)
 ├─ LLMClient*
 │  ├─ ModelRegistry*
 │  ├─ UsageGuard*
 │  └─ Trace*
 └─ Trace*
 
-KbIngestor            (second root: KB save, not a prompt)
+KbIngestor            (held by AIGateway; the entry point of a KB save, not of a prompt)
 ├─ MdChunker
 ├─ Embedder*
 │  └─ LLMClient*
@@ -251,12 +263,12 @@ KbIngestor            (second root: KB save, not a prompt)
 
 Notes
 
-- `ToolPolicy` receives profile, user rights and `caps` as **data** from the gateway; it holds only the registry.
+- `ToolPolicy` receives the tools, profile, user rights and `caps` as **data** from the gateway; it holds no dependency.
 - `LLMClient` is one class with credentials per provider; it resolves `modelId` through `ModelRegistry` to the SDK provider (SDK knowledge stays sealed). It holds `UsageGuard` and `Trace` so every call — main or helper — is asked for, reported and
-  recorded in one place; the gateway only annotates the main trace entry.
-- `AIProfileStore` holds `ModelRegistry`, `ToolRegistry` and `SkillRegistry` only to validate a profile on upsert.
+  recorded in one place; the gateway only annotates the entries afterwards (issues, chunk ids, template version).
+- `AIProfileStore` holds `ModelRegistry`, `ToolRegistry` and `SkillRegistry` to validate a profile on upsert, and `RunStore` to refuse removing a profile a paused run waits on.
 - `SkillRegistry` is stateless (config only, like `ToolPolicy`); the call preparation and the assembler receive it as a dep.
-- `ContextAssembler` receives profile, memory, turns, chunks, skills and allowed tools as data; it holds only the templates, the stateless `TurnBuilder` (turns → messages) and the `SkillRegistry` (the `{skills}` slot text).
+- `ContextAssembler` receives profile, user facts, retrieval, skills and allowed tools as data; it holds the templates, the `SkillRegistry` (the `{skills}` slot text) and the `WorkingMemory` (the thread's window, which turns the turns into messages through the `TurnBuilder`).
 - No cycles: `LLMClient` holds only `ModelRegistry`, `UsageGuard`, `Trace` (none of which hold the LLMClient); helpers that hold the LLMClient are not held by the LLMClient.
 
 ---
@@ -282,7 +294,7 @@ flowchart TB
 
 - The loop runs inside the LLMClient: its own loop, one SDK call per step, tools handed to the SDK without an executor. That is what lets a run pause, persist in our message shape and resume with APPROVE / EDIT / REJECT. Every decision runs outside the LLMClient, in the hooks.
 - Hook implementations are gateway code; the LLMClient only calls them. The per-call built-in `dyna_aigw_load_skill` (D124) runs through `executeTool` like every tool: the registry executes the tools of the offered list, so a tool that is not registered runs the same way.
-- Same hooks object for `complete` and `run`; future execution doors reuse it. `embed` needs no hooks.
+- `run` takes all five hooks; `complete` takes only `onEvent`, and it is optional; `embed` takes none.
 
 ---
 
@@ -326,7 +338,7 @@ sequenceDiagram
   GW->>TB: build turn parts
   GW->>TS: append assistant turn
   GW->>WM: saveContext(request, result) (async — SUMMARY_BUFFER updates, SLIDING_WINDOW does nothing)
-  GW->>TRC: record
+  GW->>TRC: annotate (issues, chunk ids, template version)
   GW->>App: response settles, events end
 ```
 

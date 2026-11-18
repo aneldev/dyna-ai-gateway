@@ -108,7 +108,7 @@
       03-thread-repository.md                # IThreadRepository: threads, turns, the lease — needed by every call
       04-usage-adapter.md                    # IUsageAdapter: check before, addUsage after every model call — needed by every call
       05-run-repository.md                   # IRunRepository: paused and running runs — agents, human in the loop, recovery
-      06-prompt-template-repository.md       # IPromptTemplateRepository: versioned system prompt per tenant
+      06-prompt-template-repository.md       # IPromptTemplateRepository: versioned system prompt, global
       07-blob-adapter.md                     # IBlobAdapter: the files of a question (images, PDFs)
       08-user-memory-repository.md           # IUserMemoryRepository: the user's facts across threads
       09-vector-index-adapter.md             # IVectorIndexAdapter: the knowledge base chunks and their embeddings

@@ -16,7 +16,7 @@ A model entry:
 
 | Field             | What it is                                                                                        |
 |-------------------|---------------------------------------------------------------------------------------------------|
-| `id`              | the gateway's own stable id, e.g. `"gpt-5-mini"`; profiles reference it                           |
+| `id`              | the gateway's own stable id, e.g. `"gpt-6.1-terra"`; profiles reference it                        |
 | `provider`        | the `EModelProvider` the `LLMClient` calls: `OPENAI`, `ANTHROPIC`, `GOOGLE`, `MISTRAL`, `BEDROCK` |
 | `providerModelId` | the provider's own id, e.g. `"claude-haiku-4-5-20251001"`                                         |
 | `label`           | a human label for an admin screen                                                                 |
@@ -26,21 +26,21 @@ A model entry:
 
 A profile:
 
-| Field               | What it does                                                              | Page                                                                             |
-|---------------------|---------------------------------------------------------------------------|----------------------------------------------------------------------------------|
-| `id`, `tenantId`    | the id a call passes as `profileId`, and the tenant it belongs to         |                                                                                  |
-| `name`              | a human label, e.g. `"Careful refunds"`                                   |                                                                                  |
-| `modelId`           | the main model: the answer and every step of a run                        |                                                                                  |
-| `cheapModelId`      | optional: the model of the helper calls (chapter 2.3)                     |                                                                                  |
-| `promptAddendum`    | the tenant's text appended to the system prompt                           | [System prompt layers](../60-architecture/40-system-prompt-production-layers.md) |
-| `allowedTools`      | the tool names the model may see; a subset of the registered tools        | [Tools](030-tools.md)                                                            |
-| `approvals`         | the tool names that pause for a human before they run                     | [Human in the loop](040-human-in-the-loop.md)                                    |
-| `reviewAnswers`     | optional: every answer of a `run()` waits for a human                     | [Human in the loop](040-human-in-the-loop.md)                                    |
-| `parallelToolCalls` | optional, default `true`: the tool calls of one step run at the same time | [Tools](030-tools.md)                                                            |
-| `workingMemory`     | optional: how this profile's threads reach the model                      | [Thread memory](080-thread-memory.md)                                            |
-| `skills`            | optional: instructions the model loads on demand                          | [Skills](020-skills.md)                                                          |
-| `limits`            | `maxStepsPerRun` (model calls per run) and `maxOutputTokens` (one answer) |                                                                                  |
-| `templateOverrides` | reserved; the gateway does not read it                                    |                                                                                  |
+| Field               | What it does                                                                                        | Page                                                                             |
+|---------------------|-----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| `id`, `tenantId`    | the id a call passes as `profileId`, and the tenant it belongs to                                   |                                                                                  |
+| `name`              | a human label, e.g. `"Careful refunds"`                                                             |                                                                                  |
+| `modelId`           | the main model: the answer and every step of a run                                                  |                                                                                  |
+| `cheapModelId`      | optional: the model of the helper calls (chapter 2.3)                                               |                                                                                  |
+| `promptAddendum`    | the tenant's text appended to the system prompt                                                     | [System prompt layers](../60-architecture/40-system-prompt-production-layers.md) |
+| `allowedTools`      | the tool names the model may see; a subset of the registered tools                                  | [Tools](030-tools.md)                                                            |
+| `approvals`         | the tool names that pause for a human before they run                                               | [Human in the loop](040-human-in-the-loop.md)                                    |
+| `reviewAnswers`     | optional: every answer of a `run()` waits for a human                                               | [Human in the loop](040-human-in-the-loop.md)                                    |
+| `parallelToolCalls` | optional, default `true`: the tool calls of one step run at the same time                           | [Tools](030-tools.md)                                                            |
+| `workingMemory`     | optional: how this profile's threads reach the model                                                | [Thread memory](080-thread-memory.md)                                            |
+| `skills`            | optional: instructions the model loads on demand                                                    | [Skills](020-skills.md)                                                          |
+| `limits`            | `maxStepsPerRun` (model calls per `run()`, again per `resume()`) and `maxOutputTokens` (one answer) |                                                                                  |
+| `templateOverrides` | reserved; the gateway does not read it                                                              |                                                                                  |
 
 A profile holds no budget. What a call may spend is decided by your usage adapter ([Usage guard](060-usage-guard.md)).
 
@@ -75,8 +75,9 @@ the list-price cost of one call in USD:
 
 - The uncached input is `inputTokens` minus the cached and the cache-write tokens, never below zero.
 - Without a cache price, the provider default applies. `ANTHROPIC`: 0.1 × the input price for a read, 1.25 × for a
-  write. Any other provider: the input price for both. OpenAI's cache-read rate differs per model, so set
-  `costCacheReadPerMTokUsd` on an OpenAI entry.
+  write. Any other provider: the input price for both. Set the prices where the provider's rate differs: the
+  cache-read rate on an OpenAI entry and on the Anthropic models that read cheaper (0.05× on Opus 5.5 and Sonnet 5.5,
+  0.025× on Fable and Mythos 5.1 and later), the write rate on GPT-5.6 and later (1.25×).
 - A disabled model is still priced, so a call in flight when it was switched off is reported.
 
 The `LLMClient` prices every model call this way. The result is `costUsd` on the trace entry
@@ -125,11 +126,11 @@ The profile is saved whole. `upsertModel({model})` saves the entry whole and che
 
 ### 2.6 Removal
 
-| Method                                       | Refused when                                               | Effect on the profiles                                     |
-|----------------------------------------------|------------------------------------------------------------|------------------------------------------------------------|
-| `aiProfileStore.removeProfile`               | a PAUSED run of the tenant waits on it: 409, `data.runIds` | a thread is not bound to a profile, so nothing else breaks |
-| `modelRegistry.setEnabled({enabled: false})` | the model is unknown: 404                                  | the profiles that name it fail at their next call (400)    |
-| `modelRegistry.removeModel`                  | the model is unknown: 404                                  | the profiles that name it fail at their next call (404)    |
+| Method                                       | Refused when                                                                            | Effect on the profiles                                     |
+|----------------------------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------------|
+| `aiProfileStore.removeProfile`               | the profile is unknown: 404; a PAUSED run of the tenant waits on it: 409, `data.runIds` | a thread is not bound to a profile, so nothing else breaks |
+| `modelRegistry.setEnabled({enabled: false})` | the model is unknown: 404                                                               | the profiles that name it fail at their next call (400)    |
+| `modelRegistry.removeModel`                  | the model is unknown: 404                                                               | the profiles that name it fail at their next call (404)    |
 
 The registry is global and knows no profiles, so it cannot refuse a model a profile still names. The reasons are in
 [A profile a paused run waits on cannot be removed](../60-architecture/90-decisions.md#a-profile-a-paused-run-waits-on-cannot-be-removed).
@@ -163,7 +164,9 @@ error. Only the store calls its repository.
 
 The `config` and the `userContext` are those of [Installation](../10-getting-started/20-installation.md) and
 [Example: ask](../10-getting-started/30-example-ask.md). The tools the profiles name (`get_invoice`, `post_credit_note`)
-are registered in the config's `toolRegistry` ([Tools](030-tools.md)); `upsertProfile` refuses a name that is not.
+are `getInvoice` of [Example: run](../10-getting-started/40-example-run.md) and `postCreditNote` of
+[Example: a human in the loop](../10-getting-started/45-example-HITL.md), registered in the gateway of 3.1;
+`upsertProfile` refuses a name that is not registered.
 
 ### 3.1 A second provider
 
@@ -184,7 +187,7 @@ const claudeHaiku: IModelInfo = {
     temperature: true,
     embeddings: false,
     contextTokens: 200_000,
-    maxOutputTokens: 8_000,
+    maxOutputTokens: 64_000,
     costInPerMTokUsd: 1,
     costOutPerMTokUsd: 5,
     // no cache prices: ANTHROPIC defaults to 0.1 × and 1.25 × the input price
@@ -195,6 +198,7 @@ const claudeHaiku: IModelInfo = {
 
 const gateway = new AIGateway({
   ...config,
+  toolRegistry: {tools: [getInvoice, postCreditNote]},
   llmClient: {
     providers: {
       [EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""},
@@ -202,7 +206,7 @@ const gateway = new AIGateway({
     },
   },
   modelRegistry: {
-    repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small, claudeHaiku]}),
+    repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small, claudeHaiku]}),
   },
 });
 
@@ -225,7 +229,7 @@ const accountingClaude: IAIProfile = {
   id: "accounting-claude",
   name: "Accounting assistant (Claude)",
   modelId: "claude-haiku-4-5",
-  cheapModelId: "gpt-5-mini",
+  cheapModelId: "gpt-6.1-terra",
 };
 await gateway.aiProfileStore.upsertProfile({tenantId: "acme", profile: accountingClaude});
 
@@ -289,7 +293,7 @@ calls them.
 ```ts
 const tenantProfiles = await gateway.aiProfileStore.listProfiles({tenantId: "acme"});
 for (const profile of tenantProfiles.filter(candidate => candidate.modelId === "claude-haiku-4-5")) {
-  await gateway.aiProfileStore.upsertProfile({tenantId: "acme", profile: {...profile, modelId: "gpt-5-mini"}});
+  await gateway.aiProfileStore.upsertProfile({tenantId: "acme", profile: {...profile, modelId: "gpt-6.1-terra"}});
 }
 
 await gateway.modelRegistry.setEnabled({modelId: "claude-haiku-4-5", enabled: false});
@@ -399,8 +403,8 @@ No limit. One per use case or per model the user may pick: "cheap chat", "carefu
 Yes. A profile is keyed by tenant and id, and a tenant never sees another tenant's profiles.
 
 **Can a paused run continue on another model?**
-Yes: `resume()` with another `profileId`. The approvals and the answer review of both profiles stay in force
-([D113](../60-architecture/90-decisions.md#d113-a-profile-switch-on-resume-keeps-the-review-and-the-approvals)).
+Yes: `resume()` with another `profileId`. The approvals and the answer review of both profiles stay in force for that resume
+([D113](../60-architecture/90-decisions.md#d113-a-profile-switch-on-resume-keeps-the-review-and-the-approvals)); A later pause of the run is stored with the new profile, and a resume of it without `profileId` has only that profile's guards.
 
 **What does `deprecatedAt` do?**
 Nothing in the gateway. It is a fact for your admin screen. Switch the profiles and disable the model before the provider

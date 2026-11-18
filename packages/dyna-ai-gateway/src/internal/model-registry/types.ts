@@ -197,11 +197,11 @@ export interface IModelRegistryRepository {
 
 /** One model entry. Use wherever a model is referenced by id and its facts are needed. */
 export interface IModelInfo {
-  /** Our stable id, e.g. "gpt-5-mini". Referenced by AIProfile. */
+  /** Our stable id, e.g. "gpt-6.1-terra". Referenced by AIProfile. */
   id: string;
   /** Which SDK provider the LLMClient must use. */
   provider: EModelProvider;
-  /** The provider's own id, e.g. "gpt-5-mini-2026-06". */
+  /** The provider's own id, e.g. "gpt-6.1-terra". */
   providerModelId: string;
   /** Human label for admin UI. */
   label: string;
@@ -236,7 +236,12 @@ export interface IModelCaps {
   temperature: boolean;
   /** True only for embedding models. */
   embeddings: boolean;
-  /** Context window in tokens. */
+  /**
+   * Context window in tokens: the room the request and its answer share.
+   *
+   * A model whose provider takes less input than the window minus the answer gets its input limit here
+   * (`gpt-6.1-terra`: 922 000 of 1 050 000), or the provider refuses an overlong request.
+   */
   contextTokens: number;
   /** Max output tokens per call. */
   maxOutputTokens: number;
@@ -251,7 +256,7 @@ export interface IModelCaps {
    *
    * @example 0.1 - claude-haiku-4-5 (0.1 × its 1.00 input price)
    *
-   * @default Anthropic: 0.1 × costInPerMTokUsd; any other provider: costInPerMTokUsd (the rate differs per OpenAI model: set it)
+   * @default Anthropic: 0.1 × costInPerMTokUsd (Opus 5.5 and Sonnet 5.5 read at 0.05 ×, Fable 5.1+ and Mythos 5.1+ at 0.025 ×: set it); any other provider: costInPerMTokUsd (the rate differs per OpenAI model: set it)
    */
   costCacheReadPerMTokUsd?: number;
   /**
@@ -261,7 +266,7 @@ export interface IModelCaps {
    *
    * @example 1.25 - claude-haiku-4-5, 5-minute cache (1.25 × its 1.00 input price)
    *
-   * @default Anthropic: 1.25 × costInPerMTokUsd; any other provider: costInPerMTokUsd (OpenAI bills no write)
+   * @default Anthropic: 1.25 × costInPerMTokUsd; any other provider: costInPerMTokUsd (OpenAI bills a write on GPT-5.6 and later, at 1.25 ×: set it there)
    */
   costCacheWritePerMTokUsd?: number;
 }

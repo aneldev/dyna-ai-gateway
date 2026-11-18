@@ -8,7 +8,7 @@ of the documentation is required. It starts from four pages of Getting started:
 
 **Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
 `OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
-Installation, `gpt-5-mini` and `text-embedding-3-small`.
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`.
 
 ## 1. About
 
@@ -137,7 +137,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The tools, your `getOrder` lookup and the submit tool 8.1 explains, are defined here with the form. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The tools, your `getOrder` lookup and the submit tool 8.1 explains, are defined here with the form. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup. The `claims` profile and its two tools are the whole form flow; the questions the model asks go through `humanGate.userQuestions`.
 
@@ -159,14 +159,15 @@ import {
 } from "dyna-ai-gateway";
 
 // The two models of Installation
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
-    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -179,7 +180,7 @@ const textEmbedding3Small: IModelInfo = {
   label: "text-embedding-3-small",
   caps: {
     tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
-    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
   },
   enabled: true,
   deprecatedAt: null,
@@ -199,7 +200,7 @@ const baseConfig = {
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
-  defaultCheapModelId: "gpt-5-mini",
+  defaultCheapModelId: "gpt-6.1-terra",
 } satisfies Partial<IAIGatewayConfig>;
 ```
 
@@ -251,7 +252,7 @@ const claimsProfile: IAIProfile = {
   id: "claims",
   tenantId: "acme",
   name: "Damage reports",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You take damage reports of the Acme web shop.",
   allowedTools: ["get_order", "submit_damage_report"],
   approvals: [],
@@ -266,12 +267,12 @@ const config: IAIGatewayConfig = {
   runStore: {repository: new InMemoryRunRepository()}, // the run waits here between the questions and the answers
   toolRegistry: {tools: [getOrder, submitDamageReport]}, // the lookup and the submit tool, defined above
   toolPolicy: {requires: {submit_damage_report: ["get_order"]}}, // the model looks the order up before it may submit
-  // allowedTools lists both tools; maxStepsPerRun covers every question round
+  // allowedTools lists both tools; maxStepsPerRun counts again after each answer (resume)
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [claimsProfile]})},
 
   // required too, and kept in view: the provider key, the models
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small]})},
 };
 
 const gateway = new AIGateway(config);
@@ -334,16 +335,19 @@ import {
 } from "dyna-ai-gateway";
 
 declare const first: TGatewayResponse; // the response of the run() of 8.2
-declare const formValues: Record<string, string[]>; // what the user picked or typed in the card, by question: none, one or several
+declare const formValues: Record<string, string[]>; // what the user picked in the card, by question: none, one or several
+declare const typedValues: Record<string, string>; // what the user typed, by question (a FREE_TEXT, or a freeOption)
 
 if (first.kind === EGatewayResponseKind.PAUSED) {
-  const [card] = first.envelopes;
-  if (card.kind === EPauseKind.USER_QUESTION) {
+  const [card] = first.envelopes; // this sketch assumes one card; 8.4 answers several
+  if (card.kind === EPauseKind.USER_QUESTION && first.envelopes.length === 1) {
     // card.userQuestions.questions: [{text, mode: RADIO | CHECK | FREE_TEXT, options?, freeOption?}, …]
-    const answers = card.userQuestions.questions.map((question): IUserAnswer =>
-      question.mode === EUserQuestionMode.FREE_TEXT
-        ? {question: question.text, selected: [], freeText: formValues[question.text]?.[0] ?? ""}
-        : {question: question.text, selected: formValues[question.text] ?? []}); // RADIO one of question.options, CHECK any of them
+    const answers = card.userQuestions.questions.map((question): IUserAnswer => {
+      const typed = typedValues[question.text];
+      return question.mode === EUserQuestionMode.FREE_TEXT
+        ? {question: question.text, selected: [], freeText: typed ?? ""}
+        : {question: question.text, selected: formValues[question.text] ?? [], ...question.freeOption && typed ? {freeText: typed} : {}}; // RADIO one of question.options, CHECK any of them
+    });
 
     const next = await gateway.resume({
       userContext,
@@ -379,13 +383,19 @@ declare function showToUser(text: string): void; // your UI
 
 let response: TGatewayResponse = first;
 while (response.kind === EGatewayResponseKind.PAUSED) {
-  const [card] = response.envelopes;
-  if (card.kind !== EPauseKind.USER_QUESTION) break; // another kind of card: Keep a human in control
+  const cards = response.envelopes;
+  if (!cards.every(card => card.kind === EPauseKind.USER_QUESTION)) break; // another kind of card: Keep a human in control
+  const decisions = [];
+  for (const card of cards) { // the model may ask in two cards at once: one decision per card, by callId
+    if (card.kind === EPauseKind.USER_QUESTION) {
+      decisions.push({callId: card.callId, action: EResumeAction.ANSWER, answers: await renderCard(card.userQuestions)});
+    }
+  }
   response = await gateway.resume({
     userContext,
-    runId: card.runId,
+    runId: cards[0].runId,
     pauseId: response.pauseId,
-    decisions: [{action: EResumeAction.ANSWER, answers: await renderCard(card.userQuestions)}], // one card: no callId
+    decisions,
   }).response;
 }
 

@@ -47,7 +47,7 @@ export interface ILLMClientDeps {
   modelRegistry: IModelRegistry;
   /** Asked before every call and told after it, including helper calls; the app's adapter sits behind it. */
   usageGuard: IUsageGuard;
-  /** Every call is recorded here; the gateway annotates the main one. */
+  /** Every call is recorded here; the gateway annotates the entries afterwards (the main one and the judges'). */
   trace: ITrace;
 }
 
@@ -59,7 +59,7 @@ export interface ILLMClientCallMeta {
   userId?: string;
   /** The profile the call runs on. Omitted for system jobs (e.g. KB ingestion). */
   profileId?: string;
-  /** The thread of the call; omitted for a call outside a thread (an embedding, a KB ingestion). */
+  /** The thread of the call; omitted for a call outside a thread (a KB ingestion). */
   threadId?: string;
   /** The run the call is a step of; omitted outside a run. */
   runId?: string;
@@ -256,7 +256,7 @@ export interface IRunOutcome {
   /** One trace entry per step; the gateway annotates all of them. */
   traceIds: string[];
   /**
-   * Present when the usage adapter refused a step after the first: the run is DONE with finishReason LENGTH and the text so far.
+   * Present when the usage adapter refused a step after the first: the run is DONE with finishReason LENGTH and the last completed step's text.
    *
    * > The steps before it stand, their tools have had their effects; the gateway reports the refusal as a WARNING issue.
    */

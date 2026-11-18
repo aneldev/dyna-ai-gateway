@@ -4,7 +4,7 @@ description: "LLM-as-a-judge guardrails in TypeScript: deterministic checks firs
 keywords: [LLM as a judge, AI guardrails, LLM moderation, content moderation, topic guardrails, PII detection, TypeScript]
 ---
 
-# LLM-as-a-Judge Guardrails: Check Every Prompt and Answer with a Cheap Model
+# LLM-as-a-Judge Guardrails: Check Prompts and Answers with a Cheap Model
 
 Some checks need understanding, not a pattern: is this prompt about accounting, does this answer promise something the
 policy does not allow, is this photo a receipt. LLM-as-a-judge is the practice of answering such a question with a second,
@@ -14,14 +14,15 @@ its verdict is part of the response.
 ## 1. The problem
 
 - A regular expression cannot tell whether a prompt is on topic.
-- A judge on the main model doubles the cost of every call.
+- A judge on the main model adds a call at the main model's price to every call.
 - A judge that times out or answers out of shape must not let the call through.
 - A judge that the application cannot see is a judge nobody can debug.
 
 ## 2. The practice
 
 1. **Deterministic checks first.** A pattern that decides (an IBAN, a length) is plain code and calls no model. The
-   built-in input rules run before yours, so a rejected prompt pays for no judge.
+   built-in input rules run before yours, so a prompt they reject pays for no judge. Your own rules run in parallel: a
+   pattern check that must spare the judge goes into the judge's rule, before the `judge` call.
 2. **The judge on the cheap model.** A rule calls `judge` with `EJudgeModel.CHEAP`, the profile's `cheapModelId`. The
    temperature is 0 where the model takes one.
 3. **A precise instruction.** Name the issue `code` and the severity the judge must report, and when the evidence passes.
@@ -34,7 +35,10 @@ its verdict is part of the response.
 7. **Every judge is visible.** A judge call is checked by the usage adapter and traced with the kind `GUARDRAIL_JUDGE`,
    with the issues of its check.
 8. **Fail closed, and know it.** A rule that throws or passes its timeout is the `ERROR` `rule_error`. `onRuleError`
-   reports it to your logs. A check that must not block catches its own failure and returns a `WARNING`.
+   reports it to your logs. The timeout is applied outside the rule, so a check that must not block bounds its own
+   service call with a shorter timeout (`AbortSignal.timeout`), or races its `judge` call against a shorter timer (the
+   judge call then still runs to its end and is billed), catches the failure and returns a `WARNING`. A judge call the usage adapter refuses is
+   `usage_denied`, not `rule_error`.
 
 ## 3. In code
 
@@ -86,7 +90,7 @@ const policyPromises: IOutputRule = {
     const issues = await judge({
       instruction: "Report one issue with code `unapproved_promise` when the answer promises a refund, a discount or a deadline.",
       chunks: false,
-      toolResults: true, // what the tools returned in this run
+      toolResults: true, // what the tools returned; on a resumed run, only the calls after the resume
     });
     return issues.map(issue => ({...issue, severity: EIssueSeverity.WARNING})); // flag it, keep the answer
   },
@@ -122,15 +126,22 @@ if (result.kind === EGatewayResponseKind.FAILED) {
 
 ## 4. Pitfalls
 
-- **A judge where a pattern decides.** Every judge is one model call on every call of the gateway.
+- **A judge where a pattern decides.** Every judge is one model call on every call its rule reaches.
 - **No `cheapModelId` on the profile.** `EJudgeModel.CHEAP` then runs on the main model, at its price.
-- **A vague instruction.** The judge reports what the instruction asks for, nothing more.
-- **A minor check that blocks when its service is down.** A rule that throws is an `ERROR`. Catch and return a `WARNING`
-  where a failure must not block.
+- **A vague instruction.** The judge follows it loosely. Name the code, the severity and when the evidence passes, and
+  measure the rule on examples: a judge still misses cases and flags valid ones.
+- **A minor check that blocks when its service is down.** A rule that throws or runs past its timeout is an `ERROR`.
+  Where a failure must not block, give the service call inside the rule a shorter timeout (a `judge` call takes none: race it against a timer), catch,
+  and return a `WARNING`.
+- **A pattern rule next to a judge rule.** They run at the same time, so the judge is paid for also when the pattern
+  rejects. Put both in one rule, the pattern first.
+- **Files for a judge model that cannot read them.** `fileFilter` sends the bytes as they are. Choose a `cheapModelId`
+  that reads the images or PDFs you send.
 - **Streaming a strict use case.** An answer streams before the output rules run. A blocked answer ends its stream with
   `ANSWER_WITHDRAWN`; where the user must never see it, show only the final `response`.
-- **Vendor details in `message`.** Issues go back to the application and often to the UI. The user's text goes in
-  `userMessage`.
+- **Vendor details in an issue.** Issues go back to the application and into the trace. `message` is the developer's
+  text; a text for the user goes in `userMessage`, which the rule sets itself, since a judge's issues have none. A vendor
+  error is thrown instead, and reaches `onRuleError`.
 
 ## 5. Checklist
 

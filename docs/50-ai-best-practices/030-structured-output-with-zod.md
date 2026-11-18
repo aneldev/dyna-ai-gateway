@@ -102,7 +102,7 @@ const resumed = await gateway.resume({
   userContext,
   runId: paused.envelopes[0].runId,
   pauseId: paused.pauseId,
-  decisions: [{action: EResumeAction.APPROVE}],
+  decisions: [{action: EResumeAction.APPROVE}], // one envelope; several need one decision each, by `callId`
   outputSchema: missingVat, // without it, the resumed answer is plain text
 }).response;
 ```

@@ -8,7 +8,7 @@ of the documentation is required. It starts from four pages of Getting started:
 
 **Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
 `OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
-Installation, `gpt-5-mini` and `text-embedding-3-small`.
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`.
 
 ## 1. About
 
@@ -154,7 +154,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The two tools every example runs on are defined here; 8.3 builds its own gateway with two more, and 8.5 adds one for a single call. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The two tools every example runs on are defined here; 8.3 builds its own gateway with two more, and 8.5 adds one for a single call. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup: the tools are registered here and fixed for its lifetime, and each profile lists in `allowedTools` which of them its model may see.
 
@@ -176,14 +176,15 @@ import {
 } from "dyna-ai-gateway";
 
 // The two models of Installation
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
-    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -196,7 +197,7 @@ const textEmbedding3Small: IModelInfo = {
   label: "text-embedding-3-small",
   caps: {
     tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
-    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
   },
   enabled: true,
   deprecatedAt: null,
@@ -217,7 +218,7 @@ const baseConfig = {
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
-  defaultCheapModelId: "gpt-5-mini",
+  defaultCheapModelId: "gpt-6.1-terra",
 } satisfies Partial<IAIGatewayConfig>;
 ```
 
@@ -269,7 +270,7 @@ const accounting: IAIProfile = {
   id: "accounting",
   tenantId: "acme",
   name: "Accounting assistant",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: ["get_invoice", "post_credit_note"],
   approvals: [],
@@ -292,8 +293,8 @@ const config: IAIGatewayConfig = {
   },
   // the profile lists the tools the model may see in allowedTools
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting]})},
-  // gpt-5-mini has caps.tools: a model without it is offered no tool
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  // gpt-6.1-terra has caps.tools: a model without it is offered no tool
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small]})},
   runStore: {repository: new InMemoryRunRepository()}, // a run that pauses for an approval is stored here
 
   // required too, and kept in view: the provider key
@@ -354,7 +355,7 @@ if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // a 
 
 ### 8.3 A tool offered only on the first step, and a tool that ends the run
 
-`visibleWhen` offers `classify_intent` on the first step only, so the model can state the intent before it picks other tools. `endsRun` ends the run after a hand-over that `execute` reports as accepted; the model then phrases a last answer without tools.
+`visibleWhen` offers `classify_intent` on the first step of each `run()` and each `resume()` (the step index restarts on a resume), so the model can state the intent before it picks other tools. `endsRun` ends the run after a hand-over that `execute` reports as accepted; the model then phrases a last answer without tools.
 
 > **The bigger picture:** A support agent with many tools: it sorts the request first, and the conversation stops when a human agent takes the case.
 
@@ -533,7 +534,9 @@ if (result.kind === EGatewayResponseKind.PAUSED) {
 - The run's tools come from the registry through `allowedTools`, or from the call through `additionalTools`; every layer
   after that narrows.
 - `policy` decides each call; a failure is the tool's result and the run goes on.
-- The run ends on an answer, `maxStepsPerRun`, a refused step or a tool with `endsRun`.
+- The run ends on an answer, `maxStepsPerRun`, a refused step or a tool with `endsRun`; it pauses for an approval, a
+  question or a review; settles as `FAILED` on an abort, the call's `timeoutMs`, a usage refusal or a blocked answer;
+  and rejects (502) on a provider error, a model-call timeout included.
 - Skills are listed in a `run()` and loaded with `dyna_aigw_load_skill`.
 
 ## 11. FAQ

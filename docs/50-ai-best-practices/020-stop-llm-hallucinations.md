@@ -12,13 +12,13 @@ keywords: [LLM hallucinations, RAG, retrieval augmented generation, grounding, c
 > kept out by construction.
 
 A model that does not know the answer still writes one. In a business application that is a wrong refund deadline, an
-invented clause or a product feature that does not exist. This page shows the controls that work, in the order of their
-effect, and what each of them does not do.
+invented clause or a product feature that does not exist. This page shows the controls that work, and what each of
+them does not do.
 
 ## 1. The problem
 
 - The model answers from its training data, which does not know your policies, prices or products.
-- A nearest-neighbour search always returns something, even for a question your documents do not cover. The model then
+- A nearest-neighbour search returns the nearest excerpts even for a question your documents do not cover. The model then
   answers from an excerpt that is not about the question.
 - A model told to answer will answer. Without a way to say "not covered", it fills the gap.
 - The user cannot tell a grounded answer from an invented one.
@@ -29,27 +29,33 @@ effect, and what each of them does not do.
 
 1. **Answer from your documents.** Ingest them into the knowledge base and name the scope on every call (`kbFilters`).
    The excerpts reach the model labelled as documents, with the instruction to answer from them.
-2. **Abstain when retrieval is weak.** This is the control with the largest effect. A hit under `minScore` is not sent.
-   With no hit left, the model is told to say that the knowledge base does not cover the question instead of guessing,
-   and `citations` is empty, so your code knows it too and can hand the question to a person.
+2. **Abstain when retrieval is weak.** A hit under `minScore` is not sent. With no hit left, the model is told to say that
+   the knowledge base does not cover the question, and to say so clearly if it still answers from general knowledge.
+   `citations` is then empty, so your code knows it without reading the text, and can hand the question to a person
+   instead of showing an answer that rests on no document.
 3. **Show the sources, and say what they are.** `citations` lists the ids of the excerpts the model was given, not the
    passages the answer rests on. Label them in the UI as retrieved sources, not as proof.
 4. **Check the answer against the excerpts.** An output rule sends the answer and the excerpts to a judge, a short
-   classification call on the profile's cheap model, which reports the claims the excerpts do not support.
+   classification call on the profile's `cheapModelId` (its main model when it names none), which reports the claims the excerpts do not support.
 5. **Block where the answer is binding.** A `WARNING` keeps the answer and flags it, which suits a help box. Where people
    act on the answer (a contract term, a refund decision), report an `ERROR`: the answer is blocked and the call ends as
-   `FAILED`. Expect false positives, and give that outcome a path, such as a hand-over to a person.
+   `FAILED`. Expect false positives, and give that outcome a path, such as a hand-over to a person. The answer streams
+   while the model writes it and the rules run when it is complete, so a blocked answer ends its stream with
+   `ANSWER_WITHDRAWN`. Where nobody may read an unchecked answer, show only the final `response`.
 6. **Search the follow-up as a full question.** "And for a damaged one?" finds nothing as typed. The query rewriter turns
    it into a standalone search line from the thread's summary and facts, which the `SUMMARY_BUFFER` thread memory writes.
 
 ### 2.2 Eliminate by construction: verify quoted evidence in code
 
 Where nothing may be invented, the user must not rely on free text. Ask for a structured answer whose evidence is quoted
-word for word from the excerpts, and check each quote in code against the text of the excerpt it names: an output rule
-receives the full text of every excerpt the model was given (`evidence.chunks`). A quote that is not in its excerpt
-blocks the answer, and so does a quote too short to carry a claim when your rule sets a minimum length. No model takes
-part in this check, so every quote that reaches the user is in your documents. The
+word for word from the excerpts, and check each quote in code against the text of the excerpt it names: the output rules
+of an `ask()` and of a fresh `run()` receive the full text of every excerpt the model was given (`evidence.chunks`). A
+quote that is not in its excerpt blocks the answer, and so does a quote too short to carry a claim when your rule sets a
+minimum length. No model takes part in this check, so every quote of an answer that passed the rule is in your
+documents, apart from the markup the check strips; a reviewer's edited answer on a resume is not screened by the rules. The
 model's own sentence next to the quotes can still be wrong, so the screen shows the quotes as the answer, or beside it.
+An excerpt is Markdown, and a model tends to drop the markup when it quotes, so the check compares the text without the common inline markup:
+a check that is too strict blocks faithful quotes.
 
 ### 2.3 Know the limits
 
@@ -88,9 +94,12 @@ const result = await gateway.ask({
 }).response;
 
 if (result.kind === EGatewayResponseKind.ANSWER) {
-  if (result.citations.length === 0) await handToSupport(question); // nothing passed minScore: the model was told to abstain
-  const retrievedSources = result.citations.map(chunkId => linkToDocument(chunkId.slice(0, chunkId.lastIndexOf("#")))); // docId#order
-  console.log(result.text, retrievedSources); // label them as retrieved sources, not as proof
+  if (result.citations.length === 0) {
+    await handToSupport(question); // nothing passed minScore: the answer rests on no document
+  } else {
+    const retrievedSources = result.citations.map(chunkId => linkToDocument(chunkId.slice(0, chunkId.lastIndexOf("#")))); // docId#order
+    console.log(result.text, retrievedSources); // label them as retrieved sources, not as proof
+  }
 }
 ```
 
@@ -135,7 +144,13 @@ const sourcedAnswer = z.object({
   })),
 });
 
-const normalise = (text: string): string => text.replace(/\s+/g, " ").trim();
+// The excerpts are Markdown; a quote usually comes back without the markup and with other quotation marks
+const normalise = (text: string): string => text
+  .replace(/[*_`#>]/g, "")
+  .replace(/[\u2018\u2019]/g, "'")
+  .replace(/[\u201C\u201D]/g, '"')
+  .replace(/\s+/g, " ")
+  .trim();
 
 const quotesVerbatim: IOutputRule = {
   name: "quotes_verbatim",
@@ -173,7 +188,7 @@ if (checked.kind === EGatewayResponseKind.ANSWER && checked.structured) {
   if (!covered) await handToSupport(contractQuestion);
   else for (const quote of quotes) console.log(quote.chunkId, quote.text); // show the quotes as the answer's evidence
 }
-if (checked.kind === EGatewayResponseKind.FAILED) await handToSupport(contractQuestion); // a quote failed, or the judge blocked
+if (checked.kind === EGatewayResponseKind.FAILED) await handToSupport(contractQuestion); // a quote failed, the judge blocked, or another failure
 ```
 
 ### 3.4 Measure the threshold and the recall on your own questions
@@ -209,8 +224,11 @@ for (const minScore of [0.55, 0.6, 0.65, 0.7]) {
 }
 ```
 
-Each case costs one embedding and one model call, plus the output rules of the gateway it runs on. When the right document is missing at every threshold, the problem is recall, not the
-threshold: raise `k` (`kbRetrieval: {k}`), fix the chunking, or add hybrid search.
+Each case costs one embedding and one model call, plus the input and output rules of the gateway it runs on, one memory
+update with the default `SUMMARY_BUFFER` memory and, with `userMemoryStore.enabled`, one user-fact extraction, both on
+the cheap model. Each case also stores a new thread: run it as a test user. When the right
+document is missing at every threshold, the problem is recall, not the threshold: raise `k` (`kbRetrieval: {k}`), fix
+the chunking, or add hybrid search.
 
 ## 4. Pitfalls
 
@@ -231,6 +249,9 @@ threshold: raise `k` (`kbRetrieval: {k}`), fix the chunking, or add hybrid searc
 - **A scope that came out empty.** `libraryIds: []` searches nothing, and the model answers without documents. Refuse or
   log a call whose scope is empty when it should not be.
 - **A grounding judge without the excerpts.** `chunks: false` leaves the judge nothing to compare with.
+- **A grounding check on a resumed run.** A run resumed after an approval or a question reuses the request it paused
+  with; its output rules get no excerpts (`evidence.chunks` is empty). The samples above return early or block then.
+  Check grounded answers on `ask()`, or before the run pauses.
 - **A corpus pasted into `context`.** It is not searched, not scored and not cited, and the grounding judge does not see
   it. The one document a call is about, such as a contract to summarise, goes with the call as `context` or a file: the
   model reads it whole, with no retrieval miss ([Summarize a document](../24-learning-paths/100-summarize-a-document.md)).
@@ -241,7 +262,8 @@ threshold: raise `k` (`kbRetrieval: {k}`), fix the chunking, or add hybrid searc
 - [ ] An empty `citations` on a scoped call has a path: "not covered", a hand-over.
 - [ ] `minScore` and `k` are measured on your own questions, and measured again after a change.
 - [ ] The UI labels `citations` as retrieved sources.
-- [ ] An output rule checks the answer against `evidence.chunks`: `WARNING` for help, `ERROR` where people act on it.
+- [ ] An output rule checks the answer of `ask()` and of a fresh `run()` against `evidence.chunks`: `WARNING` for help, `ERROR` where people act
+      on it.
 - [ ] Where nothing may be invented, the answer quotes its evidence and code checks every quote.
 - [ ] Each document is in the index in one current version.
 - [ ] Chats with follow-up questions have `queryRewriter.enabled` and a `SUMMARY_BUFFER` thread memory.

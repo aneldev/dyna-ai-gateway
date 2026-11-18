@@ -199,7 +199,7 @@ export interface IInputJudgeArgs extends IJudgeArgs {
 export interface IOutputJudgeArgs extends IJudgeArgs {
   /** Send the KB chunks that were in the prompt (grounding). */
   chunks: boolean;
-  /** Send the tool results of the run. */
+  /** Send the tool results of the run (on a resume, those since the resume). */
   toolResults: boolean;
 }
 
@@ -269,9 +269,9 @@ export interface IOutputEvidence {
   prompt: string;
   /** The parsed answer when an outputSchema was given, otherwise the answer's text. */
   output: unknown;
-  /** KB chunks that were in the prompt. */
+  /** KB chunks that were in the prompt; empty on a resumed run. */
   chunks: IChunk[];
-  /** Tool results of this run. */
+  /** Tool results of this run; on a resume, only those since the resume. */
   toolResults: IToolResultPart[];
   /** Who is calling: tenant, user, permissions, locale. */
   userContext: IUserContext;

@@ -32,30 +32,31 @@ The paused runs live in `runStore.repository`, an `IRunRepository` (chapter 2.9)
 
 ### 2.1 Who decides an approval
 
-Two layers decide whether a tool call waits for a human: one rule on the tool, one floor on the profile.
+Two layers decide whether a tool call waits for a human: one policy on the tool, one floor on the profile.
 
 | Layer   | Where                  | Says                                                                                                                                                                              |
 |---------|------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Tool    | `IToolDef.policy`      | `NEEDS_APPROVAL`: every call waits for a human. `DENY`: the tool is switched off. A predicate `({input, userContext})`: a verdict per call on the parsed input. Omitted: `ALLOW`. |
-| Profile | `IAIProfile.approvals` | in this tenant these tools wait for a human, whatever the tool says. It turns an `ALLOW` into `NEEDS_APPROVAL`. It does not apply to the built-in tools.                          |
+| Profile | `IAIProfile.approvals` | on this profile these tools wait for a human unless the tool's policy denies the call. It turns an `ALLOW` into `NEEDS_APPROVAL`. It does not apply to the built-in tools.        |
 
 The gateway decides each call in this order:
 
-1. The input is parsed with the tool's `inputSchema`. An input the schema rejects never reaches the policy: the tool
-   reports the 400 to the model, and the call neither pauses nor counts as denied.
-2. The tool's `policy` gives a verdict (`EToolCallVerdict`).
+1. The tool's `policy` gives a verdict (`EToolCallVerdict`). A predicate gets the input parsed with `inputSchema`; an
+   input the schema rejects never reaches the predicate and counts as `ALLOW`. A static verdict decides without the
+   parse.
+2. On `ALLOW`, an input the schema rejects does not run: the tool reports the 400 to the model. Unless a static verdict
+   or step 3 pauses it first: an approval card can show an invalid input (a known gap, [D87](../60-architecture/90-decisions.md#d87-d67-d50-one-policy-on-the-tool-allow-deny-needs-approval)).
 3. The profile's `approvals` are the floor: an `ALLOW` of a listed tool becomes `NEEDS_APPROVAL`.
 4. `DENY` wins over the floor. A human is never asked to approve a call that would be refused.
 
-Nothing removes a pause the tool or the profile demands. The three verdicts mirror the `needsApproval` field of the Vercel
-AI SDK, with `DENY` added. A predicate's `NEEDS_APPROVAL` result may carry a `rejectionText` (what the model reads if the
+Nothing removes a pause the tool or the profile demands. A predicate's `NEEDS_APPROVAL` result may carry a `rejectionText` (what the model reads if the
 human rejects) and a `reasonCode` (why the call waits, for the card; the model never sees it). The full policy, with an
 example, is in the [FAQ](../10-getting-started/90-faq.md#how-do-i-control-whether-a-tool-call-runs) and in
 [D87](../60-architecture/90-decisions.md#d87-d67-d50-one-policy-on-the-tool-allow-deny-needs-approval).
 
 ### 2.2 The model asks the user
 
-With `humanGate.userQuestions.enabled`, every `run()` offers the built-in tool `dyna_aigw_ask_user_question`
+With `humanGate.userQuestions.enabled`, every `run()` on a model with tools offers the built-in tool `dyna_aigw_ask_user_question`
 (`BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION`). The profile's `allowedTools` does not select it. The model puts every open
 question into one call, an `IUserQuestions`: a `title`, an optional `description` and the `questions`. Each question has a
 `mode` (`EUserQuestionMode`):
@@ -192,12 +193,13 @@ often not the asker, and your application decides who may approve
 ### 2.9 Resume on another profile
 
 `resume({profileId})` continues the run on another profile: its model, its output cap, its tools and its limits. The
-system prompt and the messages so far stay. The review and the approvals are those of both profiles, so a switch adds
-guards and never removes them. A waiting tool the new profile does not allow is a 400, and the run stays paused. See
+system prompt and the messages so far stay. The review and the approvals are those of both profiles for this resume, so
+the switch adds guards. The run is then stored with the new profile: a later pause of the same run, resumed without a
+`profileId`, has the new profile's guards only. A waiting tool the new profile does not allow is a 400, and the run stays paused. See
 [Resume on another profile](../60-architecture/50-live-adjustment-and-dependency-injection.md#32-resume-on-another-profile)
 and [D113](../60-architecture/90-decisions.md#d113-a-profile-switch-on-resume-keeps-the-review-and-the-approvals).
 
-A profile that a paused run started on cannot be removed: `removeProfile` is a 409 that names the runs
+A profile that a paused run waits on (the one it is stored with) cannot be removed: `removeProfile` is a 409 that names the runs
 ([decision](../60-architecture/90-decisions.md#a-profile-a-paused-run-waits-on-cannot-be-removed)).
 
 ### 2.10 Listing paused runs
@@ -233,7 +235,7 @@ instances. In production, implement `IRunRepository` over your database
 `transition` is one conditional update, never a load followed by a save: the condition on the status in the filter is
 what lets exactly one of two racing resumes through.
 
-A server that dies inside a call leaves its run `RUNNING`. `recoverStuckRuns({tenantId})`, scheduled next to
+A server that dies inside a `resume` leaves its run `RUNNING`. `recoverStuckRuns({tenantId})`, scheduled next to
 `expirePausedRuns`, fails such runs and opens their threads
 ([FAQ](../10-getting-started/90-faq.md#what-happens-to-the-runs-a-crashed-server-left-behind)).
 
@@ -256,7 +258,7 @@ const strictAccounting: IAIProfile = {
   id: "accounting-strict",
   tenantId: "acme",
   name: "Accounting assistant, every credit note approved",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: ["get_invoice", "post_credit_note"],
   approvals: ["post_credit_note"], // the floor: the policy's ALLOW for small amounts becomes NEEDS_APPROVAL
@@ -409,7 +411,7 @@ for (const summary of inbox) {
 }
 
 // The user gives up on a run: the waiting calls are closed as rejected, the thread takes calls again
-const [oldest] = inbox;
+const [oldest] = [...inbox].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()); // the listing has no order
 if (oldest) await gateway.cancelRun({userContext, runId: oldest.runId});
 ```
 
@@ -425,8 +427,12 @@ const gateway = new AIGateway({
 
 setInterval(async () => {
   for (const tenantId of tenantIds) {
-    await gateway.expirePausedRuns({tenantId}); // returns how many runs it closed
-    await gateway.recoverStuckRuns({tenantId});
+    try {
+      await gateway.expirePausedRuns({tenantId}); // returns how many runs it closed
+      await gateway.recoverStuckRuns({tenantId});
+    } catch (error) {
+      console.error("pause expiry failed", {tenantId, error}); // one tenant's failure must not stop the others
+    }
   }
 }, 60_000);
 ```
@@ -475,7 +481,8 @@ const gateway = new AIGateway({...config, runStore: {repository: new MyRunReposi
 - **Forgetting `additionalTools` or `outputSchema` on resume.** The stored run keeps neither. A missing tool is a 400; a
   missing schema turns a structured run into plain text.
 - **Treating the approval as a permission check.** The gateway does not know who may approve. `resume()` and `cancelRun`
-  are open to every user of the tenant; check the approver's role in your endpoint before you call them.
+  are open to every user of the tenant (for a tool approval, `resume()` also needs the approver's permissions to unlock the
+  pending tool, or it is a 400; the later steps offer only the tools the approver may use); check the approver's role in your endpoint before you call them.
 - **Handing `getPausedRun` to the asker.** It holds the draft of a review, the system prompt and every tool output.
 - **A pause without an expiry job.** A paused run blocks its thread. Without `expirePausedRuns` on a schedule an
   unanswered pause blocks it for good.
@@ -485,9 +492,10 @@ const gateway = new AIGateway({...config, runStore: {repository: new MyRunReposi
 - **Wording the card from `rejectionText`.** It is for the model. The card renders from `toolCall` and `reasonCode`.
 - **Expecting a question in `ask()`.** `ask()` has no tools, so the model cannot ask the user there.
 - **Rendering every `USER_QUESTION` blindly.** An input of `dyna_aigw_ask_user_question` that its schema rejects pauses
-  as a `TOOL_APPROVAL` with the raw call, so the human sees what the model asked for. Render the approval card for it.
+  as a `TOOL_APPROVAL` with the raw call, so the human sees what the model asked for (a known gap: D87 lets the model retry). Render the approval card for it.
 - **Switching profile to skip a guard.** A switch on `resume()` keeps the approvals and the review of the profile the run
-  started on. To drop one, change that profile.
+  started on for that resume. A later pause of the run is stored with the new profile and has only its guards: give the
+  profiles a run may switch to the same approvals and review.
 
 ## 5. Summary
 
@@ -506,7 +514,8 @@ const gateway = new AIGateway({...config, runStore: {repository: new MyRunReposi
 No. The run is a record in the repository. The process that paused it can stop; any instance resumes it from the record.
 
 **Can the asker and the approver be different users?**
-Yes. Any user of the tenant can resume. The tools run with the approver's `userContext`, the user memory tools included:
+Yes. Any user of the tenant can resume; for a tool approval, the approver's permissions must unlock the pending tool
+(else a 400), and the later steps offer only the tools the approver may use. The tools run with the approver's `userContext`, the user memory tools included:
 an approved `dyna_aigw_remember_user_fact` is stored under the approver
 ([User memory](090-user-memory.md), pitfall "Another user answering the card"). The memory jobs and the trace stay the
 asker's.

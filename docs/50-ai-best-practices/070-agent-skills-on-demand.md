@@ -20,7 +20,7 @@ text only when the task needs it.
 ## 2. The practice
 
 1. **A skill per procedure.** A skill is a `name`, a `description` and a `body` of Markdown instructions.
-2. **The description decides the load.** In a `run()`, the system prompt lists each skill as one `name: description`
+2. **The description decides the load.** In a `run()` on a model that calls tools, the system prompt lists each skill as one `name: description`
    line. The model calls the built-in tool `dyna_aigw_load_skill` with the name and receives the body. Write the
    description as "what it covers, and when to load it".
 3. **Role procedures on the profile, screen procedures on the call.** The profile's `skills` are the procedures of the
@@ -65,7 +65,7 @@ const support: IAIProfile = {
   id: "support",
   tenantId: "acme",
   name: "Customer support",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You answer the customers of the Acme web shop. Be brief.", // applies to every call
   allowedTools: [],
   approvals: [],
@@ -102,6 +102,8 @@ const {response} = gateway.run({
 - **Data as a skill.** A skill holds instructions. The record on screen is `context`; documents belong in the knowledge
   base.
 - **A one-step run.** With `maxStepsPerRun: 1` the model can load a skill but has no step left to act on it.
+- **Many different call skill sets on a cached profile.** A call's `skills` are part of the cached stable block. Each
+  different set writes its own cache entry, so keep the sets per screen fixed.
 - **Showing the load as an action.** A UI that renders every tool call also shows `dyna_aigw_load_skill`. Filter the
   built-in tools by `BUILT_IN_TOOL_NAME_PREFIX`.
 
@@ -116,4 +118,5 @@ const {response} = gateway.run({
 
 - [Skills](../20-learn-the-gateway/020-skills.md): the lifecycle, the caps, a paused run.
 - [Context engineering](010-context-engineering.md): which layer each kind of information goes into.
-- [Prompt caching](110-prompt-caching.md): the profile's skills are cached with the stable part of the prompt.
+- [Prompt caching](110-prompt-caching.md): the skills are cached with the stable part of the prompt; each different
+  set of call skills writes its own cache entry.

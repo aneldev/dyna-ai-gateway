@@ -18,7 +18,7 @@ The content is grouped in four levels:
 
 | Level    | What it is                                                                     | Id in the index |
 |----------|--------------------------------------------------------------------------------|-----------------|
-| Tenant   | the owner; every write and every search is filtered by it                      | `tenantId`      |
+| Tenant   | the owner; every write and every search carries it                             | `tenantId`      |
 | Library  | a shelf of books, e.g. the tenant's "Tax library"                              | `libraryId`     |
 | Book     | a set of documents; it can move to another library                             | `bookId`        |
 | Document | one Markdown text ([`IKbDocument`](../30-api/index/interfaces/IKbDocument.md)) | `docId`         |
@@ -74,8 +74,10 @@ chunks of that document only. The result is an [`IIngestReport`](../30-api/index
 | `reindexBook`    | `ingestDocument` for every document of `docs`, `concurrency` at a time, one report per document, each also given to `onProgress`                               | the reports, in `docs` order |
 
 `reindexBook` refuses the book with a 400 before anything is ingested when a document of `docs` has another `bookId`. A
-document that fails does not stop the book: its report carries `error`, and its old chunks stay in the index. A refusal of
-the usage adapter does stop it: the documents before it are ingested, the rest are not.
+document that fails does not stop the book: its report carries `error`. A failed embedding keeps its old chunks; a failed
+write to the index, after the delete, leaves the document without its chunks (or with part of them, per adapter) until it is ingested again. A refusal of the
+usage adapter makes `reindexBook` throw: the documents already ingested stay, and with `concurrency` above 1 the
+documents already in progress, and the next ones of the other workers, are still ingested after the throw.
 
 There is no method that removes a whole book. The gateway does not know which documents a book holds, so the application
 calls `removeDocument` for each of them.
@@ -93,6 +95,7 @@ calls `removeDocument` for each of them.
 | `bookIds`    | `["vat-2026"]`       | only these books, inside those libraries                  |
 | `tags`       | absent               | any tag                                                   |
 | `tags`       | `["b2b"]`            | only chunks whose document carries one of these tags      |
+| `tags`       | `[]`                 | nothing matches (in the in-memory index)                  |
 | `language`   | absent               | any language                                              |
 | `language`   | `"de"`               | only chunks of this BCP-47 language                       |
 
@@ -118,7 +121,8 @@ chunk of an off-topic question 0.54 to 0.57. Another embedding model needs its o
 A run searches once, at its start. Its later steps and a `resume()` do not search again: a resumed run keeps the chunks
 of its first step ([D36](../60-architecture/90-decisions.md#d36-a-stored-run-carries-what-a-resumed-run-needs)).
 
-A search that fails fails the call: the `response` rejects with the error, and the model is not called.
+A search that fails fails the call: the `response` rejects with the error, and the model is not called. A usage denial of
+the search's embedding is a `FAILED` response instead ([Usage Guard](060-usage-guard.md)).
 
 ### 2.5 The follow-up is rewritten
 
@@ -134,7 +138,8 @@ not to answer the question. Nothing is stored.
 | the rewrite call fails or answers with nothing | the prompt             | one        |
 
 The summary and the facts are the thread memory's. The `SUMMARY_BUFFER` strategy writes them in the background after an
-answer; `SLIDING_WINDOW` writes none, so under it the prompt is searched as typed
+answer; `SLIDING_WINDOW` writes none, so under it the prompt is searched as typed, unless a summary of an earlier
+`SUMMARY_BUFFER` period is still stored: the rewrite then reads it (a known gap)
 ([Thread memory](080-thread-memory.md)). The rewrite uses the profile's `cheapModelId`, or `defaultCheapModelId` of the
 config. It is one more model call before the search, checked by the usage adapter and traced as `QUERY_REWRITE`
 ([D24](../60-architecture/90-decisions.md#d24-the-query-rewrite-has-a-required-switch)).
@@ -425,7 +430,7 @@ The `VectorStore` checks before the adapter writes: a record of another tenant, 
 vector length refuses the whole batch with a 400. A query vector of another length is a 400 too. An empty `libraryIds`
 never reaches the adapter. The adapter's `search` honours the rest of
 [`IChunkFilters`](../30-api/index/interfaces/IChunkFilters.md): `"all"`, an empty `bookIds` as every book, and `tags`
-matched when the chunk has any of them.
+matched when the chunk has any of them (the in-memory index matches nothing for `tags: []`; decide what yours does).
 
 ## 4. Pitfalls
 
@@ -484,11 +489,13 @@ The prompt tells it to say that the knowledge base does not cover the question. 
 knowledge, it is told to say so.
 
 **Is the search tenant-safe?**
-Yes. Every search is filtered by the caller's `tenantId`, and the `VectorStore` refuses to write a record of another tenant.
+Yes, when the vector index adapter filters by it. Every search carries the caller's `tenantId`, and the `VectorStore`
+refuses to write a record of another tenant. The filter itself is the adapter's database query: the gateway does not
+check the hits again, so an adapter that drops it leaks.
 
 **Does the knowledge base cost tokens on every call?**
-A call with `libraryIds: []` costs nothing. A call with a scope costs one embedding, one rewrite call when the thread has
-memory, and the prompt tokens of up to `k` chunks.
+A call with `libraryIds: []` costs nothing. A call with a scope costs one embedding, one rewrite call when `queryRewriter.enabled`
+is true and the thread has a summary or facts, and the prompt tokens of up to `k` chunks.
 
 **Can I add a reranker or keyword search?**
 Not built in. Pass your own `IKbRetriever` in `overrides.kbRetriever`, the second argument of `new AIGateway(config, overrides)`.

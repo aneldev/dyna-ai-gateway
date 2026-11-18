@@ -8,7 +8,7 @@ of the documentation is required. It starts from four pages of Getting started:
 
 **Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
 `OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
-Installation, `gpt-5-mini` and `text-embedding-3-small`. Example [8.4](#84-the-same-message-gets-the-same-intent-every-time) also calls a Claude model: an Anthropic API key in
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`. Example [8.4](#84-the-same-message-gets-the-most-consistent-intent) also calls a Claude model: an Anthropic API key in
 `ANTHROPIC_API_KEY`.
 
 ## 1. About
@@ -20,16 +20,16 @@ One `ask()` on a small, fast model whose `outputSchema` is the decision: an inte
 
 For triage in front of your own logic: the intent of a chat message, the queue of a support ticket, the category of an
 incoming email. The schema's enum makes the answer one of your values or a failed call, never free text. A profile of its
-own puts the use case on a cheap model.
+own gives the use case its own model and limits.
 
 Where it ends: when the model must act on the decision itself, use [Let the model act](020-let-the-model-act.md).
 
 ## 3. What you will be able to do
 
 - Define the classes as a zod enum and the triage as an object schema. Examples: [8.2](#82-route-a-message-by-its-intent), [8.3](#83-a-triage-decision-with-priority-team-and-summary).
-- Run the classifier on a profile of its own, on a cheap model. Example: [8.1](#81-a-profile-of-its-own-for-the-classifier).
+- Run the classifier on a profile of its own. Example: [8.1](#81-a-profile-of-its-own-for-the-classifier).
 - Route on `structured` in your code, and handle a call that failed the schema. Examples: [8.2](#82-route-a-message-by-its-intent), [8.5](#85-the-model-answers-outside-the-enum-and-a-human-takes-the-message).
-- Keep the answer stable with a low temperature, where the model takes one. Example: [8.4](#84-the-same-message-gets-the-same-intent-every-time).
+- Keep the answer stable with a low temperature, where the model takes one. Example: [8.4](#84-the-same-message-gets-the-most-consistent-intent).
 
 ## 4. The parts
 
@@ -70,7 +70,7 @@ Grouped by the step of your code where you meet them, in the order of the exampl
 
 ### 6.1 Set up the classifier
 
-Examples: [8.0](#80-the-configuration), [8.1](#81-a-profile-of-its-own-for-the-classifier), [8.4](#84-the-same-message-gets-the-same-intent-every-time).
+Examples: [8.0](#80-the-configuration), [8.1](#81-a-profile-of-its-own-for-the-classifier), [8.4](#84-the-same-message-gets-the-most-consistent-intent).
 
 | Symbol                                                                                                                                                | What you use it for                            |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
@@ -80,7 +80,7 @@ Examples: [8.0](#80-the-configuration), [8.1](#81-a-profile-of-its-own-for-the-c
 
 ### 6.2 Make the call
 
-Examples: [8.2](#82-route-a-message-by-its-intent), [8.3](#83-a-triage-decision-with-priority-team-and-summary), [8.4](#84-the-same-message-gets-the-same-intent-every-time), [8.5](#85-the-model-answers-outside-the-enum-and-a-human-takes-the-message), [8.6](#86-delete-the-thread-of-each-classified-message).
+Examples: [8.2](#82-route-a-message-by-its-intent), [8.3](#83-a-triage-decision-with-priority-team-and-summary), [8.4](#84-the-same-message-gets-the-most-consistent-intent), [8.5](#85-the-model-answers-outside-the-enum-and-a-human-takes-the-message), [8.6](#86-delete-the-thread-of-each-classified-message).
 
 | Symbol                                                                                                                        | What you use it for                                      |
 |-------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
@@ -128,7 +128,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The classifier has a profile of its own; `triage-claude` runs on a model that takes a temperature (8.4). The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The classifier has a profile of its own; `triage-claude` runs on a model that takes a temperature (8.4). The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup; the classifier calls of every tenant go through it, next to or instead of the chat.
 
@@ -151,14 +151,15 @@ import {
 } from "dyna-ai-gateway";
 
 // The two models of Installation
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
-    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -171,7 +172,7 @@ const textEmbedding3Small: IModelInfo = {
   label: "text-embedding-3-small",
   caps: {
     tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
-    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
   },
   enabled: true,
   deprecatedAt: null,
@@ -192,7 +193,7 @@ const baseConfig = {
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
-  defaultCheapModelId: "gpt-5-mini",
+  defaultCheapModelId: "gpt-6.1-terra",
 } satisfies Partial<IAIGatewayConfig>;
 ```
 
@@ -224,7 +225,7 @@ const triage: IAIProfile = {
   id: "triage",
   tenantId: "acme",
   name: "Ticket triage",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You classify support messages of a web shop. You never answer them.",
   allowedTools: [],
   approvals: [],
@@ -239,7 +240,7 @@ const triageClaude: IAIProfile = {
   promptAddendum: "You classify support messages of a web shop. You never answer them.",
   allowedTools: [],
   approvals: [],
-  limits: {maxStepsPerRun: 1, maxOutputTokens: 2_000}, // a reasoning model thinks within this cap
+  limits: {maxStepsPerRun: 1, maxOutputTokens: 2_000},
 };
 
 const config: IAIGatewayConfig = {
@@ -251,8 +252,8 @@ const config: IAIGatewayConfig = {
     [EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""},
     [EModelProvider.ANTHROPIC]: {apiKey: process.env.ANTHROPIC_API_KEY ?? ""},
   }},
-  // caps.structuredOutput and caps.temperature are read here
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small, claudeHaiku]})},
+  // caps.temperature is read here (8.4)
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small, claudeHaiku]})},
   // one profile per classifier
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [triage, triageClaude]})},
   workingMemory: {enabled: false}, // each message is classified alone: no summary calls
@@ -273,7 +274,7 @@ const userContext: IUserContext = {
 
 ### 8.1 A profile of its own for the classifier
 
-`upsertProfile` stores the `triage` profile of 8.0, which the configuration also seeds at startup: a small, fast model, no tools, one step, and an output limit that leaves room for the thinking of a reasoning model. The classifier's rule, to classify and never answer, lives in its `promptAddendum`.
+`upsertProfile` stores the `triage` profile of 8.0, which the configuration also seeds at startup: no tools, one step, and an output limit that leaves room for the thinking of a reasoning model. The classifier's rule, to classify and never answer, lives in its `promptAddendum`.
 
 > **The bigger picture:** Done once per tenant, at startup or from the admin screen that manages the profiles; every message classified later runs on it.
 
@@ -348,9 +349,9 @@ if (result.kind === EGatewayResponseKind.ANSWER && result.structured) {
 }
 ```
 
-### 8.4 The same message gets the same intent every time
+### 8.4 The same message gets the most consistent intent
 
-`temperature: 0` makes the model draw the most likely token every time. It is accepted only on a profile whose model has `caps.temperature`; on any other the call is refused with a 400 before anything is stored.
+`temperature: 0` makes the answer as repeatable as the model allows; providers do not guarantee identical output. It is accepted only on a profile whose model has `caps.temperature`; on any other the call is refused with a 400 before anything is stored.
 
 > **The bigger picture:** A classifier whose decisions must be repeatable, for example when the routing is audited or the same message is classified again after a retry.
 
@@ -423,14 +424,14 @@ if (result.kind !== EGatewayResponseKind.PAUSED && result.threadId) { // a call 
   model without the cap is a 400.
 - A call without `threadId` starts a new thread. A classifier called on every message leaves one thread per message;
   remove them with `delete` ([How do I delete conversations?](../10-getting-started/90-faq.md#how-do-i-delete-conversations)).
-- On a reasoning model (`caps.reasoning`), the thinking counts against `limits.maxOutputTokens`: a cap of a few hundred
+- On a model that reasons by itself (the OpenAI reasoning models), the thinking counts against `limits.maxOutputTokens`: a cap of a few hundred
   tokens can cut the answer before its JSON is complete. Keep the cap in the thousands.
 - The classifier's profile needs no tools: an `ask()` offers none
   ([Human in the loop: About](../20-learn-the-gateway/040-human-in-the-loop.md#1-about)).
 
 ## 10. Summary
 
-- One `ask()`, one profile on a cheap model, one zod schema.
+- One `ask()`, one profile of its own, one zod schema.
 - An answer outside the schema is a `FAILED` call, never a guess your code must parse.
 - The routing is your code, on `structured`.
 

@@ -8,7 +8,7 @@ of the documentation is required. It starts from four pages of Getting started:
 
 **Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
 `OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
-Installation, `gpt-5-mini` and `text-embedding-3-small`.
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`.
 
 ## 1. About
 
@@ -28,7 +28,7 @@ chapter 8 writes them.
 ## 3. What you will be able to do
 
 - Make every call of a tool wait for an approver. Example: [8.1](#81-a-tool-whose-every-call-waits-for-an-approver).
-- Require approval per tenant with the profile's `approvals`. Example: [8.2](#82-one-tenant-requires-approval-where-the-tools-policy-allows-the-call).
+- Require approval per profile with the profile's `approvals`. Example: [8.2](#82-one-tenant-requires-approval-where-the-tools-policy-allows-the-call).
 - Render the cards of a `PAUSED` response and resume with `APPROVE`, `EDIT`, `REJECT` or `ANSWER`. Examples: [8.3](#83-the-run-pauses-and-the-approver-approves), [8.4](#84-the-approver-edits-or-rejects-the-call).
 - Let the model ask the user questions and continue with the answers. Example: [8.6](#86-the-model-asks-the-user-a-question).
 - Send every answer of a profile to a reviewer. Example: [8.7](#87-a-reviewer-checks-the-answer-before-the-user-sees-it).
@@ -149,7 +149,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-`getInvoice` and `postCreditNote` are the tools of [Example: a human in the loop](../10-getting-started/45-example-HITL.md) and `sendEmail` the one 8.1 explains, all three defined here; the profiles are those the examples run and resume on. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+`getInvoice` and `postCreditNote` are the tools of [Example: a human in the loop](../10-getting-started/45-example-HITL.md) and `sendEmail` the one 8.1 explains, all three defined here; the profiles are those the examples run and resume on. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup and serves every tenant and every user with it. The tools and the policies are the same for all tenants; what one tenant changes lives in its own profiles.
 
@@ -171,14 +171,15 @@ import {
 } from "dyna-ai-gateway";
 
 // The two models of Installation
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
-    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -191,7 +192,7 @@ const textEmbedding3Small: IModelInfo = {
   label: "text-embedding-3-small",
   caps: {
     tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
-    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
   },
   enabled: true,
   deprecatedAt: null,
@@ -211,7 +212,7 @@ const baseConfig = {
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
-  defaultCheapModelId: "gpt-5-mini",
+  defaultCheapModelId: "gpt-6.1-terra",
 } satisfies Partial<IAIGatewayConfig>;
 ```
 
@@ -266,7 +267,7 @@ const accounting: IAIProfile = {
   id: "accounting",
   tenantId: "acme",
   name: "Accounting assistant",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: ["get_invoice", "post_credit_note", "send_customer_email"],
   approvals: [],
@@ -277,7 +278,7 @@ const accountingSenior: IAIProfile = {
   id: "accounting-senior",
   tenantId: "acme",
   name: "Accounting, senior approver",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: ["get_invoice", "post_credit_note", "send_customer_email"],
   approvals: [],
@@ -288,7 +289,7 @@ const accountingReviewed: IAIProfile = {
   id: "accounting-reviewed",
   tenantId: "acme",
   name: "Accounting, every answer reviewed",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: ["get_invoice"],
   approvals: [],
@@ -310,7 +311,7 @@ const config: IAIGatewayConfig = {
 
   // required too, and kept in view: the provider key, the models
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small]})},
 };
 
 const gateway = new AIGateway(config);
@@ -362,7 +363,7 @@ const strictAccounting: IAIProfile = {
   id: "accounting-strict",
   tenantId: "acme",
   name: "Accounting, every credit note approved",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team. Amounts are in NOK.",
   allowedTools: ["get_invoice", "post_credit_note"],
   approvals: ["post_credit_note"], // the floor: an ALLOW becomes NEEDS_APPROVAL; a DENY stays a DENY
@@ -411,7 +412,7 @@ if (paused.kind === EGatewayResponseKind.PAUSED) {
       case EPauseKind.TOOL_APPROVAL:
         return {callId: envelope.callId, action: EResumeAction.APPROVE}; // envelope.toolCall: the name and the input
       case EPauseKind.USER_QUESTION:
-        return {callId: envelope.callId, action: EResumeAction.ANSWER, answers: answersFrom(envelope.userQuestions)}; // 8.6
+        return {callId: envelope.callId, action: EResumeAction.ANSWER, answers: answersFrom(envelope.userQuestions)}; // 8.6: the asker's card; in a real screen the asker answers it
       case EPauseKind.RESULT_REVIEW:
         return {action: EResumeAction.APPROVE}; // always the only card, no callId (8.7)
     }
@@ -463,7 +464,8 @@ A pause with one card takes its decision without `callId`.
 
 ### 8.5 The approver hands the run to a senior profile
 
-The decision names another `profileId`: the run continues on that profile, and the approvals of both profiles stay in force.
+The decision names another `profileId`: the run continues on that profile, and the approvals of both profiles stay in force for this resume. A later pause of the
+run is stored with the new profile and, resumed without `profileId`, has only its approvals.
 
 > **The bigger picture:** An escalation: the amount is above what the junior team may credit, so the approver lets the run go on with the senior accounting profile.
 
@@ -506,8 +508,8 @@ const paused = await gateway.run({
 }).response;
 
 if (paused.kind === EGatewayResponseKind.PAUSED) {
-  const [card] = paused.envelopes;
-  if (card.kind === EPauseKind.USER_QUESTION) {
+  const [card] = paused.envelopes; // this sketch assumes the pause holds only this card; 8.3 answers several
+  if (card.kind === EPauseKind.USER_QUESTION && paused.envelopes.length === 1) {
     // card.userQuestions: a title and the questions, each RADIO, CHECK or FREE_TEXT
     const answers = card.userQuestions.questions.map((question): IUserAnswer =>
       question.mode === EUserQuestionMode.FREE_TEXT
@@ -576,7 +578,7 @@ const settle = async (
   let response = first;
   while (response.kind === EGatewayResponseKind.PAUSED) {
     response = await gateway.resume({
-      userContext: approverContext,
+      userContext: approverContext, // the approver decides here; a question card is the asker's (8.6)
       runId: response.envelopes[0].runId,
       pauseId: response.pauseId, // a new pauseId on every pause of the run
       decisions: await decide(response),
@@ -604,7 +606,10 @@ const [oldest] = inbox;
 if (oldest) await gateway.cancelRun({userContext, runId: oldest.runId}); // the user gives up
 
 setInterval(async () => {
-  for (const tenantId of tenantIds) await gateway.expirePausedRuns({tenantId}); // after humanGate.timeoutMs
+  for (const tenantId of tenantIds) {
+    await gateway.expirePausedRuns({tenantId}) // after humanGate.timeoutMs
+      .catch(error => console.error("pause expiry failed", {tenantId, error})); // one tenant's failure must not stop the others
+  }
 }, 60_000);
 ```
 

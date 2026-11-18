@@ -37,27 +37,41 @@ A second use case, an invoice assistant on another profile and another knowledge
 export const POST = (request: Request): Promise<Response> => supportChat.chat({request});
 
 // GET /api/chat/:threadId — the messages to draw when a thread is opened
-export const GET = async (request: Request, {params}: {params: {threadId: string}}): Promise<Response> =>
-  Response.json(await supportChat.history({request, threadId: params.threadId}));
+export const GET = async (request: Request, {params}: {params: Promise<{threadId: string}>}): Promise<Response> => {
+  const {threadId} = await params; // Next.js 15+: params is a promise
+  try {
+    return Response.json(await supportChat.history({request, threadId}));
+  } catch (error) {
+    const raw = (error as {status?: number}).status; // history throws the gateway's dynaError (404, …) or your hook's (401)
+    const status = typeof raw === "number" && raw >= 400 && raw < 600 ? raw : 500;
+    return Response.json({message: status < 500 ? (error as Error).message : "Internal error"}, {status});
+  }
+};
 ```
 
 `chat` reads the **last** message of the request only: its text parts are the prompt, its file parts the files. The gateway
-holds the history; the client's copy is never the truth. It returns the SDK's SSE response, so `useChat` needs no transport
-option. The thread: the first message of a chat carries no `threadId`, the gateway creates one, and the stream's metadata
+holds the history; the client's copy is never the truth. It returns the SDK's SSE response, so `useChat` needs no custom
+transport; `DefaultChatTransport` only adds the `threadId`. The thread: the first message of a chat carries no `threadId`, the gateway creates one, and the stream's metadata
 names it (`message.metadata.threadId`); from then on the client sends it in the body:
 
 ```ts
+const threadIdRef = useRef<string | undefined>(openedThreadId); // the thread opened, or none for a new chat
 const {messages, sendMessage} = useChat({
   messages: history,                              // from GET /api/chat/:threadId
   transport: new DefaultChatTransport({
     api: "/api/chat",
-    body: {threadId},                             // the thread of this screen, once known
+    body: () => ({threadId: threadIdRef.current}), // read at each request: the thread of this screen, once known
   }),
+  onFinish: ({message}) => {                      // the stream's metadata names the thread the gateway created
+    const threadId = (message.metadata as {threadId?: string} | undefined)?.threadId;
+    if (threadId) threadIdRef.current = threadId;
+  },
   sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
 });
 ```
 
-An error before the first chunk (a 400 of the input, a 404 of another user's thread, a 409 of a thread that waits for a human,
+`body` is a function: a plain object would keep the `threadId` of the first render (none), and every message would start
+a new thread. An error of `chat` before the first chunk (a 400 of the input, a 404 of another user's thread, a 409 of a thread that waits for a human,
 the 401 of your hook) is a JSON response with that status; an error once the stream runs is an `error` chunk. A 5xx never carries
 its message to the browser.
 
@@ -65,6 +79,7 @@ its message to the browser.
 
 | In the stream                                                        | Meaning                                                                                                                                                                 |
 |----------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `start`                                                              | The message id, and on the message's metadata `createdAt` and, when known, `threadId`                                                                                   |
 | `text-start` / `text-delta` / `text-end`                             | The answer's text, one text per model step                                                                                                                              |
 | `tool-input-available`, `tool-output-available`, `tool-output-error` | A tool call of the run and its result; `dynamic: true`, render it by `toolName`                                                                                         |
 | `tool-approval-request`                                              | A tool call that waits for a human: the SDK's approval card, see § 4                                                                                                    |
@@ -74,7 +89,9 @@ its message to the browser.
 `metadata.withdrawn` says the text that streamed was not kept (an output rule failed; the issues are next to it): grey it or
 drop it, the protocol cannot take text back. In `history`, one answer is one assistant message with a `step-start` part per
 model step ([D34](../60-architecture/90-decisions.md#d34-one-answer-is-one-message)); a call the human rejected is a `dynamic-tool`
-part in state `output-denied` with the reason, a call that failed is `output-error`.
+part in state `output-denied` with the rejection text the model read, a call that failed or a policy denied is
+`output-error`; an answer also carries its `modelId`. A `FAILED` call streams `error`, then `finish` with the `issues`
+in its metadata.
 
 The gateway's own tools are parts like any other, named `dyna_aigw_<name>`
 ([D125](../60-architecture/90-decisions.md#d125-built-in-tools-carry-the-dyna_aigw_-prefix)). A client needs no name to find a
@@ -127,7 +144,8 @@ the file parts of a stored thread are left out of `history`.
 
 ## 6. What stays the gateway's
 
-The thread list of the sidebar, renaming and deleting (`listThreads`, `renameThread`, see
+The thread list of the sidebar, renaming and deleting (`listThreads`, `renameThread`; deleting is `delete`, which takes
+raw ids and checks no user unless it gets a `userId`, so pass the `userId` of the user whose request it serves; see
 [the FAQ](90-faq.md#how-do-i-show-the-users-conversations-and-open-one)), the uploads and the reviewer's screen are the gateway's own
 methods: a chat screen calls both. On another transport than HTTP (a WebSocket, a resumable stream after a reload), compose
 `UiMapper`, the pure translation the module is built on, with the gateway's `events` yourself.

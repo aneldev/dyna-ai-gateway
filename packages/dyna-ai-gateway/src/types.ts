@@ -257,7 +257,7 @@ export interface IAIGatewayDeps {
   queryRewriter: IQueryRewriter;
   /** Searches the knowledge base for a call. */
   kbRetriever: IKbRetriever;
-  /** Writes documents into the knowledge base; the second root the facade exposes. */
+  /** Writes documents into the knowledge base; the second entry point, which the facade exposes. */
   kbIngestor: IKbIngestor;
   /** The tools: parsing and execution. */
   toolRegistry: IToolRegistry;
@@ -474,7 +474,7 @@ export interface IGatewayAskInput<TStructured = unknown> {
   outputFormat?: EOutputFormat;
   /**
    * Sampling temperature of the main model call; omit for the provider's default.
-   * Scales the randomness of each token draw: 0 = the most likely token every time (repeatable, fewest inventions),
+   * Scales the randomness of each token draw: 0 = the most likely token (as repeatable as the model allows, fewest inventions),
    * higher = more varied and more creative. Not a knowledge knob: a wrong answer at 0 is still wrong, only consistent.
    * Valid range is the provider's (OpenAI 0–2, Anthropic 0–1); a value outside it fails the call at the provider.
    * Only on a model whose registry entry has `caps.temperature`: the call is refused (400) before anything is stored when the
@@ -615,7 +615,7 @@ export interface IAnswerResponse<TStructured = unknown> {
   citations: string[];
   /** The WARNING issues of the call (guardrails, a refused later step, the assembler), for the UI to flag. */
   issues: IIssue[];
-  /** Tokens of the call; for a run, the sum over its steps. */
+  /** Tokens of the call; for a run, the input and output tokens summed over its steps since the call started (a `resume` after a tool pause counts its own steps only, a `resume` of an answer review returns the usage of the run that paused; the cache split is in each step's `addUsage` and trace entry). */
   usage: IUsage;
   /**
    * Name of the tool that ended the run (D86), when a tool did.

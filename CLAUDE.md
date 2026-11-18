@@ -150,13 +150,14 @@ conversation, not only while planning:
 
 **Multiplier rule:** if the number is below 100, multiply it by 100. It's an abbreviation. `1c` = 100, `7c` = 700, `12c` = 1200, `99c` = 9900. Numbers of 100 or more are taken literally (`200c` = 200). In ranges, apply this to each number separately (`2-5c` = 200–500).
 
-| Shorthand | Means |
-| --- | --- |
-| `2c` / `200c` | Answer in 200 characters or fewer. |
-| `5c` / `500c` | Answer in 500 characters or fewer. |
-| `2-5c` / `200-500c` | Answer in 200 to 500 characters. |
-| `from now on <number>c` or `<number>c from now on` (e.g. `from now on 3c` = 300) | Sticky: apply that budget to this answer **and every answer after**, until reset. The multiplier rule applies. |
-| `from now on full` / `full from now on` | Reset: drop any sticky budget, go back to answering as before. |
+| Shorthand                                                                        | Means                                                                                                                                              |
+|----------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `2c` / `200c`                                                                    | Answer in 200 characters or fewer.                                                                                                                 |
+| `5c` / `500c`                                                                    | Answer in 500 characters or fewer.                                                                                                                 |
+| `2-5c` / `200-500c`                                                              | Answer in 200 to 500 characters.                                                                                                                   |
+| `from now on <number>c` or `<number>c from now on` (e.g. `from now on 3c` = 300) | Sticky: apply that budget to this answer **and every answer after**, until reset. The multiplier rule applies.                                     |
+| `from now on full` / `full from now on`                                          | Reset: drop any sticky budget, go back to answering as before.                                                                                     |
+| `*c`                                                                             | No limit: answer at the length the content needs (an abbreviation, like `5c`). `from now on *c` / `*c from now on` is the same as the reset above. |
 
 - Counts the whole visible answer — prose, code, everything. Formatting (tables, headings, corrections block) still applies, but compressed to fit the budget; drop scaffolding before dropping correctness.
 - Can't fit a correct answer in budget → say so briefly and give the shortest correct version, even if it overruns. Never silently truncate into something wrong or misleading.

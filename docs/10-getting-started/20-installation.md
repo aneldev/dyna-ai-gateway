@@ -31,7 +31,7 @@ import {
 
 const config: IAIGatewayConfig = {
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small]})},
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accountingProfile]})},
   promptTemplateStore: {repository: new InMemoryPromptTemplateRepository()},
   threadStore: {repository: new InMemoryThreadRepository()},
@@ -46,7 +46,7 @@ const config: IAIGatewayConfig = {
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
-  defaultCheapModelId: "gpt-5-mini",
+  defaultCheapModelId: "gpt-6.1-terra",
 };
 
 const gateway = new AIGateway(config);
@@ -64,11 +64,11 @@ capabilities to decide what a call may send (tools, images, PDFs) and prices the
 ```ts
 import {IModelInfo, EModelProvider} from "dyna-ai-gateway";
 
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true,
     images: true,
@@ -77,10 +77,12 @@ const gpt5Mini: IModelInfo = {
     reasoning: true,
     temperature: false,
     embeddings: false,
-    contextTokens: 400_000,
+    contextTokens: 922_000, // OpenAI's input limit (the context window is 1 050 000)
     maxOutputTokens: 128_000,
-    costInPerMTokUsd: 0.25,
-    costOutPerMTokUsd: 2,
+    costInPerMTokUsd: 1,
+    costOutPerMTokUsd: 5,
+    costCacheReadPerMTokUsd: 0.05,
+    costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -99,7 +101,7 @@ const textEmbedding3Small: IModelInfo = {
     reasoning: false,
     temperature: false,
     embeddings: true,
-    contextTokens: 8_191,
+    contextTokens: 8_192,
     maxOutputTokens: 0,
     costInPerMTokUsd: 0.02,
     costOutPerMTokUsd: 0,
@@ -110,6 +112,9 @@ const textEmbedding3Small: IModelInfo = {
 ```
 
 The prices are the provider's list prices per million tokens; keep them current, the trace and the usage report use them.
+A model holds one price: OpenAI bills `gpt-6.1-terra` at higher rates for a request above 272 000 input tokens, which
+the registry does not price. `contextTokens` is the room of the request and its answer; `gpt-6.1-terra` takes at most
+922 000 input tokens of its 1 050 000, so the entry gives that limit.
 
 ## 3. A profile
 
@@ -124,7 +129,7 @@ const accountingProfile: IAIProfile = {
   id: "accounting",
   tenantId: "acme",
   name: "Accounting assistant",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: ["get_invoice", "post_credit_note"],
   approvals: [],

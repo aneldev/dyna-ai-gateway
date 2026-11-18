@@ -128,7 +128,7 @@ export interface IUsageCall {
   modelId: string;
   /** What the call is for: the answer, a run step, a guardrail judge, a query rewrite, an embedding, a memory update. */
   kind: ETraceKind;
-  /** The thread of the call; absent for a call outside a thread (an embedding, a KB ingestion). */
+  /** The thread of the call; absent for a call outside a thread (a KB ingestion). */
   threadId?: string;
   /** The run the call is a step of; absent outside a run. */
   runId?: string;

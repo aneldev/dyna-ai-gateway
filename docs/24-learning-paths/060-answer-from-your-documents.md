@@ -8,7 +8,7 @@ of the documentation is required. It starts from four pages of Getting started:
 
 **Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
 `OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
-Installation, `gpt-5-mini` and `text-embedding-3-small`.
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`.
 
 ## 1. About
 
@@ -139,7 +139,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The examples ingest documents and ask within their scope. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The examples ingest documents and ask within their scope. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup. The index is shared by the whole server; the documents of each tenant are kept apart in it, by `tenantId`.
 
@@ -161,14 +161,15 @@ import {
 } from "dyna-ai-gateway";
 
 // The two models of Installation
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
-    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -181,7 +182,7 @@ const textEmbedding3Small: IModelInfo = {
   label: "text-embedding-3-small",
   caps: {
     tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
-    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
   },
   enabled: true,
   deprecatedAt: null,
@@ -218,7 +219,7 @@ const accounting: IAIProfile = {
   id: "accounting",
   tenantId: "acme",
   name: "Accounting assistant",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: [],
   approvals: [],
@@ -230,7 +231,7 @@ const config: IAIGatewayConfig = {
 
   // What this path uses
   // text-embedding-3-small has caps.embeddings: the chunks and the queries are embedded with it
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small]})},
   // the same model and size for writing and searching
   embedder: {embeddingModelId: "text-embedding-3-small", dimensions: 1536},
   // the index; your IVectorIndexAdapter (pgvector, OpenSearch, …) in production
@@ -239,7 +240,7 @@ const config: IAIGatewayConfig = {
   kbRetriever: {k: 5, minScore: 0.6}, // the defaults: at most k excerpts, each at least minScore
   mdChunker: {maxTokens: 300}, // short chunks for FAQ-style documents; applies to documents ingested after it
   workingMemory: {enabled: true}, // the rewrite reads the thread's summary, which SUMMARY_BUFFER writes
-  defaultCheapModelId: "gpt-5-mini", // the rewrite runs on the cheap model
+  defaultCheapModelId: "gpt-6.1-terra", // the rewrite runs on the cheap model
 
   // required too, and kept in view: the provider key, the profiles
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
@@ -400,7 +401,7 @@ const followUp = await gateway.ask({
 
 ### 8.7 The index follows the moves, deletions and rebuilds of the editor
 
-`moveBook` changes the library of a book's chunks without embedding them again, `removeDocument` deletes a document's chunks, and `reindexBook` ingests every document you pass, with one report per document; a failed one keeps its old chunks. A refusal of your usage adapter is not reported: it throws and stops the book, and the documents done before it stay.
+`moveBook` changes the library of a book's chunks without embedding them again, `removeDocument` deletes a document's chunks, and `reindexBook` ingests every document you pass, with one report per document; a failed embedding keeps the document's old chunks. A refusal of your usage adapter is not reported: `reindexBook` throws, and the documents already ingested stay (with `concurrency` above 1, the other workers go on with the next documents after the throw).
 
 > **The bigger picture:** The other endpoints of your documents editor (move a book, delete a page) and a maintenance job that rebuilds a book, for example after the embedding model changed.
 
@@ -438,7 +439,8 @@ try {
 ## 9. Pitfalls
 
 - [Add a knowledge base to the LLM: Pitfalls](../20-learn-the-gateway/070-knowledge-base.md#4-pitfalls)
-- Under `SLIDING_WINDOW` a follow-up is searched as typed: the rewrite reads the summary that strategy never writes
+- Under `SLIDING_WINDOW` a follow-up is searched as typed: the rewrite reads the summary and facts that strategy never writes, unless an
+  earlier `SUMMARY_BUFFER` period left them; the rewrite then reads those stale ones
   ([The follow-up is rewritten](../20-learn-the-gateway/070-knowledge-base.md#25-the-follow-up-is-rewritten)).
 - `InMemoryVectorIndexAdapter` is for tests and the sandbox
   ([The host's vector index](../20-learn-the-gateway/070-knowledge-base.md#37-the-hosts-vector-index)).

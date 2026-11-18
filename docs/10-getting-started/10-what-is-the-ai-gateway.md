@@ -14,7 +14,7 @@ interfaces you implement or take in-memory.
 │  (authenticated) │  response  └──────────────────┬────────────────────┘        │  Bedrock    │
 └──────────────────┘                               │ repository / adapter        └─────────────┘
                                                    ▼ interfaces
-                                    in-memory · MongoDB · PostgreSQL · S3
+                                    in-memory · your own (database adapters planned)
 ```
 
 ## What it does
@@ -28,7 +28,7 @@ interfaces you implement or take in-memory.
 | Memory            | the thread's history as a sliding window or a summary, the user's facts across threads                        |
 | Knowledge base    | Markdown documents chunked, embedded and searched per tenant, library and book; citations                     |
 | Usage and trace   | your adapter asked before every model call and told what it used; one trace entry per model call              |
-| Guardrails        | built-in input and output rules, your own rules, a judge on the cheap model                                   |
+| Guardrails        | built-in input and output rules, your own rules, a judge on the cheap model or the main one                   |
 
 ## What stays in your application
 
@@ -37,16 +37,16 @@ interfaces you implement or take in-memory.
 - **The transport.** A call returns its `events` and its `response`; how they reach a screen is your code. The
   [Vercel chat client](50-vercel-chat-client.md) is one ready-made transport.
 - **The data.** Every store is an interface (`IAIGatewayConfig.<store>.repository` or `.adapter`). In-memory
-  implementations ship with the package for tests and small deployments.
+  implementations ship with the package for tests, the sandbox and a first run: nothing they hold survives a restart.
 - **The spend.** The gateway holds no budget, plan or quota; your usage adapter decides every call.
 
 ## How it is built
 
-Every part of the gateway is a class with one job, held behind an interface. The second constructor argument takes your
-own instance in place of any of them; the rest of the gateway does not notice the swap.
+Every part of the gateway is a class with one job, held behind an interface. The second constructor argument takes a
+factory per part, which returns your own class in its place; the rest of the gateway does not notice the swap.
 
 ```ts
-const gateway = new AIGateway(config, {kbRetriever: new MyKbRetriever()});
+const gateway = new AIGateway(config, {kbRetriever: (kbConfig, deps) => new MyKbRetriever(kbConfig, deps)});
 ```
 
 Not needed to start. The details: [Live adjustment and dependency injection](../60-architecture/50-live-adjustment-and-dependency-injection.md),

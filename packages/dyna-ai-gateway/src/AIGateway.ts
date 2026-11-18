@@ -116,7 +116,7 @@ import {deleteThreads} from "./utils/deleteThreads";
  *   erasure of a user (`deleteUserData`, `anonymizeUserData`) and of conversations (`delete`), the scheduled jobs
  *   (`expirePausedRuns`, `recoverStuckRuns`) and a graceful `shutdown`.
  * - The admin surfaces as getters (`modelRegistry`, `aiProfileStore`, `promptTemplateStore`, `toolRegistry`, `trace`,
- *   `usageGuard`) and the second root, `kbIngestor`, for the knowledge-base write endpoints.
+ *   `usageGuard`) and the second entry point, `kbIngestor`, for the knowledge-base write endpoints.
  *
  * The host application constructs one per process and keeps it: the children hold caches, the background work and the
  * calls in flight.
@@ -659,7 +659,8 @@ export class AIGateway {
    *   started it.
    * - The run continues on its profile as it is now, or on `profileId` (D65): the model, the output cap, the tools and the
    *   limits come from that profile; the system prompt and the messages so far stay. The review of the answer and the
-   *   approvals are those of both profiles (D113): a switch never skips a guard the run started under. The skills the run
+   *   approvals are those of both profiles (D113) for this resume; the run is then stored with the new profile, so a later
+   *   pause resumed without `profileId` has only its guards. The skills the run
    *   kept (D124) and the profile's are offered again through a rebuilt `dyna_aigw_load_skill`; the system prompt keeps the list of
    *   the start.
    * - The free text of an ANSWER goes through the input rules like a prompt (D71): an ERROR returns FAILED and the run
@@ -699,7 +700,7 @@ export class AIGateway {
    * # Pitfalls
    *
    * A decision that names no envelope, an envelope left without one, an action its envelope does not allow, a pending tool
-   * the profile does not allow, a skill name in both the run and the profile, or an EDIT that misses the schema is a 400,
+   * the profile does not allow or the resumer's permissions do not unlock (also on a REJECT), a skill name in both the run and the profile, or an EDIT that misses the schema is a 400,
    * and the run stays paused. Without the `outputSchema` a structured run answers in plain text, and an EDIT of a
    * structured reviewed answer is a 400.
    */
@@ -1803,7 +1804,7 @@ export class AIGateway {
    * > A run nobody works on any more is closed like a broken one: run FAILED, its cut tool call answered with an error in
    * > the thread, the thread open again. Returns how many were recovered.
    *
-   * An instance that dies inside a call leaves its run RUNNING and, after a `resume`, its thread waiting for a human:
+   * An instance that dies inside a `resume` leaves its run RUNNING and, after a `resume`, its thread waiting for a human:
    * no door reopens it (D97). The job lists the RUNNING runs of the tenant and, for each, takes the thread's lease first:
    * a live call holds it, so a lease obtained proves nobody works on the thread. Then it moves the run RUNNING to FAILED
    * atomically (D69), closes it with `closeRun` and releases the lease.
@@ -1938,7 +1939,7 @@ export class AIGateway {
   }
 
   /**
-   * kbIngestor -- the second root: the write side of the knowledge base
+   * kbIngestor -- the second entry point: the write side of the knowledge base
    *
    * # About
    *
@@ -2053,7 +2054,8 @@ export class AIGateway {
 
   /**
    * The profile a resume continues on (D65). A switch keeps what the run started under: the review of the answer and the
-   * approvals are the union of both profiles (D113), so a resume cannot pick a profile that skips them. A paused run's
+   * approvals are the union of both profiles (D113) for this resume. The run is stored with the new profile, so a later
+   * pause of it, resumed without `profileId`, has only the new profile's guards. A paused run's
    * profile that no longer exists is the AIProfileStore's 404: its rules are not known, so the switch is refused.
    */
   private async getResumeProfile(

@@ -12,7 +12,7 @@ make the wait a stored state that any server instance can continue hours later.
 
 ## 1. The problem
 
-- Approving every call trains people to click "approve" without reading. Approving none lets a wrong call through.
+- Approving every call invites approval fatigue: people click "approve" without reading. Approving none lets a wrong call through.
 - A wait implemented as an open request or a process in memory is lost at the next deploy.
 - The approver is often not the asker, and two approvers who click at once can run the call twice.
 
@@ -21,17 +21,20 @@ make the wait a stored state that any server instance can continue hours later.
 1. **Decide on the input.** The tool's `policy` is a function of the parsed input: a small amount runs, a large one waits
    for a human, an impossible one is refused with a reason the model reads. The decision runs before `execute`, outside
    the tool's own code.
-2. **A floor per tenant.** The profile's `approvals` lists the tools that always wait in this tenant, whatever the tool's
-   policy says. A refusal still wins: a human is never asked to approve a call that would be refused.
+2. **A floor per profile.** The profile's `approvals` lists the tools that wait on this profile even when their
+   policy allows the call; a profile without the entry runs them as their policy says. A refusal still wins: a human is never asked to approve a call that would be refused.
 3. **The card is data.** A pause returns envelopes with the tool name, the input and your `reasonCode`. Your UI renders the
    card in its own language.
 4. **The approver may edit.** An edited input goes through the policy again, so an edit cannot push through what the
    policy refuses.
 5. **The wait is stored.** A paused run is a record in your run repository. Any instance resumes it with the `pauseId` of
    the pause; of two resumes at once, one wins and the other gets a 409, so the call runs once.
-6. **Your endpoint checks who approves.** `resume()` is open to every user of the tenant. The approver's role is checked in
-   your code before the call.
-7. **Pauses expire.** A scheduled job closes the pauses past their expiry, so a thread is never blocked for good.
+6. **Your endpoint checks who approves.** `resume()` checks the tenant, and that the approver's permissions unlock the
+   pending tool (otherwise a 400, and the run stays paused). It knows no roles: the approver's role is checked in your
+   code before the call.
+7. **One decision per card.** A step can hold several calls back at once (two refunds), so a pause can carry several
+   cards. `resume()` takes one decision per card, named by its `callId`.
+8. **Pauses expire.** A scheduled job closes the pauses past their expiry, so a thread is never blocked for good.
 
 ## 3. In code
 
@@ -95,7 +98,7 @@ const asked = await gateway.run({
 
 if (asked.kind === EGatewayResponseKind.PAUSED) {
   for (const card of asked.envelopes) {
-    if (card.kind === EPauseKind.TOOL_APPROVAL) console.log(card.toolCall.toolName, card.toolCall.input, card.reasonCode);
+    if (card.kind === EPauseKind.TOOL_APPROVAL) console.log(card.callId, card.toolCall.toolName, card.toolCall.input, card.reasonCode);
   }
 }
 ```
@@ -105,29 +108,33 @@ The approver's endpoint, a separate request, possibly on another server instance
 ```ts
 declare function mayApproveRefunds(user: IUserContext): boolean; // your roles
 
-const approve = async (runId: string, pauseId: string): Promise<void> => {
+const approve = async (runId: string, pauseId: string, callIds: string[]): Promise<void> => {
   if (!mayApproveRefunds(approverContext)) throw new Error("Not allowed to approve refunds"); // the gateway does not know your roles
   const resumed = await gateway.resume({
     userContext: approverContext, // the tool runs with the approver's context
     runId,
-    pauseId,                      // the pause the card was rendered for
-    decisions: [{action: EResumeAction.APPROVE}],
+    pauseId,                      // the pause the cards were rendered for
+    decisions: callIds.map(callId => ({callId, action: EResumeAction.APPROVE})), // one per card
   }).response;
   // resumed can be PAUSED again: handle it like the response of run()
 };
 ```
 
-The expiry job, next to your other scheduled jobs:
+The expiry job, in your scheduler (one instance runs it, and one run at a time):
 
 ```ts
 declare const tenantIds: string[]; // your tenants
 
-setInterval(async () => {
+const closeStalePauses = async (): Promise<void> => {
   for (const tenantId of tenantIds) {
-    await gateway.expirePausedRuns({tenantId}); // closes the pauses past humanGate.timeoutMs
-    await gateway.recoverStuckRuns({tenantId}); // fails the runs a crashed server left behind
+    try {
+      await gateway.expirePausedRuns({tenantId}); // closes the pauses past humanGate.timeoutMs
+      await gateway.recoverStuckRuns({tenantId}); // fails the resumed runs a crashed server left RUNNING
+    } catch (error) {
+      console.error("pause cleanup failed", {tenantId, error}); // the next tenant still runs
+    }
   }
-}, 60_000);
+};
 ```
 
 ## 4. Pitfalls

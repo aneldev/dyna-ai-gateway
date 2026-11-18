@@ -18,8 +18,9 @@ export type TSdkProviderOptions = Parameters<typeof generateText>[0]["providerOp
  *
  * > OpenAI's prompt cache key, derived from the `cache` block; nothing for anyone else.
  *
- * OpenAI, with a `cache` block: `openai.promptCacheKey` is the 16-hex SHA-256 of that block's text, so the provider routes
- * the calls that share the stable block to one cache; the key names exactly the calls that may share it (per tenant when
+ * OpenAI, with a `cache` block: `openai.promptCacheKey` is the 16-hex SHA-256 of that block's text, so before GPT-5.6 the
+ * provider routes the calls that share the stable block to one cache (from GPT-5.6 on it routes by itself and the key
+ * keeps their cache accounting apart); the key names exactly the calls that may share it (per tenant when
  * the block opens with the tenant-scope line, across tenants when sharing is on). Every other case: undefined, byte-for-byte
  * the request before the blocks existed (D123).
  *

@@ -58,8 +58,9 @@ const SEPARATOR = "/";
  *
  * # Pitfalls
  *
- * `path` and every id are checked as folder names (no separator, no "." or ".."): a bad one is a 400 before the adapter is
- * reached. The default types exclude SVG on purpose.
+ * `path` is checked once, in the constructor (an empty folder is dropped; a ".", ".." or "\\" one throws); the tenant id,
+ * user id and file id are checked per call as folder names (no separator, no "." or ".."): a bad one is a 400 before the
+ * adapter is reached. The default types exclude SVG on purpose.
  */
 export class FileStore implements IFileStore {
   /** The folders of config.path joined by single slashes, none at the ends; "" when the config names no folder. */

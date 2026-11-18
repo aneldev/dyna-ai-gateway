@@ -52,7 +52,7 @@ export const makeUsageDeniedIssue = (
  * > The call ended on the app's word: the response says so, nothing is thrown.
  *
  * Built when a layer threw the usage-denied error (`isUsageDeniedError`) and the call cannot go on without that model call:
- * the input judges, the query rewrite, the search's embedding, the answer, the first step of a run, the output judges.
+ * the input judges, the search's embedding, the answer, the first step of a run or of a resume, the output judges.
  * `issues` holds one ERROR issue `USAGE_DENIED_ISSUE_CODE`, so a host branches on the code, not on the prose.
  *
  * # Who needs it

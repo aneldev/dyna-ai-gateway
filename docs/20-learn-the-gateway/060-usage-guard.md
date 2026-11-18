@@ -50,7 +50,7 @@ Both calls carry the factors of [`IUsageCall`](../30-api/index/interfaces/IUsage
 | `profileId` | the profile the call runs on; absent for a system job                               |
 | `modelId`   | the model that answers: the profile's main or cheap model, or the embedding model   |
 | `kind`      | what the call is for, an [`ETraceKind`](../30-api/index/enumerations/ETraceKind.md) |
-| `threadId`  | the thread; absent outside a thread (an embedding, an ingestion)                    |
+| `threadId`  | the thread; absent outside a thread (an ingestion)                                  |
 | `runId`     | the run the call is a step of; absent outside a run                                 |
 
 `check` adds `neededTokens` ([`IUsageCheckArgs`](../30-api/index/interfaces/IUsageCheckArgs.md)):
@@ -80,18 +80,19 @@ The adapter's `denyCode` and `denyUserMessage` travel through unchanged. On the 
 `usage_denied` ([`USAGE_DENIED_ISSUE_CODE`](../30-api/index/variables/USAGE_DENIED_ISSUE_CODE.md)): `data.denyCode` is the
 code, `userMessage` is the message. The call never throws for a denial, except an ingestion, which has no response.
 
-| Refused call                  | Effect                                                                                                                                       |
-|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
-| the answer of an `ask()`      | `FAILED`, one ERROR issue `usage_denied`                                                                                                     |
-| the first step of a `run()`   | `FAILED`, one ERROR issue `usage_denied`; no run is stored, no tool ran                                                                      |
-| a later step of a run         | `ANSWER` with the text so far and two WARNING issues, `usage_denied` and `output_truncated`                                                  |
-| an input rule's judge         | `FAILED`, one ERROR issue `usage_denied` (not `rule_error`); the answer is never asked for                                                   |
-| an output rule's judge        | `FAILED`, one ERROR issue `usage_denied`; a streamed answer is withdrawn with `ANSWER_WITHDRAWN`                                             |
-| the embedding of the search   | `FAILED`, one ERROR issue `usage_denied`                                                                                                     |
-| the query rewrite             | the search uses the question as written; the call goes on                                                                                    |
-| a thread-memory update        | skipped; the answer stands, the memory catches up on a later turn                                                                            |
-| a user-memory extraction      | skipped; the known facts stay as they are                                                                                                    |
-| the embedding of an ingestion | `ingestDocument` throws a 429 ([`isUsageDeniedError`](../30-api/index/functions/isUsageDeniedError.md)); `reindexBook` throws the same error |
+| Refused call                   | Effect                                                                                                                                       |
+|--------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| the answer of an `ask()`       | `FAILED`, one ERROR issue `usage_denied`                                                                                                     |
+| the first step of a `run()`    | `FAILED`, one ERROR issue `usage_denied`; no run is stored, no tool ran                                                                      |
+| the first step of a `resume()` | `FAILED`, one ERROR issue `usage_denied`; the approved tools have run, the run is closed                                                     |
+| a later step of a run          | `ANSWER` with the last step's text and two WARNING issues, `usage_denied` and `output_truncated`                                             |
+| an input rule's judge          | `FAILED`, one ERROR issue `usage_denied` (not `rule_error`); the answer is never asked for                                                   |
+| an output rule's judge         | `FAILED`, one ERROR issue `usage_denied`; a streamed answer is withdrawn with `ANSWER_WITHDRAWN`                                             |
+| the embedding of the search    | `FAILED`, one ERROR issue `usage_denied`                                                                                                     |
+| the query rewrite              | the search uses the question as written; the call goes on                                                                                    |
+| a thread-memory update         | skipped; the answer stands, the memory catches up on a later turn                                                                            |
+| a user-memory extraction       | skipped; the known facts stay as they are                                                                                                    |
+| the embedding of an ingestion  | `ingestDocument` throws a 429 ([`isUsageDeniedError`](../30-api/index/functions/isUsageDeniedError.md)); `reindexBook` throws the same error |
 
 A later step keeps the earlier ones because their tools have already had their effect. The run ends the way the step
 limit ends it ([How does a run end](../10-getting-started/90-faq.md#how-does-a-run-end-and-can-a-tool-end-it)). What a
@@ -117,18 +118,20 @@ The check fails closed: an adapter that cannot answer has not said yes. The repo
 | `cachedInputTokens`     | of `inputTokens`, those read from the provider's cache  |
 | `cacheWriteInputTokens` | of `inputTokens`, those written to the provider's cache |
 
-The same `usage` reaches `addUsage`, the trace entry and the stored assistant turn. `IAnswerResponse.usage` is the usage of
-the answer's call; for a run it is the sum over its steps.
+The same `usage` reaches `addUsage`, the trace entry and, for an `ask()`, the stored assistant turn.
+`IAnswerResponse.usage` is the usage of the answer's call; for a run it is the input and output tokens summed over its
+steps (a `resume()` after a tool pause counts its own steps only; a `resume()` of an answer review returns the usage of
+the call that paused), without the cache split, which only each step's `addUsage` and trace entry carry.
 
 `costUsd` is an estimate at the model's list prices
 ([`IModelCaps`](../30-api/index/interfaces/IModelCaps.md)), per million tokens:
 
-| Tokens                                                              | Price                      | Default when not set                                             |
-|---------------------------------------------------------------------|----------------------------|------------------------------------------------------------------|
-| `inputTokens` − `cachedInputTokens` − `cacheWriteInputTokens` (≥ 0) | `costInPerMTokUsd`         | required                                                         |
-| `cachedInputTokens`                                                 | `costCacheReadPerMTokUsd`  | Anthropic: 0.1 × `costInPerMTokUsd`; others: `costInPerMTokUsd`  |
-| `cacheWriteInputTokens`                                             | `costCacheWritePerMTokUsd` | Anthropic: 1.25 × `costInPerMTokUsd`; others: `costInPerMTokUsd` |
-| `outputTokens`                                                      | `costOutPerMTokUsd`        | required                                                         |
+| Tokens                                                              | Price                      | Default when not set                                                                                                                             |
+|---------------------------------------------------------------------|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `inputTokens` − `cachedInputTokens` − `cacheWriteInputTokens` (≥ 0) | `costInPerMTokUsd`         | required                                                                                                                                         |
+| `cachedInputTokens`                                                 | `costCacheReadPerMTokUsd`  | Anthropic: 0.1 × `costInPerMTokUsd`; others: `costInPerMTokUsd`; set it where the provider's rate differs ([Models](010-models-and-profiles.md)) |
+| `cacheWriteInputTokens`                                             | `costCacheWritePerMTokUsd` | Anthropic: 1.25 × `costInPerMTokUsd` (a 5-minute write); others: `costInPerMTokUsd`                                                              |
+| `outputTokens`                                                      | `costOutPerMTokUsd`        | required                                                                                                                                         |
 
 The estimate knows no exchange rate, discount or contract price. An app that bills in its own currency or in credits
 computes from `usage`. A cost estimate that fails is logged, and the call is reported with `costUsd: 0`. The same estimate
@@ -140,7 +143,7 @@ is available as `gateway.modelRegistry.estimateCostUsd`. When and how the prompt
 | Limit             | What it caps                                                                                                                       |
 |-------------------|------------------------------------------------------------------------------------------------------------------------------------|
 | `maxOutputTokens` | the output of the answer and of each run step, at most the model's `caps.maxOutputTokens`; a cut answer carries `output_truncated` |
-| `maxStepsPerRun`  | the model calls of one `run()`, and again of each `resume()`; reached, the run ends with the text so far and `output_truncated`    |
+| `maxStepsPerRun`  | the model calls of one `run()`, and again of each `resume()`; reached, it ends with the last step's text and `output_truncated`    |
 
 The caps also shape the question to the adapter: `neededTokens.output` of an answer or a step is the capped
 `maxOutputTokens`. The helper calls (judge, query rewrite, memory) carry small output caps of their own. The caps bound one
@@ -148,7 +151,7 @@ call and one run, not spend: what a tenant may spend in a day is your adapter's 
 
 ## 3. Examples
 
-The `config`, the `gpt5Mini` model and the `userContext` are those of [Installation](../10-getting-started/20-installation.md) and
+The `config`, the `gpt61Terra` model and the `userContext` are those of [Installation](../10-getting-started/20-installation.md) and
 [Example: ask](../10-getting-started/30-example-ask.md).
 
 ### 3.1 A daily token budget per tenant
@@ -223,7 +226,7 @@ const freeTenants = new Set(["trial-42"]);
 class PlanByModel implements IUsageAdapter {
   public async check({tenantId, modelId, kind}: IUsageCheckArgs): Promise<IUsageCheckResult> {
     const isAnswer = kind === ETraceKind.CHAT || kind === ETraceKind.RUN_STEP;
-    if (freeTenants.has(tenantId) && isAnswer && modelId !== "gpt-5-mini") {
+    if (freeTenants.has(tenantId) && isAnswer && modelId !== "gpt-6.1-terra") {
       return {
         approved: false,
         denyCode: "model_not_in_plan",
@@ -283,26 +286,27 @@ try {
   await gateway.kbIngestor.ingestDocument({tenantId: "acme", doc, userId: "u-17"});
 } catch (error) {
   if (!isUsageDeniedError(error)) throw error;
-  // error.status === 429, error.data.denyCode === "daily_limit_reached"; nothing was embedded or reported
+  // error.status === 429, error.data.denyCode === "daily_limit_reached"; nothing was written to the index (earlier batches of a long document were embedded and reported)
 }
 ```
 
 ### 3.5 Cache prices on a model
 
-An OpenAI model gets no cache-read discount by default. Set the rate on the model entry so the estimate shows it.
+An OpenAI model gets no cache discount by default. Set the rates on the model entry so the estimate shows them (the
+entry of Installation carries them already).
 
 ```ts
 await gateway.modelRegistry.upsertModel({
-  model: {...gpt5Mini, caps: {...gpt5Mini.caps, costCacheReadPerMTokUsd: 0.025}},
+  model: {...gpt61Terra, caps: {...gpt61Terra.caps, costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25}},
 });
 
 const costUsd = await gateway.modelRegistry.estimateCostUsd({
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   inputTokens: 12_000,
   cachedInputTokens: 10_000,
   outputTokens: 400,
 });
-// 2 000 × 0.25 + 10 000 × 0.025 + 400 × 2, per million tokens: 0.00155 USD
+// 2 000 × 1 + 10 000 × 0.05 + 400 × 5, per million tokens: 0.0045 USD
 ```
 
 ### 3.6 Tests: script the denial
@@ -358,7 +362,7 @@ usageAdapter.addUsageCalls.length;              // 0: a refused call is not repo
   WARNING on a run cut after its first step, a skipped memory update, a 429 on an ingestion.
 - A `check` that throws refuses the call; an `addUsage` that throws is logged.
 - `costUsd` prices uncached, cache-read, cache-write and output tokens at the model's list prices.
-- `maxOutputTokens` and `maxStepsPerRun` cap one answer and one run; spend is the adapter's.
+- `maxOutputTokens` and `maxStepsPerRun` cap one answer and one `run()` or `resume()`; spend is the adapter's.
 
 ## 6. FAQ
 

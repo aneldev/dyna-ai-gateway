@@ -19,12 +19,13 @@ have run, and to end the run with a terminal tool once the job is done.
 ## 2. The practice
 
 1. **Prerequisites in the configuration.** `toolPolicy.requires` names, per tool, the tools that must have run in this run
-   before it is offered. Until then the model does not see it, and a call by name is refused with a message that names
+   before it is offered (after a `resume()`, also in the earlier runs the request carries). Until then the model does not see it, and a call by name is refused with a message that names
    what to call first. A tool held back this way is a guarded workflow.
-2. **Steps in the tool.** `visibleWhen` offers a tool only in some steps, for example a classifier on the first step only.
+2. **Steps in the tool.** `visibleWhen` offers a tool only in some steps, for example a classifier on the first step only (of a `run()`, and again of each `resume()`).
 3. **A terminal tool.** `endsRun` on the tool that completes the job (file the report, hand over to a human) ends the run
    after its successful call. The model gets one last step without tools to write the closing sentence.
-4. **A bounded loop.** The profile's `limits.maxStepsPerRun` caps the model calls of one run.
+4. **A bounded loop.** The profile's `limits.maxStepsPerRun` caps the model calls of a `run()`, and again of each
+   `resume()`.
 5. **The order in words too.** `requires` and `visibleWhen` hide a tool until its moment; they do not force a call. Say the
    order in the tool's description as well, so the model calls the prerequisite instead of answering without it.
 
@@ -109,8 +110,11 @@ if (result.kind === EGatewayResponseKind.ANSWER) {
 
 - **Expecting `requires` to force a call.** It hides the tool until its prerequisite ran. The model may still answer
   without calling anything. `endedByTool` tells your job whether the terminal tool ran.
-- **A prerequisite from an earlier run.** `requires` counts the tools of this run only. A lookup in yesterday's run on
-  the same thread does not unlock today's write.
+- **A prerequisite from an earlier run.** A fresh `run()` counts the tools of this run only: a lookup in yesterday's
+  run on the same thread does not unlock today's write. After a `resume()`, the count also takes in the tool results of
+  earlier runs that the thread memory loaded into the request. Where that matters, the tool's `policy` checks the
+  prerequisite in your own data (the invoice named in the input was looked up for this user): it does not see which
+  tools ran.
 - **The order only in the prompt.** A prompt rule is the hint; `requires` is the rule.
 - **A write tool without a policy.** The order does not decide whether a call may run. A write with a large effect also
   needs an approval ([Human-in-the-loop approvals](060-human-in-the-loop-approvals.md)).

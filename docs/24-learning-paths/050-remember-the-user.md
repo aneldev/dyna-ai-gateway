@@ -8,7 +8,7 @@ of the documentation is required. It starts from four pages of Getting started:
 
 **Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
 `OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
-Installation, `gpt-5-mini` and `text-embedding-3-small`.
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`.
 
 ## 1. About
 
@@ -59,7 +59,7 @@ sequenceDiagram
 1. On each call the thread memory returns the window and the notes; the user facts and the notes go into the `{memory}`
    slot as data ([The `{memory}` slot](../20-learn-the-gateway/080-thread-memory.md#26-the-memory-slot),
    [How the facts reach the prompt](../20-learn-the-gateway/090-user-memory.md#24-how-the-facts-reach-the-prompt)).
-2. After an `ANSWER`, the summary and the fact extraction run in the background on the cheap model
+2. After an `ANSWER`, when an update is due, the summary and the fact extraction run in the background on the cheap model
    ([When the memory is updated](../20-learn-the-gateway/080-thread-memory.md#27-when-the-memory-is-updated),
    [The extraction](../20-learn-the-gateway/090-user-memory.md#22-the-extraction)).
 3. In a `run()` the model writes facts through the built-in tools; remembering pauses for the user by default
@@ -156,7 +156,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The examples continue threads and keep facts about the user. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The examples continue threads and keep facts about the user. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup. The memory settings here are the default of every profile; the facts of each user and the memory of each thread are kept in the two repositories.
 
@@ -176,14 +176,15 @@ import {
 } from "dyna-ai-gateway";
 
 // The two models of Installation
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
-    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -196,7 +197,7 @@ const textEmbedding3Small: IModelInfo = {
   label: "text-embedding-3-small",
   caps: {
     tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
-    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
   },
   enabled: true,
   deprecatedAt: null,
@@ -236,7 +237,7 @@ const accounting: IAIProfile = {
   id: "accounting",
   tenantId: "acme",
   name: "Accounting assistant",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: [],
   approvals: [],
@@ -257,12 +258,12 @@ const config: IAIGatewayConfig = {
     extractEveryTurns: 6,
     rememberNeedsApproval: true,  // dyna_aigw_remember_user_fact waits for the user (8.3)
   },
-  defaultCheapModelId: "gpt-5-mini", // the summary and the extraction run on the cheap model
+  defaultCheapModelId: "gpt-6.1-terra", // the summary and the extraction run on the cheap model
   runStore: {repository: new InMemoryRunRepository()}, // a remember request pauses the run until the user approves
 
   // required too, and kept in view: the provider key, the models, the profiles
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small]})},
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting]})},
 };
 
@@ -290,7 +291,7 @@ const codeReview: IAIProfile = {
   id: "code-review",
   tenantId: "acme",
   name: "Code review",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You review TypeScript code. Quote the lines you comment on.",
   allowedTools: [],
   approvals: [],
@@ -302,7 +303,7 @@ await gateway.aiProfileStore.upsertProfile({tenantId: "acme", profile: codeRevie
 
 ### 8.2 The user continues a conversation on the same thread
 
-The first `ask()` opens a thread; the second passes its `threadId` and the model reads the earlier turns. When the oldest turns no longer fit the model's window, they are left out and the answer carries the issue `turns_trimmed`.
+The first `ask()` opens a thread; the second passes its `threadId` and the model reads the earlier turns. Under the `SUMMARY_BUFFER` of `accounting`, the turns older than `recentTurns` reach the model through the summary once the background update has covered them (a failed update leaves them out), with no issue; `turns_trimmed` comes only when the request overflows the model's whole window. Under `SLIDING_WINDOW` (8.1) every turn left out is reported as `turns_trimmed`.
 
 > **The bigger picture:** The chat screen: every message after the first is sent with the thread the screen holds, and a long conversation tells the user when its start is out of sight.
 
@@ -349,10 +350,16 @@ const paused = await gateway.run({
 }).response;
 
 if (paused.kind === EGatewayResponseKind.PAUSED) {
-  const [card] = paused.envelopes;
-  if (card.kind === EPauseKind.TOOL_APPROVAL && card.toolCall.toolName === BUILT_IN_TOOL_NAMES.REMEMBER_USER_FACT) {
-    // Show {key: "location", value: "Vienna"} with "Remember" / "Don't remember"
-    await gateway.resume({userContext, runId: card.runId, pauseId: paused.pauseId, decisions: [{action: EResumeAction.APPROVE}]}).response;
+  // Two facts in one step pause with two cards: one decision per card, by callId
+  const facts = paused.envelopes.filter(card => card.kind === EPauseKind.TOOL_APPROVAL && card.toolCall.toolName === BUILT_IN_TOOL_NAMES.REMEMBER_USER_FACT);
+  if (facts.length === paused.envelopes.length) {
+    // Show each fact, e.g. {key: "location", value: "Vienna"}, with "Remember" / "Don't remember"
+    await gateway.resume({
+      userContext,
+      runId: paused.envelopes[0].runId,
+      pauseId: paused.pauseId,
+      decisions: facts.flatMap(card => card.kind === EPauseKind.TOOL_APPROVAL ? [{callId: card.callId, action: EResumeAction.APPROVE}] : []),
+    }).response;
   }
 }
 
@@ -410,7 +417,7 @@ const {summary, facts} = await gateway.getThreadMemory({userContext, threadId});
 
 ### 8.7 A user's data is erased or pseudonymised on request
 
-`deleteUserData` removes the user's facts, files, threads, runs and trace entries and returns the counts. `anonymizeUserData` keeps the records under a pseudonym instead, for the usage and the cost the books must keep.
+`deleteUserData` removes the user's facts, files, threads, runs and trace entries and returns the counts. `anonymizeUserData` deletes the facts, files and turns as well, and keeps the threads, runs and trace entries as skeletons (counts, usage, cost, dates) under a pseudonym, for the books. What your usage adapter stored is yours to erase.
 
 > **The bigger picture:** An admin job on a data-subject request (GDPR): it takes raw ids and checks no user, so your admin surface decides who may call it.
 
@@ -433,7 +440,7 @@ const {pseudonym} = await gateway.anonymizeUserData({tenantId: "acme", userId: "
 
 - The thread memory gives every call a window and, under `SUMMARY_BUFFER`, notes; the profile can pick its strategy.
 - User facts are `{key, value}` per user, in every prompt of the user, as data.
-- Both are updated in the background after an answer, on the cheap model.
+- Both are updated in the background after an answer when an update is due, on the cheap model.
 - Your application reads and edits both; erasure is `deleteUserData` or `anonymizeUserData`.
 
 ## 11. FAQ

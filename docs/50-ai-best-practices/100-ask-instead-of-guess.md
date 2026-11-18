@@ -6,7 +6,7 @@ keywords: [clarifying questions, AI agent, human in the loop, LLM ask user, conv
 
 # Make Your AI Agent Ask Instead of Guess: Clarifying Questions as a Paused Run
 
-A request with a missing detail ("refund my last order" from a customer with three orders) gets a guess from most agents,
+A request with a missing detail ("refund my last order" from a customer with three orders) gets a guess from an agent that has no way to ask,
 and the guess becomes an action. The practice is to give the model a way to ask: a question tool that pauses the run with
 a form, and a resume that hands the answers back, so the model continues with facts instead of assumptions.
 
@@ -15,20 +15,24 @@ a form, and a resume that hands the answers back, so the model continues with fa
 - A model that must produce an answer fills a gap with the most likely value.
 - A question written into the answer text ends the run. The next message is a new turn, and your code has to piece the
   request together again.
-- Free text the user types in reply is a new prompt that no check has seen.
+- A reply as a new message is free text: the model has to read the missing value out of it, and may misread it.
 
 ## 2. The practice
 
-1. **Offer the question tool.** With `humanGate.userQuestions.enabled`, every `run()` offers the built-in tool
-   `dyna_aigw_ask_user_question`. Its call never executes: the run pauses with a `USER_QUESTION` card.
+1. **Offer the question tool.** With `humanGate.userQuestions.enabled`, every `run()` on a model with tools offers the built-in tool
+   `dyna_aigw_ask_user_question`. Its call never executes: the run pauses with a `USER_QUESTION` card. A call whose input
+   the tool's schema rejects pauses as a `TOOL_APPROVAL` card instead, so a person sees what the model asked for (a known gap: the model should read the 400 and ask again).
 2. **Say when to ask.** The profile's `promptAddendum` names the details that must never be guessed, such as an order
    number, an amount or a date.
 3. **One form, several questions.** The model puts every open question into one call: each question is a single choice
    (`RADIO`), a multiple choice (`CHECK`) or free text (`FREE_TEXT`).
 4. **The answers return as the tool's result.** `resume()` with an `ANSWER` decision continues the same run. The model
    reads the answers as the result of its question and goes on.
-5. **Typed answers are checked.** Free text typed in an answer runs through the input rules, like a prompt.
-6. **Loop until it settles.** A resumed run may ask again. Handle its response like the response of `run()`.
+5. **Answers are checked.** A picked option must be one the question offers, and free text typed in an answer runs
+   through the input rules, like a prompt.
+6. **One decision per card.** A step can ask a question and request an approval at once, so a pause can hold several
+   cards. `resume()` takes one decision per card, named by its `callId`.
+7. **Loop until it settles.** A resumed run may ask again. Handle its response like the response of `run()`.
 
 ## 3. In code
 
@@ -46,6 +50,7 @@ import {
   EUserQuestionMode,
   IAIGatewayConfig,
   IAIProfile,
+  IResumeDecision,
   IUserAnswer,
   IUserContext,
   IUserQuestions,
@@ -60,23 +65,24 @@ const support: IAIProfile = {
   id: "support",
   tenantId: "acme",
   name: "Customer support",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: [
     "You handle refunds of the web shop.",
     "Never guess an order number or an amount: when the request leaves one open, ask the user.",
   ].join(" "),
   allowedTools: ["list_orders", "refund_order"],
-  approvals: [],
+  approvals: ["refund_order"], // the refund still waits for a person
   limits: {maxStepsPerRun: 6, maxOutputTokens: 1_000},
 };
 
 await gateway.aiProfileStore.upsertProfile({tenantId: "acme", profile: support});
 ```
 
-The run pauses with the form, and the screen sends the answers back:
+The run pauses with the form, and the screen sends the answers back, one decision per card:
 
 ```ts
 declare function askOnScreen(form: IUserQuestions): Promise<IUserAnswer[]>; // your form: one answer per question, in order
+declare function sendForApproval(runId: string, callId: string): Promise<void>; // your approval queue
 
 const first = await gateway.run({
   userContext,
@@ -86,28 +92,40 @@ const first = await gateway.run({
 }).response;
 
 if (first.kind === EGatewayResponseKind.PAUSED) {
-  const [card] = first.envelopes;
-  if (card.kind === EPauseKind.USER_QUESTION) {
+  const questions = first.envelopes.filter(card => card.kind === EPauseKind.USER_QUESTION);
+  if (questions.length === first.envelopes.length) {
     // card.userQuestions: {title: "Which order?", questions: [{text: "Pick the order", mode: RADIO, options: ["88231", "88190"]}]}
-    const answers = await askOnScreen(card.userQuestions);
+    const decisions: IResumeDecision[] = [];
+    for (const card of questions) {
+      decisions.push({callId: card.callId, action: EResumeAction.ANSWER, answers: await askOnScreen(card.userQuestions)});
+    }
     const resumed = await gateway.resume({
       userContext, // the asker answers their own question
-      runId: card.runId,
-      pauseId: card.pauseId,
-      decisions: [{action: EResumeAction.ANSWER, answers}],
-    }).response;
+      runId: first.envelopes[0].runId,
+      pauseId: first.pauseId,
+      decisions,
+    }).response; // handle `resumed` like `first`: it can pause again, on a question or an approval
+  } else {
+    // an approval card: the approver resumes the pause, with a decision for every card, questions included
+    for (const card of first.envelopes) {
+      if (card.kind === EPauseKind.TOOL_APPROVAL) await sendForApproval(card.runId, card.callId); // decided elsewhere
+    }
   }
 }
 ```
 
-An answer fits its question: `selected` holds only the question's options, and `freeText` only where the question takes
-typed text:
+An answer fits its question: `selected` holds only the question's options (one for `RADIO`; more is a 400, as is an option the question does not offer), and `freeText` only where
+the question takes typed text (`FREE_TEXT`, or a choice with `freeOption`):
 
 ```ts
-const answerFor = (question: IUserQuestions["questions"][number], picked: string): IUserAnswer =>
-  question.mode === EUserQuestionMode.FREE_TEXT
-    ? {question: question.text, selected: [], freeText: picked}
-    : {question: question.text, selected: [picked]};
+const answerFor = (question: IUserQuestions["questions"][number], picked: string[], typed?: string): IUserAnswer => {
+  const takesText = question.mode === EUserQuestionMode.FREE_TEXT || question.freeOption === true;
+  return {
+    question: question.text,
+    selected: question.mode === EUserQuestionMode.FREE_TEXT ? [] : picked,
+    ...(typed && takesText ? {freeText: typed} : {}),
+  };
+};
 ```
 
 ## 4. Pitfalls
@@ -125,7 +143,7 @@ const answerFor = (question: IUserQuestions["questions"][number], picked: string
 - [ ] `humanGate.userQuestions.enabled` is on for the agents that can act.
 - [ ] The profile names the details the model must ask for.
 - [ ] The screen renders `RADIO`, `CHECK` and `FREE_TEXT` questions.
-- [ ] The code resumes until the response is no longer `PAUSED`.
+- [ ] The code resumes until the response is no longer `PAUSED`, with one decision per card.
 
 ## 6. Go further
 

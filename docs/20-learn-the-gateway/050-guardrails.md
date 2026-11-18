@@ -68,7 +68,9 @@ An output rule gets [`IOutputEvidence`](../30-api/index/interfaces/IOutputEviden
 `output` (the parsed value with an `outputSchema`, the text otherwise), the knowledge-base `chunks` that were in the
 request, the `toolResults` of the run, the `userContext`, the `profile` and the `threadId`. The thread exists by now.
 
-The output check runs on the answer of every `ask()` and of every run that ended with text, `resume()` included.
+The output check runs on the answer of every `ask()` and of every run that ended with text, `resume()` included. A
+resumed run continues the request it paused with: its `chunks` are empty, and its `toolResults` hold the tool results
+produced after the resume (the decided calls included: approved, edited, rejected, answered), not those from before the pause.
 
 ### 2.3 Issues and severity
 
@@ -113,14 +115,14 @@ A passed answer carries the parsed value in `response.structured`, and the outpu
 `instruction`, the evidence, and structured output in the issue shape. It returns the issues the model found; the rule
 returns them as they are or maps them.
 
-| Argument      | Input judge ([`IInputJudgeArgs`](../30-api/index/interfaces/IInputJudgeArgs.md)) | Output judge ([`IOutputJudgeArgs`](../30-api/index/interfaces/IOutputJudgeArgs.md)) |
-|---------------|----------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
-| `instruction` | what to check, required                                                          | what to check, required                                                             |
-| `model`       | `EJudgeModel.CHEAP` (default) or `EJudgeModel.MAIN`                              | the same                                                                            |
-| always sent   | the sanitised prompt                                                             | the question and the answer (a structured value as JSON)                            |
-| `fileFilter`  | required: which files of the prompt go with their bytes                          | —                                                                                   |
-| `chunks`      | —                                                                                | required: `true` sends the knowledge-base chunks (grounding)                        |
-| `toolResults` | —                                                                                | required: `true` sends the tool results of the run                                  |
+| Argument      | Input judge ([`IInputJudgeArgs`](../30-api/index/interfaces/IInputJudgeArgs.md)) | Output judge ([`IOutputJudgeArgs`](../30-api/index/interfaces/IOutputJudgeArgs.md))      |
+|---------------|----------------------------------------------------------------------------------|------------------------------------------------------------------------------------------|
+| `instruction` | what to check, required                                                          | what to check, required                                                                  |
+| `model`       | `EJudgeModel.CHEAP` (default) or `EJudgeModel.MAIN`                              | the same                                                                                 |
+| always sent   | the sanitised prompt                                                             | the question and the answer (a structured value as JSON)                                 |
+| `fileFilter`  | required: which files of the prompt go with their bytes                          | —                                                                                        |
+| `chunks`      | —                                                                                | required: `true` sends the knowledge-base chunks (grounding)                             |
+| `toolResults` | —                                                                                | required: `true` sends the tool results of the run (on a resume, those since the resume) |
 
 - `EJudgeModel.CHEAP` is the profile's `cheapModelId`. A profile without one uses its `modelId`.
 - The temperature is 0 where the model takes one
@@ -271,7 +273,7 @@ import {EIssueSeverity, IIssue, IOutputRule} from "dyna-ai-gateway";
 const grounding: IOutputRule = {
   name: "grounding",
   check: async ({evidence, judge}): Promise<IIssue[]> => {
-    if (evidence.chunks.length === 0) return []; // no knowledge base in this call
+    if (evidence.chunks.length === 0) return []; // no knowledge base in this call, or a resumed run (its chunks are not passed again)
     const issues = await judge({
       instruction: "Report one issue with code `ungrounded` for every claim of the answer that the knowledge-base chunks do not support.",
       chunks: true,
@@ -353,14 +355,15 @@ const gateway = new AIGateway({
 - **A rule for every profile.** The rules are the gateway's, so every call of every profile runs them. Scope a rule with
   `evidence.profile` (example 3.2) or by the shape of `evidence.output` (example 3.3).
 - **A judge without the evidence it needs.** `fileFilter`, `chunks` and `toolResults` are required. `() => false` sends
-  no file, and a grounding judge with `chunks: false` has nothing to compare the answer with.
+  no file, and a grounding judge with `chunks: false` has nothing to compare the answer with. On a resumed run `chunks` is
+  empty, so a grounding rule does not check a resumed run's answer.
 - **A judge with a vague instruction.** The judge reports what the instruction asks. Name the `code` and the severity it
   must report, and say when the evidence passes.
 - **Many judges on the main model.** Every judge is one model call on every call of the gateway. `EJudgeModel.MAIN`
   costs the main model's price; a profile without `cheapModelId` pays it for `EJudgeModel.CHEAP` too.
 - **Two rules with one name.** Names are unique per stage, and the input rules also against the built-in names. A
   duplicate makes the `AIGateway` constructor throw.
-- **Relying on `prompt_injection`.** It matches three phrases. Limit what an injected prompt can do with the tools,
+- **Relying on `prompt_injection`.** It matches three patterns (variants of "ignore / disregard previous instructions" and "you are now in developer mode"). Limit what an injected prompt can do with the tools,
   approvals and step limits.
 - **Showing the deltas of a strict use case.** A blocked answer has already streamed. Where the user must never see it,
   show only the final `response`.
@@ -374,7 +377,7 @@ const gateway = new AIGateway({
 - A rule returns issues. `ERROR` fails the call or blocks the answer; `WARNING` and `INFO` travel on the answer.
 - A blocked answer is not stored, and a streamed one ends with `ANSWER_WITHDRAWN`.
 - A rule that throws or times out is the `ERROR` `rule_error`; the details go to the server log and `onRuleError`.
-- A judge is one traced, usage-checked classification call on the profile's cheap model.
+- A judge is one traced, usage-checked classification call on the profile's `cheapModelId` (its main model when it names none, or when the rule asks for `EJudgeModel.MAIN`).
 
 ## 6. FAQ
 

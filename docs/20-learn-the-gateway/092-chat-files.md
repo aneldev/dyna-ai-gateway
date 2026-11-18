@@ -48,16 +48,19 @@ empty string.
 The default types are PNG, JPEG, WebP, GIF and PDF, named one by one. `image/*` in `allowedMime` allows every image
 subtype, `image/svg+xml` included. The default `maxBytes` is 20 MB.
 
-The tenant id, the user id and every folder of `path` are used as folder names. An empty one, one with `/` or `\`, `.`
-and `..` are a 400 before the adapter is reached. A file id is letters, digits, `_` and `-` only.
+The tenant id, the user id and every folder of `path` are used as folder names. An empty or invalid tenant id or user id
+(one with `/` or `\`, `.`, `..`) is a 400 before the adapter is reached. An empty folder of `path` is dropped; a folder of
+`path` that is `.` or `..`, or that contains `\`, makes the `AIGateway` constructor throw. A file id is letters, digits, `_` and `-` only.
 
 ### 2.2 A question with files
 
 `files` of [`ask()`](../30-api/index/interfaces/IGatewayAskInput.md) and
 [`run()`](../30-api/index/interfaces/IGatewayRunInput.md) takes the pointers `uploadFile` returned.
 
-1. The gateway checks every pointer before it reads anything. A pointer of another tenant or of another user is a 400.
-2. It reads the bytes through the adapter. A file that is not there is a 404.
+1. The gateway checks the owner of every pointer before it reads anything: a pointer whose `tenantId` or `userId` is not
+   the caller's is a 400.
+2. It reads the bytes through the adapter. A file id with other characters than an id `uploadFile` returns is a 400
+   before that file's bytes are read; a file that is not there is a 404.
 3. The input rules run. Their judge can send the files to a model (chapter 2.5).
 4. The user turn is stored with one `FILE` part per file: the pointer, never the bytes.
 5. The files the model can read go into the message of the question, after its text. A question without text is a
@@ -163,7 +166,7 @@ adapters are not shipped yet ([Known limits](../60-architecture/10-architecture-
 ## 3. Examples
 
 The `config` and the `userContext` are those of [Installation](../10-getting-started/20-installation.md) and
-[Example: ask](../10-getting-started/30-example-ask.md). The `accounting` profile runs on `gpt-5-mini`, whose caps have
+[Example: ask](../10-getting-started/30-example-ask.md). The `accounting` profile runs on `gpt-6.1-terra`, whose caps have
 `images: true` and `pdf: true`.
 
 ### 3.1 Upload, then ask
@@ -218,6 +221,8 @@ const first = await gateway.ask({
   files: [invoice],
   kbFilters: {libraryIds: [], bookIds: []},
 }).response;
+
+if (first.kind !== EGatewayResponseKind.ANSWER) throw new Error("the first question was not answered");
 
 const followUp = await gateway.ask({
   userContext,
@@ -281,7 +286,7 @@ try {
 
 ### 3.6 Screen images before the model sees them
 
-The rule's judge sends the prompt and the images of the question to the profile's cheap model.
+The rule's judge sends the prompt and the images of the question to the profile's `cheapModelId` (its main model when it names none).
 
 ```ts
 import {AIGateway} from "dyna-ai-gateway";
@@ -310,7 +315,7 @@ stored.
 ### 3.7 A blob adapter of your own
 
 A sketch on the AWS SDK v3 (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`). Every missing key becomes an error
-with `status: 404`.
+with `status: 404`. Grant the adapter `s3:ListBucket`: without it, S3 answers a missing key with 403.
 
 ```ts
 import {
@@ -430,7 +435,7 @@ erased.files; // the number of files deleted
 
 - `uploadFile` stores the bytes at `<tenantId>/<path>/<userId>/<fileId>` and returns an `IFileRef`. The question passes
   the pointer in `files`.
-- A question may carry only the caller's own files. Another tenant's or user's pointer is a 400, a missing file a 404,
+- A question may carry only the caller's own files. A pointer naming another tenant or user is a 400, a missing file a 404,
   both before anything is stored.
 - Images need `caps.images`, PDFs `caps.pdf`. Any other file is left out with the WARNING `file_dropped`.
 - Only the files of the current question reach the model. The thread, the trace and a paused run keep no bytes.

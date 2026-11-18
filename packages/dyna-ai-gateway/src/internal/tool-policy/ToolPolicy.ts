@@ -175,7 +175,8 @@ export class ToolPolicy implements IToolPolicy {
    *
    * # Pitfalls
    *
-   * `executed` is the run's list: tools run in earlier runs of the thread do not count, and a rejected or failed call is
+   * `executed` is the run's list on a fresh run; on a resume it also holds the tool results of earlier runs in the stored
+   * history (a known gap, D76), and a rejected or failed call is
    * not an execution (D76).
    */
   public narrowForStep(
@@ -269,8 +270,9 @@ export class ToolPolicy implements IToolPolicy {
    *
    * # Pitfalls
    *
-   * A tool outside `resolved.tools` is ALLOW here: `ToolRegistry.execute` refuses it (D72). An input the schema rejects is ALLOW
-   * too: it never reaches the predicate, `ToolRegistry.execute` reports it to the model (D50).
+   * A tool outside `resolved.tools` is ALLOW here: `ToolRegistry.execute` refuses it (D72). An input the schema rejects never
+   * reaches the predicate (it counts as ALLOW); a static policy and the approvals still apply, so it can pause before
+   * `ToolRegistry.execute` reports the 400 to the model (D50; a known gap, D87 refuses it first).
    */
   public async decide(
     {

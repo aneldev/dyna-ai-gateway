@@ -28,12 +28,14 @@ The gateway's config holds no skills, only the caps that apply to all of them (`
 
 1. The gateway merges the skills, the profile's first and then the call's, into one list.
 2. The `{skills}` slot of the system prompt lists them, one `- name: description` line each. A short header tells the
-   model to load a skill before it acts on the topic.
+   model to load a skill with `dyna_aigw_load_skill` when a task needs it, and not to guess its content.
 3. The call gets the built-in tool `dyna_aigw_load_skill`. Its `name` input is an enum of the call's skill names, so the
    model can only ask for a skill the call has.
 4. The model calls `dyna_aigw_load_skill({name})`. The result is `{name, body}`
    ([`ILoadSkillResult`](../30-api/index/interfaces/ILoadSkillResult.md)) and is stored in the thread like any tool result.
 5. The model follows the body and goes on: it calls other tools or answers.
+
+On a model whose caps say `tools: false` a `run()` offers no tool at all: the bodies are inlined, as in an `ask()` (2.2).
 
 A load is one model step and counts toward the profile's `limits.maxStepsPerRun`. The tool always runs: it never pauses,
 never ends the run and is offered on every step.
@@ -70,8 +72,9 @@ same skill set share one cache entry, and a different set writes a new one. See
 ### 2.6 A paused run
 
 A run that pauses for a human stores the skills its call brought. `resume()` takes no `skills`. It offers the stored ones
-again, together with the skills of the profile the run resumes on. When the run resumes on another profile, a name that
-is in both lists is a 400, and the run stays paused. The stored system prompt keeps the list the run started with. If the
+again, together with the skills of the profile the run resumes on. When the profile the run resumes on (another one, or
+the same one edited since the pause) has a skill with a name of the stored ones, the resume of a tool approval or a question is a
+400 and the run stays paused (a review resume runs no model step and is not refused). The stored system prompt keeps the list the run started with. If the
 model loads a name that is listed there but no longer offered, it gets an invalid-input tool result, and the call goes on.
 
 ## 3. Examples
@@ -106,9 +109,9 @@ const supportProfile: IAIProfile = {
   id: "support",
   tenantId: "acme",
   name: "Customer support",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You answer the customers of the Acme web shop. Be brief.",
-  allowedTools: ["get_order"],
+  allowedTools: [],
   approvals: [],
   limits: {maxStepsPerRun: 6, maxOutputTokens: 2_000},
   skills: [refundPolicy, escalation],
@@ -210,8 +213,9 @@ try {
   left to act on it.
 - **Naming `dyna_aigw_load_skill` in `activeTools`.** It is a built-in: it is offered whenever the call has skills, and
   `activeTools` does not select it. Naming it there is a 400, the same as for any tool the profile does not allow.
-- **A stored `CHAT_MAIN` template without `{skills}`.** The skills of the call are dropped, and the response carries the
-  WARNING issue `skills_slot_missing`. Keep the placeholder after `{addendum}` and before `{cacheBreakpoint}`.
+- **A stored `CHAT_MAIN` template without `{skills}`.** Every skill, the profile's and the call's, is missing from the
+  prompt (a `run()` still offers `dyna_aigw_load_skill`), and the response carries the WARNING issue
+  `skills_slot_missing`. Keep the placeholder after `{addendum}` and before `{cacheBreakpoint}`.
 - **Showing the load as an action.** A chat screen that renders every `TOOL_REQUEST` also shows
   `dyna_aigw_load_skill`. Every built-in tool name starts with `BUILT_IN_TOOL_NAME_PREFIX` (`"dyna_aigw_"`), so a UI can
   filter on it.

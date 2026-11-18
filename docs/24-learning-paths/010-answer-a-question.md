@@ -8,7 +8,7 @@ of the documentation is required. It starts from four pages of Getting started:
 
 **Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
 `OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
-Installation, `gpt-5-mini` and `text-embedding-3-small`. Examples [8.8](#88-the-next-question-goes-to-another-model) and [8.9](#89-the-call-sets-a-sampling-temperature) also call
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`. Examples [8.8](#88-the-next-question-goes-to-another-model) and [8.9](#89-the-call-sets-a-sampling-temperature) also call
 the Claude model that [8.7](#87-an-admin-adds-a-model-and-a-profile-while-the-server-runs) adds: an Anthropic API key in `ANTHROPIC_API_KEY`.
 
 ## 1. About
@@ -149,7 +149,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The examples ask on `accounting`; 8.8 and 8.9 on `accounting-claude`, seeded here with its Claude model. 8.7 shows how an admin adds the same two while the server runs (an upsert overwrites). The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The examples ask on `accounting`; 8.8 and 8.9 on `accounting-claude`, seeded here with its Claude model. 8.7 shows how an admin adds the same two while the server runs (an upsert overwrites). The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup, with the providers, the models and the profile of the tenant; every question of every user goes through it.
 
@@ -171,14 +171,15 @@ import {
 } from "dyna-ai-gateway";
 
 // The two models of Installation
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
-    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -191,7 +192,7 @@ const textEmbedding3Small: IModelInfo = {
   label: "text-embedding-3-small",
   caps: {
     tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
-    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
   },
   enabled: true,
   deprecatedAt: null,
@@ -211,7 +212,7 @@ const baseConfig = {
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
-  defaultCheapModelId: "gpt-5-mini",
+  defaultCheapModelId: "gpt-6.1-terra",
 } satisfies Partial<IAIGatewayConfig>;
 ```
 
@@ -231,7 +232,7 @@ const accounting: IAIProfile = {
   id: "accounting",
   tenantId: "acme",
   name: "Accounting assistant",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: [],
   approvals: [],
@@ -264,7 +265,7 @@ const config: IAIGatewayConfig = {
     [EModelProvider.ANTHROPIC]: {apiKey: process.env.ANTHROPIC_API_KEY ?? ""},
   }},
   // the models a profile may name, with their caps and prices
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small, claudeHaiku]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small, claudeHaiku]})},
   // the profiles the calls name
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting, accountingClaude]})},
   threadStore: {repository: new InMemoryThreadRepository()}, // the threads a follow-up continues (8.6)
@@ -305,7 +306,8 @@ if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // Ma
 
 ### 8.2 The answer streams to the screen as the model writes it
 
-The same call, read through `events`: each `TEXT_DELTA` adds text as it arrives. `ANSWER_WITHDRAWN` tells the screen to drop what it rendered, because an output check did not keep the answer or the call was stopped.
+The same call, read through `events`: each `TEXT_DELTA` adds text as it arrives. `ANSWER_WITHDRAWN` tells the screen to drop what it rendered, because an output check did not keep the answer, a judge call was refused, or the call was stopped during that check. A call stopped while the
+model writes sends no withdrawal: its `FAILED` response says so.
 
 > **The bigger picture:** The chat window, where the user sees the answer grow word by word instead of waiting for the whole of it.
 
@@ -321,14 +323,14 @@ const {events, response} = gateway.ask({
 
 for await (const event of events) {
   if (event.kind === ELLMClientEventKind.TEXT_DELTA) process.stdout.write(event.text ?? "");
-  if (event.kind === ELLMClientEventKind.ANSWER_WITHDRAWN) process.stdout.write("\n[withdrawn]\n"); // an output rule blocked it, or the call was stopped
+  if (event.kind === ELLMClientEventKind.ANSWER_WITHDRAWN) process.stdout.write("\n[withdrawn]\n"); // an output check blocked it, a judge call was refused, or the call was stopped during the check
 }
 const result = await response; // the stream ended because the response settled
 ```
 
 ### 8.3 The screen passes the open record and its own instructions
 
-`context` shows the model the invoice the user is looking at, as data and not as instructions; `instructions` adds a rule for this call only. Neither is stored: the next call passes them again if it needs them.
+`context` shows the model the invoice the user is looking at, as data and not as instructions; `instructions` adds a rule for this call only. Neither is kept on the thread: the next call passes them again if it needs them (the trace records the request as sent).
 
 > **The bigger picture:** The invoice screen: the user clicks "check this invoice", and your code sends the invoice on screen and the format that screen wants.
 
@@ -424,7 +426,7 @@ const second = await gateway.ask({
 
 ### 8.7 An admin adds a model and a profile while the server runs
 
-`upsertModel` registers a Claude model and `upsertProfile` saves a second profile on it, with no restart. 8.0 seeds the same two, so on that gateway the upserts overwrite them. A profile is stored whole, so the code reads the existing one, spreads it and saves the copy.
+`upsertModel` registers a Claude model and `upsertProfile` saves a second profile on it, with no restart: on this instance at once, on the others after their cache TTL (`cacheTtlMs`). 8.0 seeds the same two, so on that gateway the upserts overwrite them. A profile is stored whole, so the code reads the existing one, spreads it and saves the copy.
 
 > **The bigger picture:** The admin screen of your product: a new model is offered to a tenant, and the next call can name the new profile.
 
@@ -499,12 +501,12 @@ const {response} = gateway.ask({
 });
 
 const result = await response;
-if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // three subject lines, different on every call
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // three subject lines, likely different from call to call
 ```
 
 ### 8.10 The call fails, or is rejected
 
-`response` settles as `FAILED` when the call ran and was refused, blocked or stopped; its `issues` say why, with a `userMessage` to show. It rejects when the call itself is wrong: an unknown profile, another user's thread, a busy thread.
+`response` settles as `FAILED` when the call ran and was refused, blocked or stopped; its `issues` say why; show their `userMessage` where there is one. It rejects when the call itself is wrong (an unknown profile, another user's thread, a busy thread, the gateway shutting down) or the provider failed (502).
 
 > **The bigger picture:** The error handling around every call: a message in the chat for a failed answer, and a log or a 4xx of your own API for a call your code built wrong.
 
@@ -525,10 +527,10 @@ try {
 
   if (result.kind === EGatewayResponseKind.FAILED) {
     // e.g. usage_denied, a guardrail's code, call_timed_out
-    showToUser(result.issues.map(issue => issue.userMessage).filter(Boolean).join(" "));
+    showToUser(result.issues.map(issue => issue.userMessage).filter(Boolean).join(" ") || "The answer could not be completed. Please try again."); // call_timed_out has no userMessage
   }
 } catch (error) {
-  // a dynaError with a status: 400 (the input), 404 (the profile, the thread), 409 (a call already runs on the thread)
+  // a dynaError with a status: 400 (the input), 404 (the profile, the thread), 409 (a call already runs on the thread, or the user's data is being erased), 502 (the provider failed), 503 (the gateway is shutting down)
 }
 ```
 

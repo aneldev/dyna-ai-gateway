@@ -8,7 +8,7 @@ of the documentation is required. It starts from four pages of Getting started:
 
 **Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
 `OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
-Installation, `gpt-5-mini` and `text-embedding-3-small`.
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`.
 
 ## 1. About
 
@@ -36,7 +36,7 @@ output check rejects an answer that does not match the schema.
 | 1 | [Chat files and their storage](../20-learn-the-gateway/092-chat-files.md)                                                                         | upload, a question with files, the blob adapter |
 | 2 | [Example: ask](../10-getting-started/30-example-ask.md)                                                                                           | `outputSchema` and `structured`                 |
 | 3 | [Guardrails: Structured output](../20-learn-the-gateway/050-guardrails.md#24-structured-output)                                                   | how the answer is validated                     |
-| 4 | [Models and profiles: What the gateway reads from `caps`](../20-learn-the-gateway/010-models-and-profiles.md#21-what-the-gateway-reads-from-caps) | `images`, `pdf`, `structuredOutput`             |
+| 4 | [Models and profiles: What the gateway reads from `caps`](../20-learn-the-gateway/010-models-and-profiles.md#21-what-the-gateway-reads-from-caps) | `images`, `pdf`                                 |
 | 5 | [Chat files: Tokens and cost](../20-learn-the-gateway/092-chat-files.md#24-tokens-and-cost)                                                       | what a page or an image costs                   |
 
 ## 5. How the parts connect
@@ -126,7 +126,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The profile runs on `gpt-5-mini`, whose caps have `images: true` and `pdf: true`; 8.1 builds it with an input rule. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The profile runs on `gpt-6.1-terra`, whose caps have `images: true` and `pdf: true`; 8.1 builds it with an input rule. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup. The file store and its limits are the same for every tenant; each file is kept under its tenant and its user.
 
@@ -148,14 +148,15 @@ import {
 } from "dyna-ai-gateway";
 
 // The two models of Installation
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
-    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -168,7 +169,7 @@ const textEmbedding3Small: IModelInfo = {
   label: "text-embedding-3-small",
   caps: {
     tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
-    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
   },
   enabled: true,
   deprecatedAt: null,
@@ -189,7 +190,7 @@ const baseConfig = {
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
   trace: {repository: new InMemoryTraceRepository()},
-  defaultCheapModelId: "gpt-5-mini",
+  defaultCheapModelId: "gpt-6.1-terra",
 } satisfies Partial<IAIGatewayConfig>;
 ```
 
@@ -209,7 +210,7 @@ const accounting: IAIProfile = {
   id: "accounting",
   tenantId: "acme",
   name: "Accounting assistant",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: [],
   approvals: [],
@@ -227,7 +228,7 @@ const config: IAIGatewayConfig = {
     allowedMime: ["application/pdf", "image/jpeg", "image/png"], // another type is a 400
   },
   // caps.images and caps.pdf decide which files reach the model
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small]})},
 
   // required too, and kept in view: the provider key, the profiles
   llmClient: {providers: {[EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""}}},
@@ -251,7 +252,7 @@ const userContext: IUserContext = {
 
 An `IInputRule` in `guardrails.inputRules` runs before the model call. This one asks the `judge` to read the files of the question and to report an ERROR issue for an ID document, which returns `FAILED`.
 
-> **The bigger picture:** A rule of your product, written once at startup: passports and ID cards are never sent to the model, whatever the user uploads.
+> **The bigger picture:** A rule of your product, written once at startup: a file the judge classifies as a passport or ID card fails the question before the answering model sees it. The judge itself is a model call that reads the file, and it can miss one.
 
 ```ts
 import {IInputRule} from "dyna-ai-gateway";
@@ -387,7 +388,7 @@ if (result.kind === EGatewayResponseKind.ANSWER && result.structured) console.lo
 
 ### 8.6 The extraction drops the file or fails the schema
 
-A file the model cannot read (its caps have no `pdf` or `images`) is left out with the WARNING `file_dropped`, and the answer comes from the prompt alone. The `gpt-5-mini` of 8.0 reads both, so that branch matters on a profile whose model lacks the cap. An answer that is not JSON returns `FAILED` with the issue `output_invalid_json`; one that does not match the schema, with `output_schema`, whose `field` names the first failing path.
+A file the model cannot read (its caps have no `pdf` or `images`) is left out with the WARNING `file_dropped`, and the answer comes from the prompt alone. The `gpt-6.1-terra` of 8.0 reads both, so that branch matters on a profile whose model lacks the cap. An answer that is not JSON returns `FAILED` with the issue `output_invalid_json`; one that does not match the schema, with `output_schema`, whose `field` names the first failing path.
 
 > **The bigger picture:** The error handling of the extraction screen: the user is told to check the fields or to try again, never shown fields the model did not read.
 

@@ -226,7 +226,7 @@ export interface ITraceEntry {
   userId?: string;
   /** The profile the call ran on. Absent for system jobs (e.g. KB ingestion). */
   profileId?: string;
-  /** The thread of the call; absent for a call outside a thread (an embedding, a KB ingestion). */
+  /** The thread of the call; absent for a call outside a thread (a KB ingestion). */
   threadId?: string;
   /** The run the call was a step of; absent outside a run. */
   runId?: string;

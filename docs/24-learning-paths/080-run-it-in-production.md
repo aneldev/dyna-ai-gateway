@@ -8,7 +8,7 @@ of the documentation is required. It starts from four pages of Getting started:
 
 **Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
 `OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
-Installation, `gpt-5-mini` and `text-embedding-3-small`.
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`.
 
 ## 1. About
 
@@ -27,7 +27,7 @@ providers, and runs two jobs next to the server. Nothing in your calls changes.
 - Decide in your code who may spend how many tokens, and see the cost of each call. Examples: [8.2](#82-a-per-tenant-budget-decides-every-model-call), [8.5](#85-the-budget-refuses-a-call-and-the-user-reads-why), [8.6](#86-an-operator-reads-what-the-model-saw-and-what-it-cost).
 - Cancel a call and give it a deadline. Examples: [8.3](#83-a-tool-that-stops-when-the-call-is-stopped), [8.4](#84-the-user-stops-a-run-or-its-deadline-passes).
 - Stop the server without losing work. Example: [8.7](#87-graceful-shutdown-and-the-two-scheduled-jobs).
-- Recover the runs a crashed server left, and expire the pauses nobody answered. Example: [8.7](#87-graceful-shutdown-and-the-two-scheduled-jobs).
+- Recover the resumed runs a crashed server left, and expire the pauses nobody answered. Example: [8.7](#87-graceful-shutdown-and-the-two-scheduled-jobs).
 - Find out what the model saw and what it cost. Examples: [8.6](#86-an-operator-reads-what-the-model-saw-and-what-it-cost), [8.8](#88-a-developer-reads-the-transcript-of-one-call).
 
 ## 4. The parts
@@ -57,14 +57,14 @@ flowchart LR
   Job(["Your schedule, per tenant"]) -->|"expirePausedRuns, recoverStuckRuns"| GW
 ```
 
-| Concern         | Where it is decided                                                  | What ties it to the others                                                                                 |
-|-----------------|----------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
-| Storage         | one repository or adapter per store, in `IAIGatewayConfig`           | a paused run in a shared repository resumes on any instance                                                |
-| Spend           | your `IUsageAdapter`, before and after every model call              | helper calls (judges, memory, rewrite, embeddings) are asked too                                           |
-| A call's length | `timeoutMs` of the call; the per-tool and per-model-call timeouts    | keep `timeoutMs` at or under `threadStore.leaseMs`, or the recovery job takes the call for stuck           |
-| Shutdown        | `shutdown({timeoutMs})` in the signal handler                        | drains the calls, then the background work, as `whenIdle()` does                                           |
-| Jobs            | `expirePausedRuns` and `recoverStuckRuns`, per tenant, on a schedule | `recoverStuckRuns` touches a run only when it can take the thread's lease, so a live call is never touched |
-| What happened   | the trace repository, one entry per model call                       | each entry carries the model, the usage and the cost of its call                                           |
+| Concern         | Where it is decided                                                  | What ties it to the others                                                                                                                                                  |
+|-----------------|----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Storage         | one repository or adapter per store, in `IAIGatewayConfig`           | a paused run in a shared repository resumes on any instance                                                                                                                 |
+| Spend           | your `IUsageAdapter`, before and after every model call              | helper calls (judges, memory, rewrite, embeddings) are asked too                                                                                                            |
+| A call's length | `timeoutMs` of the call; the per-tool and per-model-call timeouts    | keep `timeoutMs` at or under `threadStore.leaseMs`: a longer call on an existing thread lets a second call onto it, and a longer `resume` can be failed by the recovery job |
+| Shutdown        | `shutdown({timeoutMs})` in the signal handler                        | drains the calls, then the background work, as `whenIdle()` does                                                                                                            |
+| Jobs            | `expirePausedRuns` and `recoverStuckRuns`, per tenant, on a schedule | `recoverStuckRuns` touches a run only when it can take the thread's lease, so a live call is not touched while its `timeoutMs` is at most `leaseMs`                         |
+| What happened   | the trace repository, one entry per model call                       | each entry carries the model, the usage and the cost of its call                                                                                                            |
 
 ## 6. API you should know
 
@@ -151,7 +151,7 @@ Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and t
 
 ### 8.0 The configuration
 
-The in-memory stores of Installation with the settings that matter in production; 8.1 replaces the stores with yours; `fetch_bank_statement` is the tool 8.3 explains. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt5Mini` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+The in-memory stores of Installation with the settings that matter in production; 8.1 replaces the stores with yours; `fetch_bank_statement` is the tool 8.3 explains. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off; most of them are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
 
 > **The bigger picture:** Your server builds this gateway once at startup, with the timeouts, the thread lease and the stores it needs in production; every request of every tenant goes through it.
 
@@ -170,14 +170,15 @@ import {
 } from "dyna-ai-gateway";
 
 // The two models of Installation
-const gpt5Mini: IModelInfo = {
-  id: "gpt-5-mini",
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
   provider: EModelProvider.OPENAI,
-  providerModelId: "gpt-5-mini",
-  label: "GPT-5 mini",
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
   caps: {
     tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
-    contextTokens: 400_000, maxOutputTokens: 128_000, costInPerMTokUsd: 0.25, costOutPerMTokUsd: 2,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
   },
   enabled: true,
   deprecatedAt: null,
@@ -190,7 +191,7 @@ const textEmbedding3Small: IModelInfo = {
   label: "text-embedding-3-small",
   caps: {
     tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
-    contextTokens: 8_191, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
   },
   enabled: true,
   deprecatedAt: null,
@@ -206,7 +207,7 @@ const baseConfig = {
   embedder: {embeddingModelId: "text-embedding-3-small", dimensions: 1536},
   vectorStore: {adapter: new InMemoryVectorIndexAdapter({embeddingModelId: "text-embedding-3-small", dimensions: 1536})},
   queryRewriter: {enabled: false}, // no follow-up rewrite
-  defaultCheapModelId: "gpt-5-mini",
+  defaultCheapModelId: "gpt-6.1-terra",
 } satisfies Partial<IAIGatewayConfig>;
 ```
 
@@ -242,7 +243,7 @@ const accounting: IAIProfile = {
   id: "accounting",
   tenantId: "acme",
   name: "Accounting assistant",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.",
   allowedTools: ["fetch_bank_statement"],
   approvals: [],
@@ -257,7 +258,7 @@ const config: IAIGatewayConfig = {
   usageGuard: {adapter: new InMemoryUsageAdapter()},
   // one entry per model call: what the model saw and what it cost (8.6)
   trace: {repository: new InMemoryTraceRepository()},
-  // a call holds its thread this long at most; keep timeoutMs under it
+  // a call on an existing thread holds it this long at most; keep timeoutMs at or under it
   threadStore: {repository: new InMemoryThreadRepository(), leaseMs: 300_000},
   runStore: {repository: new InMemoryRunRepository()}, // paused runs; with your repository they survive a restart
   // how long a pause waits before expirePausedRuns closes it
@@ -269,7 +270,7 @@ const config: IAIGatewayConfig = {
   contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
 
   // required too, and kept in view: the models, the profiles
-  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt5Mini, textEmbedding3Small]})},
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small]})},
   aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [accounting]})},
 };
 
@@ -327,7 +328,7 @@ const gateway = new AIGateway({
   promptTemplateStore: {repository: new MyPromptTemplateRepository(db)}, // IPromptTemplateRepository
   threadStore: {repository: new MyThreadRepository(db), leaseMs: 300_000}, // IThreadRepository
   runStore: {repository: new MyRunRepository(db)},                      // IRunRepository: paused runs survive a restart
-  userMemoryStore: {repository: new MyUserMemoryRepository(db), enabled: true}, // IUserMemoryRepository
+  userMemoryStore: {repository: new MyUserMemoryRepository(db), enabled: false}, // IUserMemoryRepository
   trace: {repository: new MyTraceRepository(db)},                       // ITraceRepository
   fileStore: {adapter: new MyBlobAdapter(s3), path: "ai-files"},        // IBlobAdapter
   vectorStore: {adapter: new MyVectorIndexAdapter(db)},                 // IVectorIndexAdapter
@@ -335,7 +336,7 @@ const gateway = new AIGateway({
 });
 
 // once, on the empty database: the models and the profile of 8.0
-await gateway.modelRegistry.upsertModel({model: gpt5Mini});
+await gateway.modelRegistry.upsertModel({model: gpt61Terra});
 await gateway.modelRegistry.upsertModel({model: textEmbedding3Small});
 await gateway.aiProfileStore.upsertProfile({tenantId: "acme", profile: accounting});
 ```
@@ -405,7 +406,7 @@ const result = await gateway.run({
   profileId: "accounting",
   prompt: "Reconcile the bank account for October.",
   abortSignal: controller.signal,
-  timeoutMs: 60_000, // the whole call, tools included; keep it at or under threadStore.leaseMs
+  timeoutMs: 60_000, // the whole call, tools included; on a thread, keep it at or under threadStore.leaseMs
   kbFilters: {libraryIds: [], bookIds: []},
 }).response;
 
@@ -461,7 +462,7 @@ for (const entry of entries) console.log(entry.modelId, entry.usage, entry.costU
 
 ### 8.7 Graceful shutdown and the two scheduled jobs
 
-On `SIGTERM`, `shutdown` refuses new calls with a 503, gives the calls in flight `timeoutMs` to end, aborts the rest and waits for the background work. On a timer, per tenant, `expirePausedRuns` closes the pauses nobody answered within `humanGate.timeoutMs`, and `recoverStuckRuns` fails the runs a crashed instance left running.
+On `SIGTERM`, `shutdown` refuses new calls with a 503, gives the calls in flight `timeoutMs` to end, aborts the rest and waits for the background work. On a timer, per tenant, `expirePausedRuns` closes the pauses nobody answered within `humanGate.timeoutMs`, and `recoverStuckRuns` fails the resumed runs a crashed instance left `RUNNING`.
 
 > **The bigger picture:** A deploy or a scale-down stops an instance while users are chatting; the jobs run on a timer of the server, or on your scheduler, and clean up what nobody finished.
 
@@ -475,8 +476,12 @@ process.on("SIGTERM", async () => {
 
 setInterval(async () => {
   for (const tenantId of tenantIds) {
-    await gateway.expirePausedRuns({tenantId}); // the pauses nobody answered within humanGate.timeoutMs
-    await gateway.recoverStuckRuns({tenantId}); // the runs a crashed server left running
+    try {
+      await gateway.expirePausedRuns({tenantId}); // the pauses nobody answered within humanGate.timeoutMs
+      await gateway.recoverStuckRuns({tenantId}); // the resumed runs a crashed server left running
+    } catch (error) {
+      console.error("recovery job failed", {tenantId, error}); // one tenant's failure must not stop the others
+    }
   }
 }, 60_000);
 ```
@@ -500,7 +505,8 @@ if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.debug); // t
 - [Human in the loop: Pitfalls](../20-learn-the-gateway/040-human-in-the-loop.md#4-pitfalls)
 - A tool that ignores its `abortSignal` runs to its end after a stop
   ([Can I cancel a call?](../10-getting-started/90-faq.md#can-i-cancel-a-call-or-limit-how-long-it-takes)).
-- A call longer than the thread's lease looks stuck to `recoverStuckRuns`
+- A `resume` longer than the thread's lease can be failed by `recoverStuckRuns`; any call on an existing thread
+  longer than it lets a second call onto the thread
   ([What happens to the runs a crashed server left behind?](../10-getting-started/90-faq.md#what-happens-to-the-runs-a-crashed-server-left-behind)).
 - `debug: true` carries the system prompt and every tool output; never pass it to an end user
   ([D63](../60-architecture/90-decisions.md#d63-debug-true-attaches-the-transcript-to-the-answer)).

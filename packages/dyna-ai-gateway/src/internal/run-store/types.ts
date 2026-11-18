@@ -296,7 +296,7 @@ export interface IRunRepository {
 
 /** The persisted state of one agent run. */
 export interface IRun {
-  /** The run's id (`IPausedResponse.runId`); kept across the pauses of one run. */
+  /** The run's id (each envelope's `runId` in `IPausedResponse.envelopes`); kept across the pauses of one run. */
   id: string;
   /** The owner; every read is filtered by it. */
   tenantId: string;

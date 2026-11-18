@@ -34,7 +34,8 @@ A tool comes from two places:
 A registry tool reaches the model only when the profile lists it in `allowedTools`. A call tool needs no profile entry:
 the application passed it, so it is allowed
 ([D66](../60-architecture/90-decisions.md#d66-tools-per-call)). Both go through the same pipeline: permissions, `policy`,
-the profile's `approvals`, `requires`, the timeout and the output cap.
+the profile's `approvals` (`upsertProfile` accepts only registry names; a seeded profile is not checked), `requires`, the timeout and
+the output cap.
 
 ### 1.1 Tools, hooks, skills
 
@@ -55,13 +56,15 @@ tool (`policy`, `visibleWhen`, `endsRun`) and through `toolPolicy` in the config
 1. **Resolve.** At the start of a `run()`, the `ToolPolicy` builds the run's tool set: the registry tools the profile's
    `allowedTools` lists, plus the call's `additionalTools`, minus what the user's permissions do not unlock
    (`toolPolicy.permissionsToTools`), cut to `activeTools` when the call names them. A model whose caps say `tools: false`
-   gets none. The built-in tools are added whatever the profile and `activeTools` say (chapter 2.6).
+   gets none, the built-in tools included. On a model with tools, the built-in tools are added whatever the profile and
+   `activeTools` say (chapter 2.6).
 2. **Offer.** Before every model call the set is narrowed for the step: a tool waits until the tools it `requires` have
    run, and a tool with `visibleWhen` shows only when its predicate says so. The model gets the names, descriptions and
    input schemas of what is left.
 3. **The model asks.** The model answers with one or more tool calls, each a name and a JSON input. The stream emits
    `TOOL_REQUEST` for each.
-4. **Gate.** The `policy` of the tool decides on the parsed input, then the profile's `approvals` act as the floor.
+4. **Gate.** The `policy` of the tool decides (a predicate on the parsed input), then the profile's `approvals` act as
+   the floor.
    `ALLOW` runs the call. `DENY` gives the model a refusal and the tool never runs. `NEEDS_APPROVAL` pauses the run for a
    human ([Human in the loop](040-human-in-the-loop.md)).
 5. **Execute.** The gateway checks that the tool was offered in this step, parses the input with `inputSchema`, runs
@@ -77,9 +80,11 @@ classes behind each step are drawn in [Architecture: Execution](../60-architectu
 
 ### 2.2 Input is validated, output is not
 
-The input comes from the model, which can invent or drop fields. `inputSchema` parses it before `policy` and `execute`
-see it. A mismatch never runs the tool: the model reads a 400 that names the field and asks it to fix the input, and it
-can call again in the next step.
+The input comes from the model, which can invent or drop fields. `inputSchema` parses it before a policy predicate and
+`execute` see it. A mismatch never runs the tool: the model reads a 400 that names the field and asks it to fix the
+input, and it can call again in the next step. A static verdict and the profile's `approvals` decide without the parse,
+so a tool that needs approval pauses first on an invalid input: the human sees the input as the model sent it, and the
+400 comes after the approval (a known gap: [D87](../60-architecture/90-decisions.md#d87-d67-d50-one-policy-on-the-tool-allow-deny-needs-approval)).
 
 The output comes from your code. The gateway does not check its shape: it serialises it as JSON and the model reads it.
 The model learns what a tool returns from the `description`, so say there what the result holds when it matters
@@ -101,7 +106,9 @@ The registry is fixed when the gateway is constructed; there is no `register()`
 A tool hidden for the step cannot run by name either. The model reads a 403 that says the tool is not available in this
 step and, when `requires` hid it, which tools to call first
 ([D72, D79](../60-architecture/90-decisions.md#d72-d79-only-a-tool-the-model-was-offered-can-run),
-[D88](../60-architecture/90-decisions.md#d88-a-refused-guarded-tool-names-what-must-run-first)).
+[D88](../60-architecture/90-decisions.md#d88-a-refused-guarded-tool-names-what-must-run-first)). A fresh `run()` counts
+the tools of this run for `requires`; after a `resume()`, the count also takes in the tool results of earlier runs that
+the thread memory loaded into the request.
 
 ### 2.4 When a tool fails
 
@@ -141,7 +148,7 @@ The gateway brings its own tools. Their names start with `BUILT_IN_TOOL_NAME_PRE
 | `dyna_aigw_forget_user_fact`   | `userMemoryStore.enabled`          | [User memory](090-user-memory.md)             |
 | `dyna_aigw_load_skill`         | the profile or the call has skills | [Skills](020-skills.md)                       |
 
-A built-in is offered whatever `allowedTools`, the permissions and `activeTools` say, and the profile's `approvals` do not
+On a model with `caps.tools`, a built-in is offered whatever `allowedTools`, the permissions and `activeTools` say, and the profile's `approvals` do not
 apply to it ([D61](../60-architecture/90-decisions.md#d61-built-in-tools-are-always-offered)). It is switched off by its
 feature switch. The prefix is reserved: an application tool whose name starts with it is a 400, in `toolRegistry.tools`
 when the gateway is constructed and in `additionalTools` when the call starts
@@ -373,7 +380,8 @@ for await (const event of events) {
 - The input is parsed with `inputSchema`, the output is not checked. The model learns the result from the description.
 - A failure, a denial or a timeout becomes the tool's result, and the run goes on. The model reads only the `userMessage`
   side of an error.
-- Built-in tools carry the reserved `dyna_aigw_` prefix and are always offered while their feature is on.
+- Built-in tools carry the reserved `dyna_aigw_` prefix and are always offered while their feature is on, on a model
+  with `caps.tools`.
 
 ## 6. FAQ
 

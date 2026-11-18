@@ -72,7 +72,7 @@ The window is sized in tokens, with what the system prompt leaves
 1. The gateway renders the system prompt with everything of the call: the template, the addendum, the skills, the
    call's instructions and context, the user's facts and the knowledge-base chunks. The notes are not in it yet.
 2. The budget is the model's `contextTokens`, minus `contextAssembler.reserveOutputTokens` (default: the call's
-   `maxOutputTokens`), minus the tokens of that system prompt. The count uses the model's tokenizer.
+   `maxOutputTokens`), minus the tokens of that system prompt. The count uses the o200k tokenizer: exact for OpenAI, × 1.2 for the other providers.
 3. The working memory's `load` returns the window and the notes for this budget.
 4. The gateway renders the notes into `{memory}`.
 5. While the request is still larger than the window, the gateway leaves out the oldest message first, then the
@@ -115,8 +115,10 @@ The stored summary and facts also feed the knowledge-base search: the query rewr
 
 ### 2.5 Every window opens on a user turn
 
-A window that would start with an assistant or a tool turn loses its leading turns up to the first user turn. The
-providers reject a tool result without its call. The turns stay in the thread; they are left out of this request only.
+A window the working memory returns that would start with an assistant or a tool turn loses its leading turns up to the
+first user turn. The providers reject a tool result without its call. The turns stay in the thread; they are left out of
+this request only. The gateway's own trim (step 5 of 2.2) drops the oldest messages one by one and does not restore this:
+a window it cuts can open on a tool result.
 
 ### 2.6 The `{memory}` slot
 
@@ -159,7 +161,8 @@ The updates of one thread run one after the other, in the thread's background li
 A call on an existing thread holds the thread's lease (`IThread.lease`) for its length. A second call on the same thread
 meanwhile is a 409. `threadStore.leaseMs` (default 300 000, five minutes) bounds a lease a crashed server never released
 ([D77](../60-architecture/90-decisions.md#d77-one-call-at-a-time-on-a-thread)). The memory update runs after the call,
-outside the lease, in the thread's background line.
+outside the lease, in the thread's background line: it is serialised with the other memory updates of the thread, not
+with the next call.
 
 The stored state ([`IWorkingMemoryState`](../30-api/index/interfaces/IWorkingMemoryState.md): `summary`, `facts`,
 `updatedAtTurn`) is a field of the thread record, `IThread.workingMemory`. A host
@@ -181,8 +184,9 @@ A thread is its user's: `getThreadMemory` and `resetThreadMemory` on another use
 ([D44](../60-architecture/90-decisions.md#d44-memory-is-reachable-for-a-ui)). The next update reads only the turns after
 the reset.
 
-A switch of strategy keeps the stored state. Under `SLIDING_WINDOW` it is ignored, not wiped, and `getThreadMemory`
-still shows it. A switch back to `SUMMARY_BUFFER` resumes from it.
+A switch of strategy keeps the stored state. Under `SLIDING_WINDOW` the window ignores it, it is not wiped, and
+`getThreadMemory` still shows it. The knowledge-base query rewrite still reads its summary and facts;
+`resetThreadMemory` clears them. A switch back to `SUMMARY_BUFFER` resumes from it.
 
 ### 2.10 Your own memory
 
@@ -406,7 +410,7 @@ Only while it fits. `SLIDING_WINDOW` sends as many of the newest turns as fit it
 sends the last `recentTurns` turns and a summary of the rest.
 
 **What happens to the summary when a profile switches to `SLIDING_WINDOW`?**
-It stays stored and unused. `getThreadMemory` still returns it, and a switch back to `SUMMARY_BUFFER` continues from it.
+It stays stored, and only the knowledge-base query rewrite still reads it. `getThreadMemory` still returns it, and a switch back to `SUMMARY_BUFFER` continues from it.
 
 **Does `resetThreadMemory` make the model forget the conversation?**
 It forgets the summary and the thread's facts. The turns of the window are still sent.

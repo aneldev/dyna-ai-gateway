@@ -18,10 +18,11 @@ invoice on screen is pasted into the user's question, a rule for one button is a
 policy document is copied into the prompt "so the model knows it". The result:
 
 - Every call pays for text that only a few calls need.
-- The model cannot tell the application's rules from the data a user typed, so a value such as "ignore your rules" inside
-  a pasted record reads like an instruction.
+- Nothing tells the model which text is the application's rule and which is data a user typed, so a value such as
+  "ignore your rules" inside a pasted record can read like an instruction.
 - A rule for one screen leaks into every other screen.
-- The prompt changes on every call, so the provider's prompt cache never hits.
+- Text that changes on every call sits inside the prompt, so the provider can cache only the part before it, and often
+  nothing.
 
 ## 2. The practice
 
@@ -45,8 +46,9 @@ The user's own words stay in `prompt`. They are the message, not part of the sys
    model then answers about the invoice the user sees, not about an invoice it guessed.
 3. **Data is labelled as data.** `context`, memory and knowledge-base excerpts reach the model under a label that says
    they are not instructions.
-4. **Per-call text after the stable text.** The profile's layers come first and are the same on every call, so the
-   provider can cache them. The per-call layers follow. The order is in
+4. **Per-call text after the stable text.** The stable layers come first (the template, the output format, the
+   profile's addendum and skills), so the provider can cache them; the call's output format, an `outputSchema` and its own
+   `skills` change them ([Prompt caching](110-prompt-caching.md) has the list). The per-call layers follow. The order is in
    [System prompt layers](../60-architecture/40-system-prompt-production-layers.md).
 
 ## 3. In code
@@ -66,7 +68,7 @@ const accounting: IAIProfile = {
   id: "accounting",
   tenantId: "acme",
   name: "Accounting assistant",
-  modelId: "gpt-5-mini",
+  modelId: "gpt-6.1-terra",
   promptAddendum: "You assist the accounting team of a Norwegian company. Amounts are in NOK.", // every call
   allowedTools: [],
   approvals: [],

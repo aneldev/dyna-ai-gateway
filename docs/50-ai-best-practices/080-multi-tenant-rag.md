@@ -1,6 +1,6 @@
 ---
 sidebar_label: Multi-tenant RAG
-description: "Multi-tenant RAG in TypeScript: every knowledge-base search filtered by the caller's tenant, the libraries of each call computed from the user's access rights, an empty scope that searches nothing, and tools scoped by the caller, not by the model."
+description: "Multi-tenant RAG in TypeScript: every knowledge-base search scoped to the caller's tenant, the libraries of each call computed from the user's access rights, an empty scope that searches nothing, and tools scoped by the caller, not by the model."
 keywords: [multi-tenant RAG, RAG access control, document permissions, vector search isolation, SaaS AI, data isolation, TypeScript]
 ---
 
@@ -20,11 +20,14 @@ user's rights, in your code, on every call.
 
 ## 2. The practice
 
-1. **The tenant is never a parameter of the model.** Every knowledge-base search is filtered by the `tenantId` of the
-   caller's `userContext`, and the vector store refuses to write a record of another tenant. Your vector index adapter
-   applies the same filter in its database query.
+1. **The tenant is never a parameter of the model.** Every knowledge-base search carries the `tenantId` of the
+   caller's `userContext`, and the vector store refuses to write a record of another tenant. The filter itself is your
+   vector index adapter's database query: the gateway does not check the hits again, so an adapter that drops it
+   leaks.
 2. **The scope comes from your access rules, on every call.** `kbFilters` names the libraries, books, tags and language of
-   this call. Compute it from what the user may read, at the moment of the call. A thread does not keep it.
+   this call. Compute it from what the user may read, at the moment of the call. A thread does not keep it; a paused
+   run does: it resumes with the excerpts of its first step, without a new search, so the answer of a `resume()` rests on the
+   asker's scope at the start, whoever resumes it.
 3. **Empty means nothing.** `libraryIds: []` searches nothing; every library is `"all"`, written out. A permission list
    that came out empty by accident therefore leaks nothing.
 4. **Never `"all"` as a default.** `"all"` is every library of the tenant. Use it only for users who may read all of them.

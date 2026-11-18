@@ -334,9 +334,9 @@ export type TToolEndsRunHandler<TInput, TOutput> = {
  * Sync: it runs on every step, on data the loop already has; a look-up belongs in `execute` or in a `policy` predicate.
  */
 export type TToolVisibleWhenHandler = (args: {
-  /** 0 for the first model call of the run. */
+  /** 0 for the first model call of the `run()`, and again of each `resume()`. */
   stepIndex: number;
-  /** Names of the tools executed so far in this run: a result that was neither rejected nor failed (D76). */
+  /** Names of the tools executed so far in this run: a result that was neither rejected nor failed (D76); after a resume, also those of earlier runs in the stored history (a known gap). */
   executed: string[];
 }) => boolean;
 
@@ -403,7 +403,9 @@ export interface IToolDef<TInput = unknown, TOutput = unknown> {
    * A verdict applies to every call: `NEEDS_APPROVAL` (a refund, an email), `DENY` (a kill switch for a tool that stays
    * registered), `ALLOW` (the same as omitting the field). A predicate decides per call on the parsed input and the user
    * context, sync or async (it may look something up), and returns a `TToolCallPolicyResult`. The rules apply in this order:
-   * an input the schema rejects never reaches the policy (`execute` reports it to the model); then this field; then the
+   * an input the schema rejects never reaches a predicate (it counts as `ALLOW`), but this field and the `approvals` still
+   * apply to it, so it can pause before `execute` reports the 400 to the model (a known gap: D87 refuses it first); then
+   * this field; then the
    * profile's `approvals` as the floor, which turns an `ALLOW` into `NEEDS_APPROVAL`. `DENY` wins over everything: a human is
    * never asked to approve a call that would be refused. In a parallel step a predicate decides each call after the earlier
    * calls of the step ran (D112), so it may read state they change. An input a human edited on approval is decided again (D109): a
@@ -446,7 +448,7 @@ export interface IToolDef<TInput = unknown, TOutput = unknown> {
    * is not in the model's tool list and cannot be called by name in it (D72). `requires` of `IToolPolicyConfig` is the same
    * rule as config; a tool must pass both. Visibility is not a forced call: the model may still answer without calling it.
    *
-   * @example ({stepIndex}) => stepIndex === 0 - `classify_intent` is offered only on the first step
+   * @example ({stepIndex}) => stepIndex === 0 - `classify_intent` is offered only on the first step of a `run()` or a `resume()`
    * @example ({executed}) => executed.includes("lookup_order") - offered once the order was looked up, like `requires: {refund: ["lookup_order"]}`
    */
   visibleWhen?: TToolVisibleWhenHandler;
@@ -522,7 +524,7 @@ export interface IToolErrorReport {
   toolName: string;
   /** The model's input: parsed when the tool's schema accepted it, raw when the rejected input is the failure. */
   input: unknown;
-  /** The error as it was thrown, untouched: the tool's own, or the gateway's `dynaError` (`code`, `status`, `data`). */
+  /** The error as thrown: a `dynaError` untouched; anything else wrapped in the gateway's 500 `dynaError` (original in `parentError`). */
   error: unknown;
   /** The text the model reads as the result of the call. */
   modelText: string;
