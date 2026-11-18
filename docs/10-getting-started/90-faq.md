@@ -129,8 +129,9 @@ The `profile` lets one rule act per use case, e.g. stricter moderation for a "ki
   },
   ```
 
-- **`message` may be shown to the end user** (`response.issues` goes back to the application, and UIs often display it).
-  Keep vendor errors, ids and stack traces out of it — throw them instead, and they reach `onRuleError`, not the user.
+- **`message` is the developer's text; the end user's text goes in `userMessage`**, which a host shows as it is (a
+  judge's issues have none). Issues go back to the application and into the trace, so keep vendor errors, ids and stack
+  traces out of both — throw them instead, and they reach `onRuleError`, not the user.
 - Rule names are unique (also against the built-in ones); a duplicate throws when the gateway is constructed.
 
 **Being told that a rule failed.** Register one handler for all rules, in the guardrails' config:

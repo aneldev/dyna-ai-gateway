@@ -598,7 +598,8 @@ export interface IIssue {
    *
    * > The application's own words, already in the user's language.
    *
-   * Set on `usage_denied` from the usage adapter's `denyUserMessage`; a host shows it as it is and never shows `message`.
+   * Set by a Guardrails rule that has a text for the user (a judge's issues have none), and on `usage_denied` from the
+   * usage adapter's `denyUserMessage`. A host shows it as it is and never shows `message`.
    */
   userMessage?: string;
   /**
