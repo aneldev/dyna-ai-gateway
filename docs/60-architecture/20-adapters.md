@@ -18,7 +18,8 @@ restart: for tests, the sandbox and a first run, not for production.
 ## For whom is this chapter
 
 A developer who puts the gateway on MongoDB, PostgreSQL, S3 or a vector database, or who writes the usage rules of the
-application. A developer who changes how a part of the gateway behaves, not where it stores, replaces a class instead.
+application. A developer who changes how a part of the gateway behaves, not where it stores, replaces a class instead:
+[Class replacement](30-class-replacement.md).
 
 ## How it works
 
@@ -117,4 +118,4 @@ data does not need to survive a restart.
 gateway holds no token logic of its own.
 
 **Is a storage adapter the same as a replaced class?** No. A storage adapter changes where a store keeps its data; a
-replaced class changes what the store does.
+replaced class changes what the store does. See [Class replacement](30-class-replacement.md).
