@@ -76,7 +76,7 @@ tool (`policy`, `visibleWhen`, `endsRun`) and through `toolPolicy` in the config
 
 The loop is the gateway's own, not the SDK's: a run must pause, be stored and continue later in another process
 ([The agent loop is the gateway's own](../60-architecture/90-decisions.md#the-agent-loop-is-the-gateways-own)). The
-classes behind each step are drawn in [Architecture: Execution](../60-architecture/10-architecture-and-trade-offs.md#3-execution).
+classes behind each step are drawn in [Architecture: Execution](../60-architecture/10-architecture-and-trade-offs.md#43-execution).
 
 ### 2.2 Input is validated, output is not
 

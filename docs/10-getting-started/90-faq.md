@@ -663,7 +663,7 @@ const {response: answer} = gateway.ask({
   the reviewer reads the draft with `getPausedRun`, which takes raw ids like the other admin methods.
 
 The full list of what the gateway checks and what it leaves to your application is in
-[What the gateway checks and what it trusts](../60-architecture/10-architecture-and-trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts).
+[What the gateway checks and what it trusts](../60-architecture/10-architecture-and-trade-offs.md#7-what-the-gateway-checks-and-what-it-trusts).
 
 ## How do I show the user's conversations and open one?
 

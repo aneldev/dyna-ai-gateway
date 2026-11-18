@@ -161,7 +161,7 @@ The `FileStore` reaches the storage through five methods of `IBlobAdapter`:
 
 The 404 is part of the contract: a resume turns it into the "deleted" note, and any other error fails the call.
 `InMemoryBlobAdapter` keeps everything in the process and returns `in-memory://` URLs that no browser opens. The real
-adapters are not shipped yet ([Known limits](../60-architecture/10-architecture-and-trade-offs.md#6-known-limits)).
+adapters are not shipped yet ([Known limits](../60-architecture/10-architecture-and-trade-offs.md#8-known-limits)).
 
 ## 3. Examples
 
@@ -408,9 +408,9 @@ erased.files; // the number of files deleted
 
 - **Trusting the pointer's `userId`.** The client sends the pointer, and the gateway refuses any pointer that is not the
   caller's. Pass the `userContext` the host authenticated, never one taken from the request
-  ([What the gateway trusts](../60-architecture/10-architecture-and-trade-offs.md#52-what-the-gateway-trusts)).
+  ([What the gateway trusts](../60-architecture/10-architecture-and-trade-offs.md#72-what-the-gateway-trusts)).
 - **Trusting the `mime`.** The declared type is not compared with the bytes
-  ([What no check covers](../60-architecture/10-architecture-and-trade-offs.md#53-what-no-check-covers)). Check the
+  ([What no check covers](../60-architecture/10-architecture-and-trade-offs.md#73-what-no-check-covers)). Check the
   bytes in the upload route when it matters.
 - **Allowing SVG.** `image/*` allows `image/svg+xml`, which can carry a script. Allow it only when the files are never
   shown inline from an origin the app trusts.

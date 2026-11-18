@@ -40,7 +40,7 @@ requires (example 8.6, [How do I protect against prompt injection?](../10-gettin
 | 1 | [Guardrails](../20-learn-the-gateway/050-guardrails.md)                                                                                         | the rules, the stages, the judge, the errors |
 | 2 | [Models and profiles: Main model and cheap model](../20-learn-the-gateway/010-models-and-profiles.md#23-main-model-and-cheap-model)             | the model a judge runs on                    |
 | 3 | [Chat files: The files in the guardrails](../20-learn-the-gateway/092-chat-files.md#25-the-files-in-the-guardrails)                             | rules on images and PDFs                     |
-| 4 | [What the gateway checks and what it trusts](../60-architecture/10-architecture-and-trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts) | what no rule covers                          |
+| 4 | [What the gateway checks and what it trusts](../60-architecture/10-architecture-and-trade-offs.md#7-what-the-gateway-checks-and-what-it-trusts) | what no rule covers                          |
 
 ## 5. How the parts connect
 

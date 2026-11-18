@@ -79,7 +79,7 @@ Adapters can be mixed: one store on the application's database, the others in me
 
 Packages for MongoDB, PostgreSQL and S3 are planned as packages of their own
 ([D120](90-decisions.md#d120-the-real-adapters-are-packages-of-their-own)); their status is in
-[Known limits](10-architecture-and-trade-offs.md#6-known-limits).
+[Known limits](10-architecture-and-trade-offs.md#8-known-limits).
 
 ## The ten seams
 

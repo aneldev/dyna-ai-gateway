@@ -72,7 +72,7 @@ sequenceDiagram
    ([The output check](../20-learn-the-gateway/050-guardrails.md#22-the-output-check)).
 7. `response` settles as `ANSWER` or `FAILED`.
 
-The whole sequence, with the classes behind each step: [Execution](../60-architecture/10-architecture-and-trade-offs.md#3-execution).
+The whole sequence, with the classes behind each step: [Execution](../60-architecture/10-architecture-and-trade-offs.md#43-execution).
 
 ## 6. API you should know
 

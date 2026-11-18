@@ -44,5 +44,5 @@ mechanisms (the system prompt, changes at runtime), and the list of the design d
 **Where is the reference of a class or an interface?** In the [API reference](../30-api/index.md). This section explains
 how the parts fit together; the reference lists their members.
 
-**Where is what the gateway does not do yet?** In the [Roadmap](../70-roadmap.md), and in the known limits at the end of
-[Architecture and trade-offs](10-architecture-and-trade-offs.md).
+**Where is what the gateway does not do yet?** In the [Roadmap](../70-roadmap.md), and in the
+[known limits](10-architecture-and-trade-offs.md#8-known-limits) of Architecture and trade-offs.

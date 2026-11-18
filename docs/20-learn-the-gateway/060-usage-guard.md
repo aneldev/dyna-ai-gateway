@@ -342,7 +342,7 @@ usageAdapter.addUsageCalls.length;              // 0: a refused call is not repo
   row gets no answer. Answer explicitly instead.
 - **Reading and writing the remainder in two steps.** Two calls in flight can both pass on the same remainder. Reserve in
   `check`, settle in `addUsage` by `traceId`
-  ([What no check covers](../60-architecture/10-architecture-and-trade-offs.md#53-what-no-check-covers)).
+  ([What no check covers](../60-architecture/10-architecture-and-trade-offs.md#73-what-no-check-covers)).
 - **Settling only on success.** `addUsage` comes also for a failed or aborted call, with zero tokens. An adapter that
   ignores it keeps the reservation forever.
 - **Billing from `costUsd`.** It is a list-price estimate in USD. Bill from `usage` with your own prices.

@@ -537,7 +537,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ### D118: The gateway checks what a user could forge and trusts what the host sets
 
-**Decision.** The gateway checks every value an end user could forge or replay: the tenant and the user on threads, files and memory, the pause a decision is for, the answer against its card, an edited tool input against its policy, the sizes of what enters a prompt. It trusts what only the host's code sets: `userContext`, the profile and the scope of a call, who may resume or review, and the admin methods that take raw ids. [What the gateway checks and what it trusts](10-architecture-and-trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts) lists both sides.
+**Decision.** The gateway checks every value an end user could forge or replay: the tenant and the user on threads, files and memory, the pause a decision is for, the answer against its card, an edited tool input against its policy, the sizes of what enters a prompt. It trusts what only the host's code sets: `userContext`, the profile and the scope of a call, who may resume or review, and the admin methods that take raw ids. [What the gateway checks and what it trusts](10-architecture-and-trade-offs.md#7-what-the-gateway-checks-and-what-it-trusts) lists both sides.
 
 **Why.** The gateway sees no session or token: authentication and the roles of the host's users are the host's. Within that boundary, every input that travels through the end user's client is treated as forged until checked.
 
