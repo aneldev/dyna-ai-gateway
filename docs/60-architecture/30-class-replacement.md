@@ -38,35 +38,35 @@ gateway stores its data writes a [storage adapter](20-adapters.md) instead.
 
 ## How it can be extended
 
-The 24 factories, grouped by concern, the most often replaced first. Each interface's page of the API reference states the contract the
-gateway relies on.
+The 24 factories, by layer and in the order of [the classes](10-architecture-and-trade-offs.md#41-the-classes). Each
+interface's page of the API reference states the contract the gateway relies on.
 
-| Concern           | Factory               | Interface                                                                    | Replaced for                                                            |
-|-------------------|-----------------------|------------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| The model         | `llmClient`           | [`ILLMClient`](../30-api/index/interfaces/ILLMClient.md)                     | Another SDK, a proxy, a scripted model in tests                         |
-| The prompt        | `contextAssembler`    | [`IContextAssembler`](../30-api/index/interfaces/IContextAssembler.md)       | How the system prompt and the history are assembled                     |
-| The prompt        | `turnBuilder`         | [`ITurnBuilder`](../30-api/index/interfaces/ITurnBuilder.md)                 | Turns from a question and a model result, messages from stored turns    |
-| Configuration     | `modelRegistry`       | [`IModelRegistry`](../30-api/index/interfaces/IModelRegistry.md)             | Models, caps and cost                                                   |
-| Configuration     | `aiProfileStore`      | [`IAIProfileStore`](../30-api/index/interfaces/IAIProfileStore.md)           | The profiles of each tenant                                             |
-| Configuration     | `promptTemplateStore` | [`IPromptTemplateStore`](../30-api/index/interfaces/IPromptTemplateStore.md) | The versioned templates                                                 |
-| Threads and files | `threadStore`         | [`IThreadStore`](../30-api/index/interfaces/IThreadStore.md)                 | Threads, turns, the lease                                               |
-| Threads and files | `fileStore`           | [`IFileStore`](../30-api/index/interfaces/IFileStore.md)                     | The files of a question                                                 |
-| Human in the loop | `runStore`            | [`IRunStore`](../30-api/index/interfaces/IRunStore.md)                       | The runs that paused, and their status afterwards                       |
-| Human in the loop | `humanGate`           | [`IHumanGate`](../30-api/index/interfaces/IHumanGate.md)                     | Pause, resume and expiry of approvals and questions                     |
-| Tools             | `toolRegistry`        | [`IToolRegistry`](../30-api/index/interfaces/IToolRegistry.md)               | The tools offered to the model                                          |
-| Tools             | `toolPolicy`          | [`IToolPolicy`](../30-api/index/interfaces/IToolPolicy.md)                   | Which tools a run and a step get; allow, deny or hand a call to a human |
-| Tools             | `skillRegistry`       | [`ISkillRegistry`](../30-api/index/interfaces/ISkillRegistry.md)             | The skills offered and loaded on demand                                 |
-| Memory            | `workingMemory`       | [`IWorkingMemory`](../30-api/index/interfaces/IWorkingMemory.md)             | The thread's history: sliding window, summary buffer, your own          |
-| Memory            | `userMemoryStore`     | [`IUserMemoryStore`](../30-api/index/interfaces/IUserMemoryStore.md)         | The user's facts                                                        |
-| Knowledge base    | `mdChunker`           | [`IMdChunker`](../30-api/index/interfaces/IMdChunker.md)                     | How a Markdown document is split                                        |
-| Knowledge base    | `embedder`            | [`IEmbedder`](../30-api/index/interfaces/IEmbedder.md)                       | How chunks and queries are embedded                                     |
-| Knowledge base    | `vectorStore`         | [`IVectorStore`](../30-api/index/interfaces/IVectorStore.md)                 | Chunk storage and search                                                |
-| Knowledge base    | `queryRewriter`       | [`IQueryRewriter`](../30-api/index/interfaces/IQueryRewriter.md)             | The follow-up question rewritten before retrieval                       |
-| Knowledge base    | `kbRetriever`         | [`IKbRetriever`](../30-api/index/interfaces/IKbRetriever.md)                 | Which chunks reach the model                                            |
-| Knowledge base    | `kbIngestor`          | [`IKbIngestor`](../30-api/index/interfaces/IKbIngestor.md)                   | Chunk, embed and store a document                                       |
-| Control           | `usageGuard`          | [`IUsageGuard`](../30-api/index/interfaces/IUsageGuard.md)                   | The check before and the report after every model call                  |
-| Control           | `guardrails`          | [`IGuardrails`](../30-api/index/interfaces/IGuardrails.md)                   | The rules on input and output                                           |
-| Operations        | `trace`               | [`ITrace`](../30-api/index/interfaces/ITrace.md)                             | One entry per model call                                                |
+| Layer          | Factory               | Interface                                                                    | Replaced for                                                            |
+|----------------|-----------------------|------------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| Config         | `modelRegistry`       | [`IModelRegistry`](../30-api/index/interfaces/IModelRegistry.md)             | Models, caps and cost                                                   |
+| Config         | `aiProfileStore`      | [`IAIProfileStore`](../30-api/index/interfaces/IAIProfileStore.md)           | The profiles of each tenant                                             |
+| Config         | `promptTemplateStore` | [`IPromptTemplateStore`](../30-api/index/interfaces/IPromptTemplateStore.md) | The versioned templates                                                 |
+| Context        | `contextAssembler`    | [`IContextAssembler`](../30-api/index/interfaces/IContextAssembler.md)       | How the system prompt and the history are assembled                     |
+| Thread         | `threadStore`         | [`IThreadStore`](../30-api/index/interfaces/IThreadStore.md)                 | Threads, turns, the lease                                               |
+| Thread         | `turnBuilder`         | [`ITurnBuilder`](../30-api/index/interfaces/ITurnBuilder.md)                 | Turns from a question and a model result, messages from stored turns    |
+| Thread         | `fileStore`           | [`IFileStore`](../30-api/index/interfaces/IFileStore.md)                     | The files of a question                                                 |
+| Memory         | `workingMemory`       | [`IWorkingMemory`](../30-api/index/interfaces/IWorkingMemory.md)             | The thread's history: sliding window, summary buffer, your own          |
+| Memory         | `userMemoryStore`     | [`IUserMemoryStore`](../30-api/index/interfaces/IUserMemoryStore.md)         | The user's facts                                                        |
+| Knowledge base | `kbIngestor`          | [`IKbIngestor`](../30-api/index/interfaces/IKbIngestor.md)                   | Chunk, embed and store a document                                       |
+| Knowledge base | `mdChunker`           | [`IMdChunker`](../30-api/index/interfaces/IMdChunker.md)                     | How a Markdown document is split                                        |
+| Knowledge base | `embedder`            | [`IEmbedder`](../30-api/index/interfaces/IEmbedder.md)                       | How chunks and queries are embedded                                     |
+| Knowledge base | `vectorStore`         | [`IVectorStore`](../30-api/index/interfaces/IVectorStore.md)                 | Chunk storage and search                                                |
+| Knowledge base | `queryRewriter`       | [`IQueryRewriter`](../30-api/index/interfaces/IQueryRewriter.md)             | The follow-up question rewritten before retrieval                       |
+| Knowledge base | `kbRetriever`         | [`IKbRetriever`](../30-api/index/interfaces/IKbRetriever.md)                 | Which chunks reach the model                                            |
+| Tools          | `toolRegistry`        | [`IToolRegistry`](../30-api/index/interfaces/IToolRegistry.md)               | The tools offered to the model                                          |
+| Tools          | `toolPolicy`          | [`IToolPolicy`](../30-api/index/interfaces/IToolPolicy.md)                   | Which tools a run and a step get; allow, deny or hand a call to a human |
+| Tools          | `skillRegistry`       | [`ISkillRegistry`](../30-api/index/interfaces/ISkillRegistry.md)             | The skills offered and loaded on demand                                 |
+| Control        | `humanGate`           | [`IHumanGate`](../30-api/index/interfaces/IHumanGate.md)                     | Pause, resume and expiry of approvals and questions                     |
+| Control        | `runStore`            | [`IRunStore`](../30-api/index/interfaces/IRunStore.md)                       | The runs that paused, and their status afterwards                       |
+| Control        | `usageGuard`          | [`IUsageGuard`](../30-api/index/interfaces/IUsageGuard.md)                   | The check before and the report after every model call                  |
+| Control        | `guardrails`          | [`IGuardrails`](../30-api/index/interfaces/IGuardrails.md)                   | The rules on input and output                                           |
+| Execution      | `llmClient`           | [`ILLMClient`](../30-api/index/interfaces/ILLMClient.md)                     | Another SDK, a proxy, a scripted model in tests                         |
+| Ops            | `trace`               | [`ITrace`](../30-api/index/interfaces/ITrace.md)                             | One entry per model call                                                |
 
 A replaced Markdown splitter, with the application's own splitting function:
 
