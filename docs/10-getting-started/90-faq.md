@@ -810,4 +810,4 @@ setInterval(async () => {
 Through the module `dyna-ai-gateway/vercel-ui`: one `AIGatewayVercelUi` per chat use case, built on your gateway instance,
 and three methods the endpoints call, `chat`, `history` and `resume`. The request body never names the tenant or the user; your
 `userContext` hook does. The whole recipe is in [Vercel chat client](50-vercel-chat-client.md); the decisions behind it in
-[Decisions, chapter 17](../60-architecture/90-decisions.md#17-aigatewayvercelui).
+[Decisions, chapter 20](../60-architecture/90-decisions.md#20-aigatewayvercelui).

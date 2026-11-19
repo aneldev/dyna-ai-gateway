@@ -1,16 +1,30 @@
 # Decisions
 
-Status: 2026-11-10.
+Status: 2026-11-18.
 
-The design decisions that shape how the gateway behaves, one chapter per class, in the order a call meets them. Each entry says what the gateway does, why, and what that means for the application. Read it when a behaviour surprises you or when you want to know what you cannot do and what to do instead.
+## 1. About
 
-A decision has an id, `D46`; the JSDoc of the code cites the id where a behaviour comes from a decision (`… chosen per call, not stored on the thread (D46)`). The ids are not contiguous: the numbers in between are implementation decisions that do not change what the application sees. An entry without an id is a design principle, not a single decision.
+The design decisions that shape how the gateway behaves, with their reasons and what they mean for the application.
+Not needed to use the library.
+
+## 2. Description
+
+Chapters 4–20 group the entries by the class, or the group of classes, a decision belongs to; chapter 19 holds what the
+stores share. An entry says what the gateway does (**Decision**) and, where it is not evident, why (**Why**) and what
+that means for the application (**Consequence**).
+
+A decision has an id, `D46`; the JSDoc of the code cites the id where a behaviour comes from a decision (`The profile this call runs on: its model, tools, approvals and limits (D46, D103).`). An entry without an id is a design principle, not a single decision.
 
 The composition of the classes is in [Architecture and trade-offs](10-architecture-and-trade-offs.md); how a change takes effect while the service runs is in [Live adjustment and dependency injection](50-live-adjustment-and-dependency-injection.md); where a sentence of the system prompt comes from is in [System prompt layers](40-system-prompt-production-layers.md).
 
+## 3. For whom is this chapter
+
+A developer whom a behaviour of the gateway surprised, or who wants to know what the gateway refuses and what to do
+instead.
+
 ---
 
-## 1. AIGateway
+## 4. AIGateway
 
 ### D38: A call returns its stream and its response
 
@@ -199,7 +213,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 **Why.** The gateway is also called by backend services to complete an operation.
 
-**Consequence.** The module is `dyna-ai-gateway/vercel-ui` (`AIGatewayVercelUi`, see [chapter 17](#17-aigatewayvercelui)): an endpoint for a Vercel chat client becomes one call into it; a second use case is a second instance with another configuration. The gateway's own API stays free of chat-client types; an application that never streams to a browser never loads the module.
+**Consequence.** The module is `dyna-ai-gateway/vercel-ui` (`AIGatewayVercelUi`, see [chapter 20](#20-aigatewayvercelui)): an endpoint for a Vercel chat client becomes one call into it; a second use case is a second instance with another configuration. The gateway's own API stays free of chat-client types; an application that never streams to a browser never loads the module.
 
 ### D43: `zod` is a peer dependency
 
@@ -211,7 +225,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ---
 
-## 2. ModelRegistry and AIProfileStore
+## 5. ModelRegistry and AIProfileStore
 
 ### A profile bundles what goes with a model
 
@@ -239,7 +253,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ---
 
-## 3. PromptTemplateStore
+## 6. PromptTemplateStore
 
 ### D69: Templates are versioned, and the history is read only on request
 
@@ -251,7 +265,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ---
 
-## 4. ThreadStore and FileStore
+## 7. ThreadStore and FileStore
 
 ### D30: A file is its pointer
 
@@ -287,7 +301,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ---
 
-## 5. WorkingMemory and UserMemoryStore
+## 8. WorkingMemory and UserMemoryStore
 
 ### D16, D19: Memory has a switch, and the switch is required
 
@@ -321,7 +335,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ---
 
-## 6. MdChunker, Embedder, VectorStore
+## 9. MdChunker, Embedder, VectorStore
 
 ### D21: The knowledge base is scoped by the caller, on every call
 
@@ -351,7 +365,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ---
 
-## 7. QueryRewriter and KbRetriever
+## 10. QueryRewriter and KbRetriever
 
 ### D24: The query rewrite has a required switch
 
@@ -365,7 +379,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ---
 
-## 8. ToolRegistry
+## 11. ToolRegistry
 
 ### D48: The tools are fixed at construction; a call can narrow them, never widen them
 
@@ -423,7 +437,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 9. ToolPolicy
+## 12. ToolPolicy
 
 ### D87, D67, D50: One policy on the tool: allow, deny, needs approval
 
@@ -432,6 +446,14 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 **Why.** One rule on the tool, decided per call outside the tool's own code: two tool-level rules that disagree confuse every tool author, and a check that lives inside `execute` runs too late to spare the human an approval of a call that would be refused anyway. The AI SDK and the OpenAI Agents SDK have one field for the approval; the deny verdict is the third row of a policy table (allow, deny, needs approval) added to the same field.
 
 **Consequence.** The rules apply in this order: an input the schema rejects never reaches the policy (`execute` reports it to the model), for every tool; then the tool's `policy`; then the profile's `approvals` as the floor, which turn an `ALLOW` into `NEEDS_APPROVAL`. `DENY` wins over everything. Today only a predicate is skipped: a static `policy` and the `approvals` still apply to an input the schema rejects, so it can pause before `execute` reports the 400, and such an input of `dyna_aigw_ask_user_question` pauses as a `TOOL_APPROVAL` card (a known gap). A denied call is a tool result the model reads (`DEFAULT_TOOL_DENIAL_TEXT` followed by the reason, the part flagged `denied`), like a tool that threw: the other calls of the same step still run, the run goes on, and the denied call counts as not executed for [`requires`](#d15-d76-guarded-workflows) and never ends the run ([D86](#d86-a-tool-can-end-the-run)). The `rejectionText` of a `NEEDS_APPROVAL` result is what the model reads if the human rejects the call, followed by the human's reason; without one, `DEFAULT_TOOL_REJECTION_TEXT`. It is kept with the pause (`IToolApprovalEnvelope.rejectionText`) so a rejection after a restart still sends it; a cancelled or expired pause closes its call with the same text. The `reasonCode` of a `NEEDS_APPROVAL` result tells the approval card why the call waits, as a key of the app's translations; it is kept with the pause as `IToolApprovalEnvelope.reasonCode` and never reaches the model.
+
+### D98: The policy tells the approval card why the call waits
+
+**Decision.** A `NEEDS_APPROVAL` result of a tool's policy may carry `reasonCode`, a string. The gateway copies it to the pause as `IToolApprovalEnvelope.reasonCode`: in the PAUSED response and in the stored pause that `listPausedRuns` returns. It is omitted when the policy gave none.
+
+**Why.** The approval card shows what the call does from `toolCall.toolName` and its input, but not why it waits when one tool pauses for more than one reason (an amount above a limit, a new customer). `rejectionText` cannot serve the card: it is text for the model.
+
+**Consequence.** `reasonCode` is a key of the application's translations, not text: the application owns the card and its language. It is not sent to the model.
 
 ### D109: An edited tool input goes through the policy again
 
@@ -495,7 +517,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 10. RunStore and HumanGate
+## 13. RunStore and HumanGate
 
 ### D51, D52: The pause envelope is a discriminated union without text
 
@@ -621,7 +643,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 11. UsageGuard
+## 14. UsageGuard
 
 ### D121: The application decides every model call
 
@@ -633,7 +655,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 12. Guardrails
+## 15. Guardrails
 
 ### D47, D49: One class with rules, and the severity is the only verdict
 
@@ -667,7 +689,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 13. LLMClient
+## 16. LLMClient
 
 ### The AI SDK is sealed in one class
 
@@ -709,7 +731,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 14. ContextAssembler
+## 17. ContextAssembler
 
 ### D20, D42, D68: The system prompt is one template with layers
 
@@ -719,7 +741,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 15. Trace
+## 18. Trace
 
 ### Every model call leaves an entry
 
@@ -729,7 +751,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 16. Persistence
+## 19. Persistence
 
 ### D28, D29: Every store has a seam, and the names of its tables are configuration
 
@@ -757,7 +779,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 17. AIGatewayVercelUi
+## 20. AIGatewayVercelUi
 
 The server-only module `dyna-ai-gateway/vercel-ui` that speaks the Vercel UI message protocol for a chat client on `useChat` (D40). How to use it: [Vercel chat client](../10-getting-started/50-vercel-chat-client.md).
 
@@ -765,7 +787,7 @@ The server-only module `dyna-ai-gateway/vercel-ui` that speaks the Vercel UI mes
 
 **Decision.** `history` folds the assistant and tool turns of one answer, up to the next user turn, into one assistant message with a `step-start` part before each model step. Tools are `dynamic-tool` parts, rendered by their name.
 
-**Why.** A chat screen shows one bubble per answer: "looked up invoice 4521" and the answer text together, not three bubbles for the tool request, its result and the text. The gateway's tools are passed in the configuration, as values, so a client cannot know their types at compile time.
+**Why.** A chat screen shows one bubble per answer: "looked up invoice 4521" and the answer text together, not three bubbles for the tool request, its result and the text. The tools are `dynamic-tool` parts because the gateway's tools are values, passed in the configuration (`toolRegistry.tools`) or on the call (`additionalTools`): the module has no compile-time type of them to give the client, which renders each by its name.
 
 **Consequence.** The id of a streamed answer and the id of the same answer read back from `history` differ (the first turn's id): reload the thread with `history` when you reopen it, never merge the two.
 
@@ -776,3 +798,23 @@ The server-only module `dyna-ai-gateway/vercel-ui` that speaks the Vercel UI mes
 **Why.** `useChat` ships the approval flow (`addToolApprovalResponse`, `sendAutomaticallyWhen`); the module speaks it instead of inventing a second one. The pause id, not the run id, because a run can pause twice under the same run id and the same approval must not decide both.
 
 **Consequence.** The module finds the pause among the calling user's own paused runs: an approval id of nobody's pause, or of another user's, is a 404. Everything the SDK's card cannot show (the allowed actions, the question form, the expiry) is in the message's `metadata.pause`.
+
+---
+
+## 21. Summary
+
+- The entries are grouped by class; an entry is a decision, with its reason and its consequence for the application where
+  they are not evident.
+- An id such as `D46` in the docs or in a JSDoc is an entry of this page.
+- Where the gateway refuses something, the consequence of the entry often names what the application does instead.
+
+## 22. FAQ
+
+**Why are the ids not contiguous?** The numbers in between are implementation decisions that do not change what the
+application sees.
+
+**How do I find the decision behind a behaviour?** By the id the JSDoc of the method or the property cites, or by the
+chapter of the class the behaviour belongs to.
+
+**Does an entry without an id count less?** No. It is a design principle, not a single decision; the gateway follows it
+the same way.
