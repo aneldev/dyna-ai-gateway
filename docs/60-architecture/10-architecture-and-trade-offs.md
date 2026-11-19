@@ -1,7 +1,5 @@
 # Architecture and trade-offs
 
-Status: 2026-11-18.
-
 ## 1. About
 
 The classes the gateway is built from, who holds whom, how one call travels through them, and what each design choice

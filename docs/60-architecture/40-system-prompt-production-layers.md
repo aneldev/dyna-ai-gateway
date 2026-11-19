@@ -1,6 +1,6 @@
 # System prompt layers
 
-Status: 2026-11-18. Source: [`seedTemplates.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/internal/prompt-template-store/utils/seedTemplates.ts) (the template), [`ContextAssembler.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/internal/context-assembler/ContextAssembler.ts) (the slots).
+Source: [`seedTemplates.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/internal/prompt-template-store/utils/seedTemplates.ts) (the template), [`ContextAssembler.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/internal/context-assembler/ContextAssembler.ts) (the slots).
 
 ## About
 

@@ -1,7 +1,5 @@
 # Decisions
 
-Status: 2026-11-18.
-
 ## 1. About
 
 The design decisions that shape how the gateway behaves, with their reasons and what they mean for the application.

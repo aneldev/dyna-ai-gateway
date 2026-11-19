@@ -1,6 +1,6 @@
 # Live adjustment and dependency injection
 
-Status: 2026-11-18. Code: [`AIGateway.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/AIGateway.ts), [`types.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/types.ts).
+Code: [`AIGateway.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/AIGateway.ts), [`types.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/types.ts).
 
 ## 1. About
 
