@@ -54,7 +54,7 @@ const DEFAULT_TIMEOUT_MS = 24 * 60 * 60 * 1_000;
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.humanGate`.
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.humanGate`.
  *
  * ## When shouldn't use it
  *

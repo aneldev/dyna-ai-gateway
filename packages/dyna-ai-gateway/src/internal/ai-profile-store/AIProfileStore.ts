@@ -38,7 +38,8 @@ interface ITenantCache {
  * - Validated at the write: a stored profile names only models, tools and skills that exist.
  * - Cached per tenant with a TTL; an admin write drops the tenant's cache.
  *
- * Created by `createGatewayDeps` after the registries it validates against; read first by every call (`prepareCall`, step 1).
+ * Created by the `AIGateway` constructor after the registries it validates against; read first by every call
+ * (`prepareCall`, step 1).
  *
  * # Who needs it
  *

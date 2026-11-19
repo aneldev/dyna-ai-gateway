@@ -45,7 +45,7 @@ const TURN_ROLES: Record<EMessageRole, ETurnRole> = {
  * - File pointers stay in the turns and never reach a message: the bytes are inlined per call by the ContextAssembler
  *   (`IContextInput.inlineFiles`); the inline bytes of a message never reach a turn.
  *
- * Created by `createGatewayDeps` with no deps; sits between the ThreadStore and the LLMClient on every call.
+ * Created by the `AIGateway` constructor with no deps; sits between the ThreadStore and the LLMClient on every call.
  *
  * # Who needs it
  *

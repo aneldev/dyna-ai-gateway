@@ -45,7 +45,7 @@ const DEFAULT_CONCURRENCY = 2;
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.kbIngestor` (optional, all
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.kbIngestor` (optional, all
  * defaults).
  *
  * ## When shouldn't use it

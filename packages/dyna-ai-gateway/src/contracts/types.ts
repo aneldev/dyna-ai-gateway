@@ -4,7 +4,7 @@ import {ZodType} from "zod";
  * Who is asking: the tenant, the user, the permissions, the locale, the time zone and the clock of one call.
  *
  * Supplied by the host application on every gateway call and never stored by the gateway. `AIGateway` hands it to every
- * child: the `ToolPolicy` filters tools by `permissions`, the `ContextAssembler` renders `locale`, `timezone` and `now`
+ * class: the `ToolPolicy` filters tools by `permissions`, the `ContextAssembler` renders `locale`, `timezone` and `now`
  * into the system prompt, a tool's `execute` and `policy` receive it, every store scopes its reads by `tenantId`.
  */
 export interface IUserContext {

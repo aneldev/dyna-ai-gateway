@@ -62,7 +62,8 @@ interface IDraft {
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.mdChunker` (optional, all defaults).
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.mdChunker` (optional, all
+ * defaults).
  *
  * ## When shouldn't use it
  *

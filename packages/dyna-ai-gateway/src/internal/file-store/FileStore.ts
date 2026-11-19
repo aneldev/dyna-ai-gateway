@@ -36,7 +36,8 @@ const SEPARATOR = "/";
  * - Capped at the upload: the size (`maxBytes`), the type (`allowedMime`), the name (255 characters, one line).
  * - Deleted with the thread (`deleteThreads`) and with the user (`forgetUser`): the user's whole folder in one call.
  *
- * Created by `createGatewayDeps` with no deps; written by `AIGateway.uploadFile`, read inside `prepareCall` and `continueRun`.
+ * Created by the `AIGateway` constructor with no deps; written by `AIGateway.uploadFile`, read inside `prepareCall` and
+ * `continueRun`.
  *
  * # Who needs it
  *

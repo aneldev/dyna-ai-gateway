@@ -63,7 +63,7 @@ const MAX_CATCH_UP_TURNS = 20;
  *
  * ## When to use it
  *
- * Always, through the gateway: it is created by `createGatewayDeps` from `IAIGatewayConfig.workingMemory`.
+ * Always, through the gateway: it is created by the `AIGateway` constructor from `IAIGatewayConfig.workingMemory`.
  *
  * ## When shouldn't use it
  *

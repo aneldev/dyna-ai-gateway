@@ -41,8 +41,8 @@ const MAX_PAGE_LIMIT = 200;
  *   whole history; `listThreads` pages a user's threads as the Vercel chat client does (D37).
  * - Deletes are hard and in bulk (D119); a thread whose repository set `deletedAt` reads as gone.
  *
- * Created by `createGatewayDeps` early: the WorkingMemory depends on it. Read and written on every call (`prepareCall`,
- * `settleRun`, `closeRun`) and by the thread methods of the facade.
+ * Created by the `AIGateway` constructor early: the WorkingMemory depends on it. Read and written on every call
+ * (`prepareCall`, `settleRun`, `closeRun`) and by the thread methods of the facade.
  *
  * # Who needs it
  *

@@ -44,7 +44,7 @@ interface ICatalogCache {
  *   the cache.
  * - A disabled model stays in the catalog: it is refused by every call that names it, and a call in flight is still priced.
  *
- * Created first by `createGatewayDeps`: the LLMClient, the AIProfileStore and the guardrails depend on it.
+ * Created first by the `AIGateway` constructor: the LLMClient, the AIProfileStore and the guardrails depend on it.
  *
  * # Who needs it
  *

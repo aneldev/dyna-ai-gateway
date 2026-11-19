@@ -40,7 +40,7 @@ import {
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.vectorStore`.
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.vectorStore`.
  *
  * ## When shouldn't use it
  *

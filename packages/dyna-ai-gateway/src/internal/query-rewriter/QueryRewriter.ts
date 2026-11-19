@@ -46,7 +46,7 @@ const NOTHING = "(nothing yet)";
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.queryRewriter`.
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.queryRewriter`.
  *
  * ## When shouldn't use it
  *

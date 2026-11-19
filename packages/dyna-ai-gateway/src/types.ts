@@ -121,11 +121,12 @@ import {
 } from "./internal/kb-ingestor";
 
 /**
- * Everything the gateway needs: one config per child, settings and persistence seams only. No class instance is in it;
- * the gateway creates and injects its children itself.
+ * Everything the gateway needs: the config of each class, settings and persistence seams only. No class instance is in
+ * it; the gateway builds the instances from it and injects them itself.
  *
- * Written by the host application and passed to the `AIGateway` constructor; `createGatewayDeps` hands each member to the
- * child of the same name. A member that is optional has a runtime default of `{}`: the child runs with its own defaults.
+ * Written by the host application and passed to the `AIGateway` constructor, which builds the instance of each class from
+ * the member of the same name (`defaultCheapModelId` belongs to no class; the `TurnBuilder` takes no config). A member that is
+ * optional has a runtime default of `{}`: the class runs with its own defaults.
  */
 export interface IAIGatewayConfig {
   /** The models a profile may name, with their caps and prices: the repository of the `ModelRegistry`. */
@@ -223,10 +224,11 @@ export interface IAIGatewayConfig {
 }
 
 /**
- * Every child instance of the gateway, each as its `I<Class>` interface: what the orchestration functions receive as `deps`.
+ * The one instance of every class of the gateway, each as its `I<Class>` interface: what the orchestration functions
+ * receive as `deps`.
  *
- * Created once by `createGatewayDeps` from `IAIGatewayConfig` and the `IAIGatewayOverrides` factories, in dependency order,
- * and held by the `AIGateway` for its lifetime; the admin getters of the facade hand some of them out.
+ * Created once by the `AIGateway` constructor from `IAIGatewayConfig` and the `IAIGatewayOverrides` factories, in
+ * dependency order, and held by the `AIGateway` for its lifetime; the admin getters of the facade hand some of them out.
  */
 export interface IAIGatewayDeps {
   /** The models and their caps. */
@@ -282,7 +284,8 @@ export interface IAIGatewayDeps {
 /**
  * A dep the host builds itself: the gateway hands it that dep's config and deps, exactly as it would to its own class.
  *
- * The members of `IAIGatewayOverrides`; `createGatewayDeps` calls a factory where one is given and `new <Class>(config, deps)` otherwise.
+ * The members of `IAIGatewayOverrides`; the `AIGateway` constructor calls a factory where one is given and
+ * `new <Class>(config, deps)` otherwise.
  */
 export type TDepFactory<TConfig, TDeps, TDep> = (config: TConfig, deps: TDeps) => TDep;
 

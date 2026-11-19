@@ -35,15 +35,16 @@ import {
 } from "../types";
 
 /**
- * createGatewayDeps -- the composition root: builds the gateway's children once, in dependency order
+ * createGatewayDeps -- the composition root: builds one instance of each class of the gateway, in dependency order
  *
  * # About
  *
- * > One instance of each child, wired to the ones it depends on.
+ * > One instance of each class, wired to the ones it depends on.
  *
- * Creates every child of the gateway from its slice of the config and returns them as `IAIGatewayDeps`, the shared
- * instances the facade and the orchestration code read. A child is created once and handed to everyone that depends on it:
- * the LLMClient to the Guardrails, the memories, the Embedder and the QueryRewriter; the ToolRegistry to the AIProfileStore.
+ * Creates one instance of every class of the gateway from its slice of the config and returns them as `IAIGatewayDeps`,
+ * the shared instances the facade and the orchestration code read. An instance is created once and handed to everyone
+ * that depends on it: the LLMClient to the Guardrails, the memories, the Embedder and the QueryRewriter; the ToolRegistry
+ * to the AIProfileStore.
  *
  * - An override's factory (`IAIGatewayOverrides`) builds the instance in place of the gateway's class, with the same config
  *   and the same deps, and everyone that depends on it gets that instance.
@@ -58,12 +59,12 @@ import {
  *
  * # What needs
  *
- * A validated `IAIGatewayConfig`: a required slice that is missing fails inside the child's constructor, not here.
+ * A validated `IAIGatewayConfig`: a required slice that is missing fails inside the class's constructor, not here.
  *
  * # Pitfalls
  *
- * The order of the lines is the dependency order: a child is created after every child it takes. A new child goes below its
- * deps and above its dependants.
+ * The order of the lines is the dependency order: an instance is created after every instance it takes. A new class goes
+ * below its deps and above its dependants.
  */
 export const createGatewayDeps = (
   {

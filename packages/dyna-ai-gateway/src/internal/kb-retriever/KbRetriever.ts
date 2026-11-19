@@ -50,7 +50,7 @@ const DEFAULT_MIN_SCORE = 0.6;
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.kbRetriever` (optional, all
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.kbRetriever` (optional, all
  * defaults).
  *
  * ## When shouldn't use it

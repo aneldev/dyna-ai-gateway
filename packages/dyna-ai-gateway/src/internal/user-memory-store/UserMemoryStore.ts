@@ -87,7 +87,7 @@ const factsSchema = z.object({
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.userMemoryStore`.
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.userMemoryStore`.
  *
  * ## When shouldn't use it
  *

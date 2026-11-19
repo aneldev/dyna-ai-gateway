@@ -102,10 +102,10 @@ import {deleteThreads} from "./utils/deleteThreads";
  *
  * # About
  *
- * > One object the application talks to; every child of the gateway behind it.
+ * > One object the application talks to; every class of the gateway behind it.
  *
- * Creates every child once from `IAIGatewayConfig` (through `createGatewayDeps`), injects the shared instances, and runs a
- * call as a sequence of child calls: no prompt text, no token math, no SDK of its own.
+ * Creates one instance of every class from `IAIGatewayConfig`, injects the shared instances, and runs a call as a sequence
+ * of calls to them: no prompt text, no token math, no SDK of its own.
  *
  * - Three calls:
  *   - `ask` (one grounded answer, no tools)
@@ -118,8 +118,8 @@ import {deleteThreads} from "./utils/deleteThreads";
  * - The admin surfaces as getters (`modelRegistry`, `aiProfileStore`, `promptTemplateStore`, `toolRegistry`, `trace`,
  *   `usageGuard`) and the second entry point, `kbIngestor`, for the knowledge-base write endpoints.
  *
- * The host application constructs one per process and keeps it: the children hold caches, the background work and the
- * calls in flight.
+ * The host application constructs one per process and keeps it: it holds the background work and the calls in flight,
+ * the instances of its classes hold the caches.
  *
  * # Who needs it
  *
@@ -128,8 +128,8 @@ import {deleteThreads} from "./utils/deleteThreads";
  *
  * # What needs
  *
- * `IAIGatewayConfig`: one config per child, with the repositories and adapters the host implements (or the in-memory ones,
- * for tests and the first run). Optionally `IAIGatewayOverrides`: a factory per child the host replaces (tests: a fake
+ * `IAIGatewayConfig`: the config of each class, with the repositories and adapters the host implements (or the in-memory
+ * ones, for tests and the first run). Optionally `IAIGatewayOverrides`: a factory per class the host replaces (tests: a fake
  * `llmClient`).
  *
  * # Usage
@@ -187,7 +187,7 @@ export class AIGateway {
    * - `response` is FAILED when the prompt is rejected, the answer does not pass the checks (a failed answer is not stored),
    *   the usage adapter refuses the model call, or `abortSignal` / `timeoutMs` stop the call (D90). Nothing is thrown for
    *   those.
-   * - `response` rejects with the `dynaError` of a child for what the caller got wrong or the provider broke: an unknown
+   * - `response` rejects with a `dynaError` for what the caller got wrong or the provider broke: an unknown
    *   profile, thread or model, another user's thread (404), a thread that waits for a human or has a call in flight (409),
    *   a provider failure.
    *

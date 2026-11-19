@@ -51,7 +51,7 @@ import {
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.toolPolicy`.
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.toolPolicy`.
  *
  * ## When shouldn't use it
  *

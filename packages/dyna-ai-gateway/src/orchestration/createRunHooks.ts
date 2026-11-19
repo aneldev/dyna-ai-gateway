@@ -19,7 +19,7 @@ import {TOnCallEventHandler} from "./startCall";
  *
  * > The loop owns the flow, these hooks own the decisions.
  *
- * Builds the `ILLMClientHooks` of a run by wiring each hook to the child that decides it:
+ * Builds the `ILLMClientHooks` of a run by wiring each hook to the class that decides it:
  *
  * - `prepareStep` → `ToolPolicy.narrowForStep`: the tools of the next step (`requires`, D72).
  * - `decideToolCall` → `ToolPolicy.decide`: ALLOW, DENY or NEEDS_APPROVAL for the call (D87).

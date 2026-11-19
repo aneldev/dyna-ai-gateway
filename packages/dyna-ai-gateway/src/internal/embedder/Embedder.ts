@@ -39,7 +39,7 @@ const DEFAULT_BATCH_SIZE = 64;
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.embedder`.
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.embedder`.
  *
  * ## When shouldn't use it
  *
