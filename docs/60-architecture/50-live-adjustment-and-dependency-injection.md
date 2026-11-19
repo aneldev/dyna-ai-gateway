@@ -39,13 +39,13 @@ The constructor builds the classes of the gateway once, in dependency order, eac
 uses; a factory in `overrides` takes the place of a class ([Class replacement](30-class-replacement.md)).
 
 A class takes its config and, when it uses other classes, its deps: `constructor(config, deps)`. A class without
-dependencies takes the config only (`ModelRegistry`, `ToolPolicy`, …); `TurnBuilder` takes nothing. No class creates
-another class, and none keeps a class, a tool or a rule it was not constructed with (there is no `register()`); the tools
+dependencies takes the config only (`ModelRegistry`, `ToolPolicy`, …); `TurnBuilder` takes nothing. None of the 24
+classes creates another one, and none keeps a class, a tool or a rule it was not constructed with (there is no `register()`); the tools
 of one call travel with that call.
 
 ### 4.3 What is set at construction
 
-| Seam                   | How                                             | Used for                                                                                                             |
+| What is set            | How                                             | Used for                                                                                                             |
 |------------------------|-------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
 | A whole class          | `overrides.<name>: (config, deps) => I<Class>`  | The application's own class in place of the gateway's: [Class replacement](30-class-replacement.md)                  |
 | Persistence of a store | `config.<store>.repository` / `.adapter`        | The application's database: [Storage adapters](20-adapters.md)                                                       |

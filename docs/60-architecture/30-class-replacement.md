@@ -38,7 +38,7 @@ gateway stores its data writes a [storage adapter](20-adapters.md) instead.
 
 ## How it can be extended
 
-The 24 factories, grouped by concern, the most often replaced first. Each interface's TypeDoc page states the contract the
+The 24 factories, grouped by concern, the most often replaced first. Each interface's page of the API reference states the contract the
 gateway relies on.
 
 | Concern           | Factory               | Interface                                                                    | Replaced for                                                            |
@@ -51,7 +51,7 @@ gateway relies on.
 | Configuration     | `promptTemplateStore` | [`IPromptTemplateStore`](../30-api/index/interfaces/IPromptTemplateStore.md) | The versioned templates                                                 |
 | Threads and files | `threadStore`         | [`IThreadStore`](../30-api/index/interfaces/IThreadStore.md)                 | Threads, turns, the lease                                               |
 | Threads and files | `fileStore`           | [`IFileStore`](../30-api/index/interfaces/IFileStore.md)                     | The files of a question                                                 |
-| Human in the loop | `runStore`            | [`IRunStore`](../30-api/index/interfaces/IRunStore.md)                       | Every run, running, paused or finished                                  |
+| Human in the loop | `runStore`            | [`IRunStore`](../30-api/index/interfaces/IRunStore.md)                       | The runs that paused, and their status afterwards                       |
 | Human in the loop | `humanGate`           | [`IHumanGate`](../30-api/index/interfaces/IHumanGate.md)                     | Pause, resume and expiry of approvals and questions                     |
 | Tools             | `toolRegistry`        | [`IToolRegistry`](../30-api/index/interfaces/IToolRegistry.md)               | The tools offered to the model                                          |
 | Tools             | `toolPolicy`          | [`IToolPolicy`](../30-api/index/interfaces/IToolPolicy.md)                   | Which tools a run and a step get; allow, deny or hand a call to a human |

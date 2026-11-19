@@ -102,6 +102,7 @@
       04-maintenance-methods                  # keep your resources tidy
       05-production-tools                     # tools to make your gateway bulletproof
     /20-adapters                              # what the host implements, most important first; in-memory versions ship with the package
+      # Not hand-written: covered by the generated TypeDoc page of each interface; the pattern and the table of the ten seams are in /60-architecture/20-adapters.md
       README.md                               # the pattern: config → repository/adapter interface, overrides, the in-memory defaults
       01-model-registry-repository.md        # IModelRegistryRepository: the models allowed, their caps and cost — needed by every call
       02-ai-profile-repository.md            # IAIProfileRepository: the profiles per tenant — needed by every call
@@ -114,6 +115,7 @@
       09-vector-index-adapter.md             # IVectorIndexAdapter: the knowledge base chunks and their embeddings
       10-trace-repository.md                 # ITraceRepository: one entry per model call, for debugging and audit
     /30-Advanced-replace-classes              # every class of the gateway can be replaced: IAIGatewayOverrides, one factory per class, same I<Class> contract
+      # Not hand-written: covered by the generated TypeDoc page of each interface; the pattern and the table of the 24 factories are in /60-architecture/30-class-replacement.md
       README.md                               # the pattern: (config, deps) => new MyClass(config, deps); grouped below by concern, most replaced first
       01-llm-client.md                        # ILLMClient: the provider call itself (another SDK, a proxy, a fake for tests)
       02-context-assembler.md                 # IContextAssembler: how the system prompt and the history are assembled

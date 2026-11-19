@@ -64,7 +64,7 @@ instead.
 
 **Why.** The internals are constructed by the gateway, never by the application; a class or a helper that is importable is a class that gets called, and its signature then becomes a contract the library did not mean to give. The types stay public because the application implements the repositories and reads what the gateway returns.
 
-**Consequence.** `gateway.modelRegistry`, `gateway.trace` and the other exposed children can be named as types (`const registry: IModelRegistry = gateway.modelRegistry`) but not constructed: `new ModelRegistry(...)` is a type error. The `overrides` argument of the constructor takes a factory of a public interface (`ILLMClient`, `IWorkingMemory`, …): a test's fake, or a host's own implementation ([Class replacement](30-class-replacement.md)). An application that needs something the entry does not export asks for a facade method instead of a deep import.
+**Consequence.** `gateway.modelRegistry`, `gateway.trace` and the other classes the gateway exposes can be named as types (`const registry: IModelRegistry = gateway.modelRegistry`) but not constructed: `new ModelRegistry(...)` is a type error. The `overrides` argument of the constructor takes a factory of a public interface (`ILLMClient`, `IWorkingMemory`, …): a test's fake, or the application's own implementation ([Class replacement](30-class-replacement.md)). An application that needs something the entry does not export asks for a facade method instead of a deep import.
 
 ### D106: An enum's value is its member name
 
@@ -96,7 +96,7 @@ instead.
 
 **Why.** The profile's `promptAddendum` is stored once per tenant and profile; the prompt is the user's words. Nothing carried what the application knows or wants on this one call.
 
-**Consequence.** Neither is stored: a later call on the thread passes its own, a paused run keeps the prompt it started with and `resume()` takes none. Which layer to use for which text is in [System prompt layers](40-system-prompt-production-layers.md#which-layer-to-use).
+**Consequence.** Neither is carried to a later call: a later call on the thread passes its own, a paused run keeps the prompt it started with and `resume()` takes none. Both stay, as part of the rendered prompt, in the call's trace entry and in the stored run of a run that paused. Which layer to use for which text is in [System prompt layers](40-system-prompt-production-layers.md#which-layer-to-use).
 
 ### D124: Skills, instructions the model loads on demand
 
@@ -140,7 +140,7 @@ instead.
 
 **Decision.** A call on an existing thread takes a lease on it (`IThread.lease`) and releases it when the call ends. A second call while the lease is held is a 409. `IThreadStoreConfig.leaseMs` (default 5 minutes) sizes the lease for the longest run.
 
-**Why.** Two calls on one thread at once (a double click, two tabs) both stored a turn and both answered, and the conversation got mixed up. The lease is one atomic check-and-set in the repository, so it also holds across server instances. A fixed expiry means a crashed server leaves no thread busy for ever.
+**Why.** Two calls on one thread at once (a double click, two tabs) both stored a turn and both answered, and the conversation got mixed up. The lease is one atomic compare-and-set in the repository, so it also holds across server instances. A fixed expiry means a crashed server leaves no thread busy for ever.
 
 **Consequence.** Show the 409 as "still answering" and retry after the response. `cancelRun` and the expiry job take no lease: they store no turns.
 
@@ -233,7 +233,7 @@ instead.
 
 **Why.** A model choice is never only a model: tools, limits and prompt go with it.
 
-**Consequence.** Models, profiles and templates are data with a cache; their write methods invalidate it, so a change is read by the next call. The table of what changes how is in [Live adjustment](50-live-adjustment-and-dependency-injection.md#6-live-adjustment).
+**Consequence.** Models, profiles and templates are data with a cache per gateway instance. When a change is read, and the table of what changes how, is in [Live adjustment](50-live-adjustment-and-dependency-injection.md#6-live-adjustment).
 
 ### A profile a paused run waits on cannot be removed
 
@@ -445,11 +445,11 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Why.** One rule on the tool, decided per call outside the tool's own code: two tool-level rules that disagree confuse every tool author, and a check that lives inside `execute` runs too late to spare the human an approval of a call that would be refused anyway. The AI SDK and the OpenAI Agents SDK have one field for the approval; the deny verdict is the third row of a policy table (allow, deny, needs approval) added to the same field.
 
-**Consequence.** The rules apply in this order: an input the schema rejects never reaches the policy (`execute` reports it to the model), for every tool; then the tool's `policy`; then the profile's `approvals` as the floor, which turn an `ALLOW` into `NEEDS_APPROVAL`. `DENY` wins over everything. Today only a predicate is skipped: a static `policy` and the `approvals` still apply to an input the schema rejects, so it can pause before `execute` reports the 400, and such an input of `dyna_aigw_ask_user_question` pauses as a `TOOL_APPROVAL` card (a known gap). A denied call is a tool result the model reads (`DEFAULT_TOOL_DENIAL_TEXT` followed by the reason, the part flagged `denied`), like a tool that threw: the other calls of the same step still run, the run goes on, and the denied call counts as not executed for [`requires`](#d15-d76-guarded-workflows) and never ends the run ([D86](#d86-a-tool-can-end-the-run)). The `rejectionText` of a `NEEDS_APPROVAL` result is what the model reads if the human rejects the call, followed by the human's reason; without one, `DEFAULT_TOOL_REJECTION_TEXT`. It is kept with the pause (`IToolApprovalEnvelope.rejectionText`) so a rejection after a restart still sends it; a cancelled or expired pause closes its call with the same text. The `reasonCode` of a `NEEDS_APPROVAL` result tells the approval card why the call waits, as a key of the app's translations; it is kept with the pause as `IToolApprovalEnvelope.reasonCode` and never reaches the model.
+**Consequence.** The rules apply in this order: an input the schema rejects never reaches the policy (`execute` reports it to the model), for every tool; then the tool's `policy`; then the profile's `approvals` as the floor, which turn an `ALLOW` into `NEEDS_APPROVAL`. `DENY` wins over everything. Today only a predicate is skipped: a static `policy` and the `approvals` still apply to an input the schema rejects, so it can pause before `execute` reports the 400, and such an input of `dyna_aigw_ask_user_question` pauses as a `TOOL_APPROVAL` card (a known gap). A denied call is a tool result the model reads (`DEFAULT_TOOL_DENIAL_TEXT` followed by the reason, the part flagged `denied`), like a tool that threw: the other calls of the same step still run, the run goes on, and the denied call counts as not executed for [`requires`](#d15-d76-guarded-workflows) and never ends the run ([D86](#d86-a-tool-can-end-the-run)). The `rejectionText` of a `NEEDS_APPROVAL` result is what the model reads if the human rejects the call, followed by the human's reason; without one, `DEFAULT_TOOL_REJECTION_TEXT`. It is kept with the pause (`IToolApprovalEnvelope.rejectionText`) so a rejection after a restart still sends it; a cancelled or expired pause closes its call with the same text. The `reasonCode` of a `NEEDS_APPROVAL` result is for the approval card, not for the model: [D98](#d98-the-policy-tells-the-approval-card-why-the-call-waits).
 
 ### D98: The policy tells the approval card why the call waits
 
-**Decision.** A `NEEDS_APPROVAL` result of a tool's policy may carry `reasonCode`, a string. The gateway copies it to the pause as `IToolApprovalEnvelope.reasonCode`: in the PAUSED response and in the stored pause that `listPausedRuns` returns. It is omitted when the policy gave none.
+**Decision.** A `NEEDS_APPROVAL` result of a tool's policy may carry `reasonCode`, a string. The gateway copies it to the card of the call, `IToolApprovalEnvelope.reasonCode`: in the PAUSED response, in the cards `listPausedRuns` returns and in the stored run (`getPausedRun`). It is omitted when the policy gave none.
 
 **Why.** The approval card shows what the call does from `toolCall.toolName` and its input, but not why it waits when one tool pauses for more than one reason (an amount above a limit, a new customer). `rejectionText` cannot serve the card: it is text for the model.
 

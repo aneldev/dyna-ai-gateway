@@ -33,7 +33,7 @@ application. A developer who changes how a part of the gateway behaves, not wher
   ([D28, D29](90-decisions.md#d28-d29-every-store-has-a-seam-and-the-names-of-its-tables-are-configuration)).
 - **Three methods must be atomic.** `IThreadRepository.acquireLease` (one call at a time on a thread,
   [D77](90-decisions.md#d77-one-call-at-a-time-on-a-thread)) and `IRunRepository.transition` (a paused run is left once,
-  [D69, D78](90-decisions.md#d69-d78-leaving-a-pause-is-one-atomic-step)) are check-and-set: one database operation with
+  [D69, D78](90-decisions.md#d69-d78-leaving-a-pause-is-one-atomic-step)) are compare-and-set: one database operation with
   the condition in the filter, never a load followed by a save. `IPromptTemplateRepository.setActive` flips the active
   version in one transaction, so no reader sees two active versions or none.
 - **Lists page by cursor.** `listThreads` and `listVersions` take a `page: IPageArgs` (`limit`, `startingAfter`,
@@ -43,7 +43,7 @@ application. A developer who changes how a part of the gateway behaves, not wher
   adapter throws. `loadTurns` and the trace's `query` page by `skip` and `limit` instead.
 - **A missing record is not an error, mostly.** A read by id (`loadThread`, `load`, a template's `get`) returns null, `IUserMemoryRepository.load` an empty list; a
   `remove` or `delete` of an unknown id does nothing. The exceptions throw a 404: `IBlobAdapter.get` and `signedUrl` for an
-  unknown key, `setActive` for an unknown version. Each method's TypeDoc page states its full contract, the order of its
+  unknown key, `setActive` for an unknown version. Each method's page of the API reference states its full contract, the order of its
   results and what `anonymizeByUser` rewrites included.
 - **Erasure reaches every storage adapter that holds the gateway's user data** ([D54](90-decisions.md#d54-forgetting-a-user-is-two-methods)); what the usage adapter stored is the application's to erase.
   `deleteUserData` and `anonymizeUserData` both remove the user's files (blob adapter) and facts (`deleteByUser`); then
@@ -55,8 +55,7 @@ application. A developer who changes how a part of the gateway behaves, not wher
 
 ## How it can be extended
 
-Write a class that implements the seam's interface and pass an instance in the store's config. The interface's TypeDoc
-page lists every method and what the store expects of it.
+Write a class that implements the seam's interface and pass an instance in the store's config. The interface's page of the API reference lists every method and what the store expects of it.
 
 ```ts
 import {
@@ -91,7 +90,7 @@ In the order an application needs them.
 | [`IAIProfileRepository`](../30-api/index/interfaces/IAIProfileRepository.md)           | `aiProfileStore.repository`      | The profiles of each tenant                                                                                                    | `loadByTenant`, `save`, `remove`                                                                                                                   | [`InMemoryAIProfileRepository`](../30-api/index/classes/InMemoryAIProfileRepository.md)                                            |
 | [`IThreadRepository`](../30-api/index/interfaces/IThreadRepository.md)                 | `threadStore.repository`         | Threads, their turns, the lease                                                                                                | `saveThread`, `loadThread`, `listThreads`, `appendTurn`, `loadTurns`, `listThreadIds`, `delete`, `anonymizeByUser`, `acquireLease`, `releaseLease` | [`InMemoryThreadRepository`](../30-api/index/classes/InMemoryThreadRepository.md)                                                  |
 | [`IUsageAdapter`](../30-api/index/interfaces/IUsageAdapter.md)                         | `usageGuard.adapter`             | Not data of the gateway: the application's usage rules ([D121](90-decisions.md#d121-the-application-decides-every-model-call)) | `check` before every model call (a throw is a denial), `addUsage` once after every approved `check`, a failed call included                        | [`InMemoryUsageAdapter`](../30-api/index/classes/InMemoryUsageAdapter.md): approves every call unless its `deny` option refuses it |
-| [`IRunRepository`](../30-api/index/interfaces/IRunRepository.md)                       | `runStore.repository`            | Every run, running, paused or finished: agents, human in the loop, recovery                                                    | `save`, `load`, `listByStatus`, `transition`, `delete`, `anonymizeByUser`                                                                          | [`InMemoryRunRepository`](../30-api/index/classes/InMemoryRunRepository.md)                                                        |
+| [`IRunRepository`](../30-api/index/interfaces/IRunRepository.md)                       | `runStore.repository`            | The runs that paused, with their status afterwards: human in the loop, recovery                                                | `save`, `load`, `listByStatus`, `transition`, `delete`, `anonymizeByUser`                                                                          | [`InMemoryRunRepository`](../30-api/index/classes/InMemoryRunRepository.md)                                                        |
 | [`IPromptTemplateRepository`](../30-api/index/interfaces/IPromptTemplateRepository.md) | `promptTemplateStore.repository` | The versioned prompt templates, global                                                                                         | `loadActive`, `get`, `listVersions`, `save`, `setActive`                                                                                           | [`InMemoryPromptTemplateRepository`](../30-api/index/classes/InMemoryPromptTemplateRepository.md)                                  |
 | [`IBlobAdapter`](../30-api/index/interfaces/IBlobAdapter.md)                           | `fileStore.adapter`              | The bytes of the files of a question (images, PDFs)                                                                            | `put`, `get`, `signedUrl`, `remove`, `removeByPrefix`                                                                                              | [`InMemoryBlobAdapter`](../30-api/index/classes/InMemoryBlobAdapter.md)                                                            |
 | [`IUserMemoryRepository`](../30-api/index/interfaces/IUserMemoryRepository.md)         | `userMemoryStore.repository`     | The user's facts, one record per tenant and user                                                                               | `load`, `saveAll`, `deleteByUser`                                                                                                                  | [`InMemoryUserMemoryRepository`](../30-api/index/classes/InMemoryUserMemoryRepository.md)                                          |
@@ -102,8 +101,8 @@ In the order an application needs them.
 
 - Every store takes a storage adapter in its config; the key is required.
 - The adapter stores; the store decides. Every call on a tenant's data carries the tenant.
-- `acquireLease` and `transition` are check-and-set, `setActive` is one transaction.
-- Each method's contract (order, null or 404, what it rewrites) is on the seam's TypeDoc page.
+- `acquireLease` and `transition` are compare-and-set, `setActive` is one transaction.
+- Each method's contract (order, null or 404, what it rewrites) is on the seam's page of the API reference.
 - The in-memory adapters are for tests and a first run.
 
 ## FAQ
