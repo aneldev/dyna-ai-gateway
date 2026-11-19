@@ -25,7 +25,7 @@ const supportChat = new AIGatewayVercelUi({
 ```
 
 `userContext` is the trust boundary of the endpoint: the request body never names the tenant or the user
-([D118](../60-architecture/90-decisions.md#d118-the-gateway-checks-what-a-user-could-forge-and-trusts-what-the-host-sets)).
+([D118](../60-architecture/90-decisions.md#d118-the-gateway-checks-what-a-user-could-forge-and-trusts-what-the-application-sets)).
 `call` holds what every call of the use case shares (the same fields as `run()`, minus what each request brings); `prepareCall`
 overrides it per request, for example the `context` of the record the user is looking at, carried in the request's `body`.
 A second use case, an invoice assistant on another profile and another knowledge base, is a second instance.

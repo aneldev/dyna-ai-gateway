@@ -166,7 +166,7 @@ instead.
 
 **Why.** Erasure and pseudonymisation are the two data-protection obligations; a pseudonym that is a hash of the user id would be reversible.
 
-**Consequence.** Both return `IForgetUserResult` with the counts per place. Both wait for the user's own calls and background work first, so a running call or a queued memory update cannot bring a fact back ([D114](#d114-the-erasure-keeps-the-users-calls-out)). What the app's usage adapter stored is the app's to erase; the knowledge base has no user.
+**Consequence.** Both return `IForgetUserResult` with the counts per place. Both wait for the user's own calls and background work first, so a running call or a queued memory update cannot bring a fact back ([D114](#d114-the-erasure-keeps-the-users-calls-out)). What the application's usage adapter stored is the application's to erase; the knowledge base has no user.
 
 ### D114: The erasure keeps the user's calls out
 
@@ -176,7 +176,7 @@ instead.
 
 **Consequence.** An erasure takes as long as the user's longest running call. The guard is per server instance: on several instances, route the erasure to where the user's calls run, or stop the user's traffic first.
 
-**Limit.** The gateway waits only for the calls of its own process. A thread of the user whose [lease](#d77-one-call-at-a-time-on-a-thread) is live is a call running on another instance: both methods are then a 409 (`data.busyThreadIds` names the threads) before anything is touched, never a partial erasure, so the user's rows never split over two pseudonyms. The host retries when the call ended; a lease ends with the call or with `leaseMs` at the latest.
+**Limit.** The gateway waits only for the calls of its own process. A thread of the user whose [lease](#d77-one-call-at-a-time-on-a-thread) is live is a call running on another instance: both methods are then a 409 (`data.busyThreadIds` names the threads) before anything is touched, never a partial erasure, so the user's rows never split over two pseudonyms. The application retries when the call ended; a lease ends with the call or with `leaseMs` at the latest.
 
 
 ### D116: The model cannot write a user fact unasked
@@ -261,7 +261,7 @@ instead.
 
 **Why.** Loading a whole table to find five active rows is wrong once a key has hundreds of versions. The trace records the version of every answer, so an old version can be inspected and activated again.
 
-**Consequence.** The seed (version 0) answers when the repository has no active version, so a fresh database works at once. The host replaces the seed of a key with `promptTemplateStore.seedTemplates`; a key not given there keeps the shipped seed, and an active version in the repository always wins. The layers of the main template are in [System prompt layers](40-system-prompt-production-layers.md).
+**Consequence.** The seed (version 0) answers when the repository has no active version, so a fresh database works at once. The application replaces the seed of a key with `promptTemplateStore.seedTemplates`; a key not given there keeps the shipped seed, and an active version in the repository always wins. The layers of the main template are in [System prompt layers](40-system-prompt-production-layers.md).
 
 ---
 
@@ -269,7 +269,7 @@ instead.
 
 ### D30: A file is its pointer
 
-**Decision.** `uploadFile` stores the bytes under the key `<tenantId>/<path>/<userId>/<fileId>` and returns an `IFileRef`; the gateway keeps no list of files. `IFileStoreConfig.path` is required (any number of folders, may be empty). The allowed types default to PNG, JPEG, WebP, GIF and PDF, named one by one: an SVG can carry a script, so a host allows it only when files are never shown inline from an origin it trusts. A file name is at most 255 characters, on one line.
+**Decision.** `uploadFile` stores the bytes under the key `<tenantId>/<path>/<userId>/<fileId>` and returns an `IFileRef`; the gateway keeps no list of files. `IFileStoreConfig.path` is required (any number of folders, may be empty). The allowed types default to PNG, JPEG, WebP, GIF and PDF, named one by one: an SVG can carry a script, so an application allows it only when files are never shown inline from an origin it trusts. A file name is at most 255 characters, on one line.
 
 **Why.** The tenant is the first folder of every key, so everything of a tenant is under one prefix. The user's folder makes "remove the files of this user" one prefix delete. Where the files live is decided where the gateway is configured, like the table names of the stores.
 
@@ -281,7 +281,7 @@ instead.
 
 **Why.** Nothing was ever removed after a call, and the application deletes conversations in bulk: the user's "delete selected", a tenant's reset, a retention job. One method with one shape on the facade and on every seam keeps a real database to one query per store.
 
-**Consequence.** Hard delete, no tombstone: a deleted thread is a 404 like one that never existed, and a second call with the same ids returns 0. A thread with a call in flight ([its lease is live](#d77-one-call-at-a-time-on-a-thread)) is skipped and not counted; an unknown id, or one of another tenant or user, is ignored. The owners' [background memory updates](#d17-background-work-and-whenidle) are awaited first, so nothing is written after the delete. Only the thread owner's files are removed (a stored pointer of another user's file stays). User facts are not touched: they belong to the user, not to a thread. "Forget this user" stays [`deleteUserData` / `anonymizeUserData`](#d54-forgetting-a-user-is-two-methods), which also remove the files and facts. `delete` takes raw ids and checks no user: the host decides who may call it.
+**Consequence.** Hard delete, no tombstone: a deleted thread is a 404 like one that never existed, and a second call with the same ids returns 0. A thread with a call in flight ([its lease is live](#d77-one-call-at-a-time-on-a-thread)) is skipped and not counted; an unknown id, or one of another tenant or user, is ignored. The owners' [background memory updates](#d17-background-work-and-whenidle) are awaited first, so nothing is written after the delete. Only the thread owner's files are removed (a stored pointer of another user's file stays). User facts are not touched: they belong to the user, not to a thread. "Forget this user" stays [`deleteUserData` / `anonymizeUserData`](#d54-forgetting-a-user-is-two-methods), which also remove the files and facts. `delete` takes raw ids and checks no user: the application decides who may call it.
 
 ### D31: Only the files of the current question go to the model
 
@@ -313,9 +313,9 @@ instead.
 
 ### D122: The working memory owns the thread's window
 
-**Decision.** Which turns of a thread the model reads, how many, and whether a digest stands in for the older ones is decided by the working memory alone, behind one interface, `IWorkingMemory`: `load` gives the message window and the notes for one request, `saveContext` learns from one answered call, `getState` and `reset` serve the UI. The `ContextAssembler` renders the system prompt first, asks `load` with the tokens that are left (`contextTokens − reserveOutputTokens − system prompt`; `reserveOutputTokens` defaults to the call's `maxOutputTokens`), puts the notes into the `{memory}` layer and only trims an overflow. The built-in `WorkingMemory` has two strategies, `EWorkingMemoryStrategy`: `SLIDING_WINDOW` sends the newest turns that fit `chatHistoryRatio` (default 0.8) of that budget, verbatim, counted with the o200k tokenizer (exact for OpenAI, × 1.2 for the other providers), and stores nothing; `SUMMARY_BUFFER` sends a rolling summary and facts written by the cheap model plus the last `recentTurns` (default 20) turns. The strategy of a call is the profile's `workingMemory`, else the gateway's `workingMemory.strategy`, else `SUMMARY_BUFFER`. A host replaces the built-in memory with its own `IWorkingMemory` in the constructor's `overrides`.
+**Decision.** Which turns of a thread the model reads, how many, and whether a digest stands in for the older ones is decided by the working memory alone, behind one interface, `IWorkingMemory`: `load` gives the message window and the notes for one request, `saveContext` learns from one answered call, `getState` and `reset` serve the UI. The `ContextAssembler` renders the system prompt first, asks `load` with the tokens that are left (`contextTokens − reserveOutputTokens − system prompt`; `reserveOutputTokens` defaults to the call's `maxOutputTokens`), puts the notes into the `{memory}` layer and only trims an overflow. The built-in `WorkingMemory` has two strategies, `EWorkingMemoryStrategy`: `SLIDING_WINDOW` sends the newest turns that fit `chatHistoryRatio` (default 0.8) of that budget, verbatim, counted with the o200k tokenizer (exact for OpenAI, × 1.2 for the other providers), and stores nothing; `SUMMARY_BUFFER` sends a rolling summary and facts written by the cheap model plus the last `recentTurns` (default 20) turns. The strategy of a call is the profile's `workingMemory`, else the gateway's `workingMemory.strategy`, else `SUMMARY_BUFFER`. An application replaces the built-in memory with its own `IWorkingMemory` in the constructor's `overrides`.
 
-**Why.** A chat assistant and a long-running support agent need different memories, and a tenant often runs both. One raw interface (the idiom of LangChain's `saveContext` / `loadMemoryVariables`) lets each strategy, built-in or the host's, decide for itself, with the one number it needs: the budget. A ratio instead of a priority between history and knowledge base is what LlamaIndex does (`chat_history_token_ratio`); it is one knob and it reads as what it does.
+**Why.** A chat assistant and a long-running support agent need different memories, and a tenant often runs both. One raw interface (the idiom of LangChain's `saveContext` / `loadMemoryVariables`) lets each strategy, built-in or the application's, decide for itself, with the one number it needs: the budget. A ratio instead of a priority between history and knowledge base is what LlamaIndex does (`chat_history_token_ratio`); it is one knob and it reads as what it does.
 
 **Consequence.** `IContextAssemblerConfig.maxTurns` is gone; the window is sized in tokens, by the strategy. A stored summary survives a switch to `SLIDING_WINDOW`, unused by the window (the query rewrite still reads it, a known gap), and is resumed after the switch back; `getThreadMemory` shows it meanwhile and returns the empty state for a thread that never ran `SUMMARY_BUFFER`. Every window the working memory returns opens on a user turn, so a tool result never arrives without its call; the assembler's own overflow trim drops messages one by one and can still open the window on a tool result (a known gap). The token count is a real tokenizer (exact for OpenAI, a safety factor for the other providers; images and PDFs by size), the same count the usage adapter is asked with ([D121](#d121-the-application-decides-every-model-call)). How to choose and configure a strategy is in the [FAQ](../10-getting-started/90-faq.md#how-much-of-the-conversation-does-the-model-see-and-how-do-i-choose).
 
@@ -513,7 +513,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Why.** A built-in with a generic name took that name from the application: a tool of its own called `ask_user_question` was refused, and the only way around it was renaming the application's tool. A reserved prefix keeps every other name free, also for built-ins added later.
 
-**Consequence.** Any name without the prefix is the application's, the old built-in names included. A run paused by a version before the prefix, whose stored tools still use an old name that nothing offers, cannot be resumed: `resume` is a 400 naming those tools in `data.legacyTools` (code `5387318840411`), and the run stays paused. A host that renders tool parts compares with `BUILT_IN_TOOL_NAMES`, not with literals.
+**Consequence.** Any name without the prefix is the application's, the old built-in names included. A run paused by a version before the prefix, whose stored tools still use an old name that nothing offers, cannot be resumed: `resume` is a 400 naming those tools in `data.legacyTools` (code `5387318840411`), and the run stays paused. An application that renders tool parts compares with `BUILT_IN_TOOL_NAMES`, not with literals.
 
 ---
 
@@ -557,13 +557,13 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Consequence.** An id says nothing about its time or its order; nothing in the gateway sorts by id. Ids made before the change keep their old form.
 
-### D118: The gateway checks what a user could forge and trusts what the host sets
+### D118: The gateway checks what a user could forge and trusts what the application sets
 
-**Decision.** The gateway checks every value an end user could forge or replay: the tenant and the user on threads, files and memory, the pause a decision is for, the answer against its card, an edited tool input against its policy, the sizes of what enters a prompt. It trusts what only the host's code sets: `userContext`, the profile and the scope of a call, who may resume or review, and the admin methods that take raw ids. [What the gateway checks and what it trusts](10-architecture-and-trade-offs.md#7-what-the-gateway-checks-and-what-it-trusts) lists both sides.
+**Decision.** The gateway checks every value an end user could forge or replay: the tenant and the user on threads, files and memory, the pause a decision is for, the answer against its card, an edited tool input against its policy, the sizes of what enters a prompt. It trusts what only the application's code sets: `userContext`, the profile and the scope of a call, who may resume or review, and the admin methods that take raw ids. [What the gateway checks and what it trusts](10-architecture-and-trade-offs.md#7-what-the-gateway-checks-and-what-it-trusts) lists both sides.
 
-**Why.** The gateway sees no session or token: authentication and the roles of the host's users are the host's. Within that boundary, every input that travels through the end user's client is treated as forged until checked.
+**Why.** The gateway sees no session or token: authentication and the roles of the application's users are the application's. Within that boundary, every input that travels through the end user's client is treated as forged until checked.
 
-**Consequence.** A host that forwards a value of the second list from the end user's request widens what that user can do. The admin methods are for the host's own back office.
+**Consequence.** An application that forwards a value of the second list from the end user's request widens what that user can do. The admin methods are for the application's own back office.
 
 ### D110: A decision names the pause it is for
 
@@ -727,7 +727,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Why.** A provider's prompt cache matches an exact prefix and has to be told where the stable part of the prompt ends. One string cannot carry that boundary; a list of blocks carries it without a second field that has to agree with the text.
 
-**Consequence.** The split is at the `{cacheBreakpoint}` placeholder of `CHAT_MAIN` (after `{addendum}` and `{skills}`): the `ContextAssembler` renders it as a sentinel and splits there; a stored template with a per-call slot before it is sent as one block with the WARNING `prompt_cache_off`, one without the placeholder as one block with no issue. Without sharing across tenants the stable block opens with `[cache scope <hash of the tenant id>]`; with sharing the tool definitions are marked too (`IModelRequest.cacheTools`). A host that overrides the `LLMClient` or the `ContextAssembler`, or builds an `IModelRequest` itself, builds or reads blocks (`[{text}]` for one unmarked block; `joinSystem` to get the text). The pseudonymised skeleton of a run has `system: []`. Whether the stable block is marked, and whether tenants may share a cache entry, is decided by two required switches, `contextAssembler.promptCaching` and `contextAssembler.sharePromptCacheAcrossTenants` (the feature switches of the config have no default: whoever configures the gateway decides), so `IAIGatewayConfig.contextAssembler` is required. The `CHANGELOG.md` of the package carries both migrations. The cost follows the cache: `IUsage` reports `cachedInputTokens` and `cacheWriteInputTokens` next to the total `inputTokens`, and `ModelRegistry.estimateCostUsd` prices the read and written tokens at `IModelCaps.costCacheReadPerMTokUsd` / `costCacheWritePerMTokUsd`, by default 0.1× and 1.25× the input price on Anthropic and the plain input price elsewhere, the rest at the input price; a call without cache tokens costs what it cost before.
+**Consequence.** The split is at the `{cacheBreakpoint}` placeholder of `CHAT_MAIN` (after `{addendum}` and `{skills}`): the `ContextAssembler` renders it as a sentinel and splits there; a stored template with a per-call slot before it is sent as one block with the WARNING `prompt_cache_off`, one without the placeholder as one block with no issue. Without sharing across tenants the stable block opens with `[cache scope <hash of the tenant id>]`; with sharing the tool definitions are marked too (`IModelRequest.cacheTools`). An application that overrides the `LLMClient` or the `ContextAssembler`, or builds an `IModelRequest` itself, builds or reads blocks (`[{text}]` for one unmarked block; `joinSystem` to get the text). The pseudonymised skeleton of a run has `system: []`. Whether the stable block is marked, and whether tenants may share a cache entry, is decided by two required switches, `contextAssembler.promptCaching` and `contextAssembler.sharePromptCacheAcrossTenants` (the feature switches of the config have no default: whoever configures the gateway decides), so `IAIGatewayConfig.contextAssembler` is required. The `CHANGELOG.md` of the package carries both migrations. The cost follows the cache: `IUsage` reports `cachedInputTokens` and `cacheWriteInputTokens` next to the total `inputTokens`, and `ModelRegistry.estimateCostUsd` prices the read and written tokens at `IModelCaps.costCacheReadPerMTokUsd` / `costCacheWritePerMTokUsd`, by default 0.1× and 1.25× the input price on Anthropic and the plain input price elsewhere, the rest at the input price; a call without cache tokens costs what it cost before.
 
 ---
 
