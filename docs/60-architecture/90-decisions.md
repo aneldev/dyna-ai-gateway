@@ -255,7 +255,7 @@ instead.
 
 ## 6. PromptTemplateStore
 
-### D69: Templates are versioned, and the history is read only on request
+### D129: Templates are versioned, and the history is read only on request
 
 **Decision.** One active version per template key is cached and rendered. `listVersions({key, page})` pages the history, newest first, with the cursor paging of this library (`IPageArgs`: `limit`, `startingAfter`, `endingBefore`; `IPage`: `items`, `hasMore`). `activate` switches versions in one operation (the repository's `setActive`). Old versions are kept.
 
