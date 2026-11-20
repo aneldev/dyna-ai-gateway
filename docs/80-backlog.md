@@ -226,6 +226,10 @@ can write new data for the user during the erasure. Needs a shared tombstone in 
 
 Partly solved 2026-10-22 (D114): a call *already running* on B holds the thread's lease, and the erasure on A is then refused with a 409 (`data.busyThreadIds`) before any write. What remains: a call that *starts* on B during the erasure is still accepted — that is the shared tombstone.
 
+A second gap, found 2026-11-20: the erasure waits only for its own instance's background queue (`whenIdle`,
+`orchestration/createBackgroundTasks.ts`). A memory update queued on B runs after its call released the lease, so it is not
+in `busyThreadIds` and can write user facts or working memory after the erasure on A.
+
 #### Repro
 
 Two gateway instances over the same repositories; start `deleteUserData(U)` on A; at the same time run `ask`

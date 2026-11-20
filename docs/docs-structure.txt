@@ -272,6 +272,12 @@
     50-live-adjustment-and-dependency-injection.md
     90-decisions.md
 
+  /69-data-protection
+    _category_.json                           # the sidebar label of the folder: "Data protection"
+    README.md                                 # the section's index: About, For whom, The pages
+    10-gdpr-ccpa-hipaa.md                     # GDPR, CCPA and HIPAA: what each law requires of an LLM application, what the gateway covers
+    20-data-protection-tools.md               # The tools the gateway provides: access, correction, erasure, anonymisation, retention, memory, trace, input rules
+    30-data-protection-best-practices.md      # How to combine them: minimise, contract, retain, erase as a procedure
 
   70-roadmap.md
   80-backlog.md                               # public in the repo, excluded from the site
