@@ -1,4 +1,5 @@
 import apiSidebar from "./api-sidebar.mjs";
+import rehypeSectionByHeading from "./plugins/rehype-section-by-heading.mjs";
 
 const GITHUB_URL = "https://github.com/aneldev/dyna-ai-gateway";
 const NPM_URL = "https://www.npmjs.com/package/dyna-ai-gateway";
@@ -51,6 +52,8 @@ const config = {
         routeBasePath: "/docs",
         sidebarPath: "./sidebars.mjs",
         sidebarItemsGenerator: arrangeSidebar,
+        // One <section> per heading, so custom.css can indent the body like the table of contents
+        rehypePlugins: [rehypeSectionByHeading],
         exclude: [
           "internal/**",
           "plans/**",

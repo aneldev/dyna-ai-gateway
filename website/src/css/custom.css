@@ -179,3 +179,54 @@ h6 {
     transition: none;
   }
 }
+
+/* The body follows the table of contents: the section of an h3 or an h4 is indented under its parent heading
+   (plugins/rehype-section-by-heading.mjs builds the sections). Deeper levels are not indented further, so the generated
+   API pages keep their width. */
+.markdown .heading-section--h2 > .heading-section,
+.markdown .heading-section--h3 > .heading-section {
+  padding-left: 1.25rem;
+}
+
+/* Infima styles the headings and paragraphs that are direct children of .markdown; inside a section they are not, so
+   its rules are repeated for the section's children (infima default.css, .markdown > h2 … > p). */
+.markdown .heading-section > h2 {
+  --ifm-h2-font-size: 2rem;
+  margin-top: calc(var(--ifm-h2-vertical-rhythm-top) * var(--ifm-leading));
+}
+
+.markdown .heading-section > h3 {
+  --ifm-h3-font-size: 1.5rem;
+  margin-top: calc(var(--ifm-h3-vertical-rhythm-top) * var(--ifm-leading));
+}
+
+.markdown .heading-section > :is(h4, h5, h6) {
+  margin-top: calc(var(--ifm-heading-vertical-rhythm-top) * var(--ifm-leading));
+}
+
+.markdown .heading-section > :is(h2, h3, h4, h5, h6) {
+  margin-bottom: calc(var(--ifm-heading-vertical-rhythm-bottom) * var(--ifm-leading));
+}
+
+.markdown .heading-section > :is(p, ul, pre) {
+  margin-bottom: var(--ifm-leading);
+}
+
+.markdown .heading-section:last-child > :last-child {
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 576px) {
+  .markdown .heading-section > h2 {
+    --ifm-h2-font-size: 1.5rem;
+  }
+
+  .markdown .heading-section > h3 {
+    --ifm-h3-font-size: 1.25rem;
+  }
+
+  .markdown .heading-section--h2 > .heading-section,
+  .markdown .heading-section--h3 > .heading-section {
+    padding-left: 0.75rem;
+  }
+}
