@@ -41,7 +41,7 @@ import {
  * # Who needs it
  *
  * `prepareCall` and `AIGateway.resume` (`resolve`); `createRunHooks` for the loop's `prepareStep`, `executeTool`,
- * `decideToolCall` and `endsRun` hooks. A host replaces it with its own `IToolPolicy` in `overrides.toolPolicy`.
+ * `decideToolCall` and `endsRun` hooks. An application replaces it with its own `IToolPolicy` in `overrides.toolPolicy`.
  *
  * # What needs
  *
@@ -55,7 +55,8 @@ import {
  *
  * ## When shouldn't use it
  *
- * A host with its own authorisation model (roles, ABAC) implements `IToolPolicy` over it and passes it in `overrides`.
+ * An application with its own authorisation model (roles, ABAC) implements `IToolPolicy` over it and passes it in
+ * `overrides`.
  *
  * # Pitfalls
  *
@@ -74,7 +75,7 @@ export class ToolPolicy implements IToolPolicy {
    * > Everything the profile allows and the user may use, cut to what the call asked for; the built-ins always.
    *
    * The tools of `allTools` the profile allows and the user's permissions unlock, plus the call's `additionalTools`
-   * (allowed because the app passed them, the permissions still apply, D66), narrowed to `activeTools` when the call
+   * (allowed because the application passed them, the permissions still apply, D66), narrowed to `activeTools` when the call
    * names them (D48); none when the model cannot call tools (`caps.tools`). The gateway's built-in tools (D61) are always
    * in the set, in the order of the registry: no profile, permission or `activeTools` filters them, and the profile's
    * `approvals` do not apply to them; a built-in's own `policy` still pauses (`dyna_aigw_ask_user_question`, D62).

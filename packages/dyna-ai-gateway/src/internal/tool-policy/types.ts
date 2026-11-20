@@ -10,9 +10,9 @@ import {IAIProfile} from "../ai-profile-store";
 /**
  * The rules that decide which tools a run offers the model, and when. Lands in `IAIGatewayConfig.toolPolicy`.
  *
- * `ToolPolicy` applies them to the registry's tools and to a call's `additionalTools` (D66) alike: a tool the app adds on a
- * call still needs the permission that unlocks it, still pauses when the profile's `approvals` name it, still waits for the
- * tools it requires.
+ * `ToolPolicy` applies them to the registry's tools and to a call's `additionalTools` (D66) alike: a tool the
+ * application adds on a call still needs the permission that unlocks it, still pauses when the profile's `approvals`
+ * name it, still waits for the tools it requires.
  */
 export interface IToolPolicyConfig {
   /**
@@ -50,7 +50,7 @@ export interface IToolPolicyConfig {
 /**
  * Registry ∩ Profile ∩ permissions ∩ caps. Stateless.
  *
- * Implemented by `ToolPolicy`; the type of `IAIGatewayDeps.toolPolicy`, so a host may pass its own in `overrides`.
+ * Implemented by `ToolPolicy`; the type of `IAIGatewayDeps.toolPolicy`, so an application may pass its own in `overrides`.
  */
 export interface IToolPolicy {
   /**
@@ -61,7 +61,7 @@ export interface IToolPolicy {
    * > Everything the profile allows and the user may use, cut to what the call asked for; the built-ins always.
    *
    * The tools of `allTools` the profile allows and the user's permissions unlock, plus the call's `additionalTools`
-   * (allowed because the app passed them, the permissions still apply, D66), narrowed to `activeTools` when the call
+   * (allowed because the application passed them, the permissions still apply, D66), narrowed to `activeTools` when the call
    * names them (D48); none when the model cannot call tools (`caps.tools`). The gateway's built-in tools (D61) are always
    * in the set, in the order of the registry: no profile, permission or `activeTools` filters them, and the profile's
    * `approvals` do not apply to them; a built-in's own `policy` still pauses (`dyna_aigw_ask_user_question`, D62).

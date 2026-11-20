@@ -8,7 +8,10 @@ import {TWorkingMemoryStrategy} from "../working-memory";
 
 /** Configuration of the AIProfileStore. Lands in IAIGatewayConfig.aiProfileStore. */
 export interface IAIProfileStoreConfig {
-  /** Persistence of the profiles: the host's adapter (in memory for the tests and the first run, a database in production). */
+  /**
+   * Persistence of the profiles: the application's adapter (in memory for the tests and the first run, a database in
+   * production).
+   */
   repository: IAIProfileRepository;
   /**
    * How long a tenant's profiles stay cached in memory, in milliseconds.
@@ -39,7 +42,8 @@ export interface IAIProfileStoreDeps {
 /**
  * Tenant-scoped store of AI Profiles.
  *
- * Implemented by `AIProfileStore`; the type of `IAIGatewayDeps.aiProfileStore`, so a host may pass its own in `overrides`.
+ * Implemented by `AIProfileStore`; the type of `IAIGatewayDeps.aiProfileStore`, so an application may pass its own in
+ * `overrides`.
  */
 export interface IAIProfileStore {
   /**
@@ -86,7 +90,7 @@ export interface IAIProfileStore {
    *
    * # Who needs it
    *
-   * The host's administration screen; the tests and the first run, to seed a profile.
+   * The application's administration screen; the tests and the first run, to seed a profile.
    *
    * # Pitfalls
    *
@@ -222,7 +226,7 @@ export interface IAIProfile {
    *
    * Overrides `IWorkingMemoryConfig.strategy`; `IWorkingMemoryConfig.enabled` stays gateway-wide. A thread keeps its
    * stored summary when the strategy switches: `SLIDING_WINDOW` ignores it (the query rewrite still reads it), a switch back resumes from it.
-   * Read by the built-in `WorkingMemory`; a host memory may read it or ignore it.
+   * Read by the built-in `WorkingMemory`; an application's memory may read it or ignore it.
    *
    * @example {type: EWorkingMemoryStrategy.SLIDING_WINDOW} - a support chat whose answers must quote the user's own words
    *
@@ -251,7 +255,7 @@ export interface IAIProfile {
   templateOverrides?: Record<string, string>;
 }
 
-/** Loop and output limits of a profile; what may be spent is the app's decision (`IAIGatewayConfig.usageGuard`). */
+/** Loop and output limits of a profile; what may be spent is the application's decision (`IAIGatewayConfig.usageGuard`). */
 export interface IAIProfileLimits {
   /** Model calls of one `run()`, and again of each `resume()` (agent loop cap). */
   maxStepsPerRun: number;

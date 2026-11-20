@@ -52,7 +52,8 @@ export interface IToolRegistryConfig {
 /**
  * Every tool the gateway knows, and the only door through which one executes.
  *
- * Implemented by `ToolRegistry`; the type of `IAIGatewayDeps.toolRegistry`, so a host may pass its own in `overrides`.
+ * Implemented by `ToolRegistry`; the type of `IAIGatewayDeps.toolRegistry`, so an application may pass its own in
+ * `overrides`.
  */
 export interface IToolRegistry {
   /**

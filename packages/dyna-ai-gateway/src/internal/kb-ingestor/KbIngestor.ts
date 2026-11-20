@@ -34,8 +34,8 @@ const DEFAULT_CONCURRENCY = 2;
  *
  * # Who needs it
  *
- * The application, through `AIGateway.kbIngestor`, from its document save, delete and move endpoints. A host replaces
- * it with its own `IKbIngestor` in `overrides.kbIngestor`.
+ * The application, through `AIGateway.kbIngestor`, from its document save, delete and move endpoints. It can
+ * replace the ingestor with its own `IKbIngestor` in `overrides.kbIngestor`.
  *
  * # What needs
  *
@@ -79,7 +79,7 @@ export class KbIngestor implements IKbIngestor {
    *
    * Throws a 400 before any model call when the `Embedder` and the index do not use the same embedding model and
    * dimensions (error 5372774697006), and the usage adapter's refusal of the embedding (a 429 whose `code` is
-   * `USAGE_DENIED_ERROR_CODE`, `data.denyCode` the app's code) before anything is written.
+   * `USAGE_DENIED_ERROR_CODE`, `data.denyCode` the application's code) before anything is written.
    *
    * # Who needs it
    *
@@ -295,7 +295,7 @@ export class KbIngestor implements IKbIngestor {
       });
     }
     catch (error) {
-      // The app refused the embedding: the next documents would be refused too, the book stops here
+      // The application refused the embedding: the next documents would be refused too, the book stops here
       if (isUsageDeniedError(error)) throw error;
       console.error(`Internal error 5372774696808: KbIngestor: document [${doc.id}] of book [${doc.bookId}] was not ingested`, error);
       return {

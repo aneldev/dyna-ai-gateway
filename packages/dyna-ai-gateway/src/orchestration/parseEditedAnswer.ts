@@ -26,12 +26,12 @@ export interface IEditedAnswer {
  * > The reviewer is trusted, the schema still holds.
  *
  * `editedInput` of an EDIT on a reviewed answer must be a string: the new text of the answer. A run started with an
- * `outputSchema` parses it again (`Guardrails.parseStructured`) with the schema `resume` was given (a stored run keeps none,
- * D36), because the caller's code reads `structured`; the output rules do not run on it, a reviewer's text is the app's own
- * like `instructions`. A non-string and a text the schema rejects are 400s, and so is a text longer than the model's own
- * answer may be (`maxOutputTokens` × 4 characters): the edit is stored as the assistant's turn and goes back to the model as
- * history. An answer that has a `structured` value resumed without the schema is refused too: the edited text would be
- * delivered next to the model's unreviewed value.
+ * `outputSchema` parses it again (`Guardrails.parseStructured`) with the schema `resume` was given (a stored run keeps
+ * none, D36), because the caller's code reads `structured`; the output rules do not run on it, a reviewer's text is the
+ * application's own like `instructions`. A non-string and a text the schema rejects are 400s, and so is a text longer
+ * than the model's own answer may be (`maxOutputTokens` × 4 characters): the edit is stored as the assistant's turn and
+ * goes back to the model as history. An answer that has a `structured` value resumed without the schema is refused too:
+ * the edited text would be delivered next to the model's unreviewed value.
  *
  * # Who needs it
  *

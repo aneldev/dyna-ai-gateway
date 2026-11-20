@@ -28,7 +28,7 @@ const SEPARATOR = "/";
  *
  * > The thread database stays small; the model gets the bytes only when it can read them.
  *
- * Stores the files a user uploads for a question (images, PDFs) in the host's blob storage, at
+ * Stores the files a user uploads for a question (images, PDFs) in the application's blob storage, at
  * `<tenantId>/<path>/<userId>/<fileId>`, and hands back an `IFileRef` pointer that the turn keeps. The call path loads the
  * bytes again for the model (`loadInlineFiles`, `restoreInlineBytes`); the pointer is the only record of the file.
  *
@@ -199,7 +199,7 @@ export class FileStore implements IFileStore {
    *
    * # Who needs it
    *
-   * `AIGateway.getFileUrl`, for the host's chat screen that shows an uploaded image or opens a PDF.
+   * `AIGateway.getFileUrl`, for the application's chat screen that shows an uploaded image or opens a PDF.
    */
   public async getSignedUrl(
     {

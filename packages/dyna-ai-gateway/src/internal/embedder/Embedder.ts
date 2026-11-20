@@ -28,7 +28,7 @@ const DEFAULT_BATCH_SIZE = 64;
  * # Who needs it
  *
  * `KbIngestor.ingestDocument` (`embed`, write side) and `KbRetriever.retrieve` (`embedOne`, read side);
- * `KbIngestor.checkIndex` reads `embeddingModelId` and `dimensions`. A host replaces it with its own `IEmbedder` in
+ * `KbIngestor.checkIndex` reads `embeddingModelId` and `dimensions`. An application replaces it with its own `IEmbedder` in
  * `overrides.embedder`.
  *
  * # What needs
@@ -43,7 +43,7 @@ const DEFAULT_BATCH_SIZE = 64;
  *
  * ## When shouldn't use it
  *
- * A host with its own embedding service implements `IEmbedder` and passes it in `overrides`; it must report the same
+ * An application with its own embedding service implements `IEmbedder` and passes it in `overrides`; it must report the same
  * `dimensions` as its index.
  *
  * # Pitfalls

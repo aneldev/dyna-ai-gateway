@@ -35,7 +35,7 @@ export interface IUserCalls {
  *
  * # Pitfalls
  *
- * Per process: a call on another instance is not seen; an erasure on a fleet needs the host's own fence.
+ * Per process: a call on another instance is not seen; an erasure on a fleet needs the application's own fence.
  */
 export const createUserCalls = (): IUserCalls => {
   const inFlight = new Map<string, Set<Promise<void>>>();

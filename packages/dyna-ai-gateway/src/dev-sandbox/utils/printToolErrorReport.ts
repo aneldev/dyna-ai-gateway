@@ -15,7 +15,7 @@ import {toPrintableError} from "./toPrintableError";
  *
  * # About
  *
- * > What a host wires `onToolError` to, shown at once in the chat.
+ * > What an application wires `onToolError` to, shown at once in the chat.
  *
  * The label names the tool, the error's code and status, the step, the call and the duration; the payload is the
  * `IToolErrorReport` with the error as JSON can show it (a `dynaError` through its `toJSON`, anything else its message).

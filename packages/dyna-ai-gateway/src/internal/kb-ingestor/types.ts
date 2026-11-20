@@ -30,7 +30,7 @@ export interface IKbIngestorDeps {
 /**
  * KB write path: MD → chunks → vectors → index.
  *
- * Implemented by `KbIngestor`; the type of `IAIGatewayDeps.kbIngestor`, so a host may pass its own in `overrides`.
+ * Implemented by `KbIngestor`; the type of `IAIGatewayDeps.kbIngestor`, so an application may pass its own in `overrides`.
  */
 export interface IKbIngestor {
   /**
@@ -46,7 +46,7 @@ export interface IKbIngestor {
    *
    * Throws a 400 before any model call when the `Embedder` and the index do not use the same embedding model and
    * dimensions (error 5372774697006), and the usage adapter's refusal of the embedding (a 429 whose `code` is
-   * `USAGE_DENIED_ERROR_CODE`, `data.denyCode` the app's code) before anything is written.
+   * `USAGE_DENIED_ERROR_CODE`, `data.denyCode` the application's code) before anything is written.
    *
    * # Who needs it
    *

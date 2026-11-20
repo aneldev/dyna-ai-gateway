@@ -10,15 +10,15 @@ import {
 } from "./types";
 
 /**
- * makeUsageDeniedError -- the error a model call is refused with when the app said no
+ * makeUsageDeniedError -- the error a model call is refused with when the application said no
  *
  * # About
  *
- * > The app's no, as a throw the layers above recognise.
+ * > The application's no, as a throw the layers above recognise.
  *
- * A `dynaError` with `USAGE_DENIED_ERROR_CODE` and status 429: `userMessage` is the app's `denyUserMessage`, `data` carries the
- * `traceId` of the refused call and the app's `denyCode`. The developer message names the tenant and the call; it never carries
- * the user's text.
+ * A `dynaError` with `USAGE_DENIED_ERROR_CODE` and status 429: `userMessage` is the application's `denyUserMessage`,
+ * `data` carries the `traceId` of the refused call and the application's `denyCode`. The developer message names the
+ * tenant and the call; it never carries the user's text.
  *
  * # Who needs it
  *
@@ -52,19 +52,20 @@ export const makeUsageDeniedError = (
 };
 
 /**
- * isUsageDeniedError -- recognises the app's no on its way up
+ * isUsageDeniedError -- recognises the application's no on its way up
  *
  * # About
  *
  * > A `dynaError` whose code is `USAGE_DENIED_ERROR_CODE`, and nothing else.
  *
  * Narrows `unknown` to the error `makeUsageDeniedError` built, so a layer that catches everything can let this one through
- * untouched: the app decided, the gateway only passes the decision on.
+ * untouched: the application decided, the gateway only passes the decision on.
  *
  * # Who needs it
  *
- * `Guardrails.runRule`, to rethrow a refused judge call instead of turning it into a `rule_error`; the orchestration, to answer
- * `FAILED` with the issue `usage_denied`; a host around `KbIngestor.ingestDocument`, which throws the error itself (root barrel).
+ * `Guardrails.runRule`, to rethrow a refused judge call instead of turning it into a `rule_error`; the orchestration,
+ * to answer `FAILED` with the issue `usage_denied`; an application around `KbIngestor.ingestDocument`, which throws the
+ * error itself (root barrel).
  */
 export const isUsageDeniedError = (error: unknown): error is IDynaError & {data: IUsageDeniedErrorData} =>
   typeof error === "object" && error !== null && (error as IDynaError).code === USAGE_DENIED_ERROR_CODE;

@@ -43,7 +43,8 @@ interface ITenantCache {
  *
  * # Who needs it
  *
- * `prepareCall` and `AIGateway.resume` read; the host's administration screen writes through `AIGateway.aiProfileStore`.
+ * `prepareCall` and `AIGateway.resume` read; the application's administration screen writes through
+ * `AIGateway.aiProfileStore`.
  *
  * # What needs
  *
@@ -139,7 +140,7 @@ export class AIProfileStore implements IAIProfileStore {
    *
    * # Who needs it
    *
-   * The host's administration screen; the tests and the first run, to seed a profile.
+   * The application's administration screen; the tests and the first run, to seed a profile.
    *
    * # Pitfalls
    *

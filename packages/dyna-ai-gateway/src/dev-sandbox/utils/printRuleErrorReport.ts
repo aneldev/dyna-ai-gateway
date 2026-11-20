@@ -15,7 +15,7 @@ import {toPrintableError} from "./toPrintableError";
  *
  * # About
  *
- * > What a host wires `onRuleError` to, shown at once in the chat.
+ * > What an application wires `onRuleError` to, shown at once in the chat.
  *
  * The label names the rule, the stage and how it failed; the payload is the `IRuleErrorReport` with the error as JSON can
  * show it and the evidence without the file bytes and the profile (its id stays). DEBUG mode prints the report object

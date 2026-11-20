@@ -82,8 +82,8 @@ const FORMAT_INSTRUCTIONS: Record<EOutputFormat, string> = {
  *
  * # Who needs it
  *
- * `prepareCall`, once per `ask` and `run`. Constructed once from `IAIGatewayConfig.contextAssembler`; a host replaces it
- * through `IAIGatewayDeps.contextAssembler`.
+ * `prepareCall`, once per `ask` and `run`. Constructed once from `IAIGatewayConfig.contextAssembler`; an application
+ * replaces it through `IAIGatewayDeps.contextAssembler`.
  *
  * # What needs
  *

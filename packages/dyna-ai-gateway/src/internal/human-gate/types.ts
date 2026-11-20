@@ -36,7 +36,7 @@ export interface IHumanGateDeps {
 /**
  * Pause and resume mechanics for runs.
  *
- * Implemented by `HumanGate`; the type of `IAIGatewayDeps.humanGate`, so a host may pass its own in `overrides`.
+ * Implemented by `HumanGate`; the type of `IAIGatewayDeps.humanGate`, so an application may pass its own in `overrides`.
  */
 export interface IHumanGate {
   /**
@@ -216,8 +216,9 @@ interface IPauseEnvelopeBase {
 }
 
 /**
- * What the UI receives when a run pauses; `kind` tells which fields are present. Data only, no text: the app renders the
- * card (and its language) from the tool name and input, as the AI SDK's approval parts and the OpenAI Agents SDK's interruptions do.
+ * What the UI receives when a run pauses; `kind` tells which fields are present. Data only, no text: the application
+ * renders the card (and its language) from the tool name and input, as the AI SDK's approval parts and the OpenAI
+ * Agents SDK's interruptions do.
  */
 export type TPauseEnvelope =
   | IToolApprovalEnvelope
@@ -244,7 +245,7 @@ export interface IToolApprovalEnvelope extends IPauseEnvelopeBase {
   /**
    * Why the call waits for a human, from the tool's policy for this call (`reasonCode` of its NEEDS_APPROVAL result).
    *
-   * > For the card: a key of the app's translations, next to `toolCall.input`.
+   * > For the card: a key of the application's translations, next to `toolCall.input`.
    *
    * Omitted when the policy gave none: the card says only what the call does.
    */

@@ -77,7 +77,8 @@ export interface IContextAssemblerDeps {
 /**
  * Ten inputs in, one request out.
  *
- * Implemented by `ContextAssembler`; the type of `IAIGatewayDeps.contextAssembler`, so a host may pass its own in `overrides`.
+ * Implemented by `ContextAssembler`; the type of `IAIGatewayDeps.contextAssembler`, so an application may pass its own
+ * in `overrides`.
  */
 export interface IContextAssembler {
   /**
@@ -135,7 +136,7 @@ export interface IContextInput {
   /**
    * Text of the `{instructions}` slot, from `IGatewayAskInput.instructions`.
    *
-   * > The app's rule for this call only, rendered as is after `{addendum}`.
+   * > The application's rule for this call only, rendered as is after `{addendum}`.
    *
    * @example "Summarise the invoice in three bullet points." - sent by the "Summarise" button of the invoice screen
    *

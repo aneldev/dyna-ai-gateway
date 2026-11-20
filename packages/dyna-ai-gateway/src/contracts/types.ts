@@ -3,7 +3,7 @@ import {ZodType} from "zod";
 /**
  * Who is asking: the tenant, the user, the permissions, the locale, the time zone and the clock of one call.
  *
- * Supplied by the host application on every gateway call and never stored by the gateway. `AIGateway` hands it to every
+ * Supplied by the application on every gateway call and never stored by the gateway. `AIGateway` hands it to every
  * class: the `ToolPolicy` filters tools by `permissions`, the `ContextAssembler` renders `locale`, `timezone` and `now`
  * into the system prompt, a tool's `execute` and `policy` receive it, every store scopes its reads by `tenantId`.
  */
@@ -18,7 +18,7 @@ export interface IUserContext {
   locale: string;
   /** IANA zone, e.g. "Europe/Vienna". */
   timezone: string;
-  /** "Now" as the app sees it; injected as today's date. */
+  /** "Now" as the application sees it; injected as today's date. */
   now: Date;
 }
 
@@ -219,7 +219,7 @@ export const BUILT_IN_TOOL_NAME_PREFIX = "dyna_aigw_";
 /**
  * Names of the gateway's built-in tools, as the model and the thread see them.
  *
- * > A host that renders tool calls or reads the stored tool results tells the built-ins apart by these names.
+ * > An application that renders tool calls or reads the stored tool results tells the built-ins apart by these names.
  *
  * `ASK_USER_QUESTION` when `humanGate.userQuestions` is enabled, `REMEMBER_USER_FACT` / `FORGET_USER_FACT` when the user
  * memory is, `LOAD_SKILL` in a `run()` whose profile or call has skills.
@@ -252,7 +252,7 @@ export enum EToolCallVerdict {
    */
   DENY = "DENY",
   /**
-   * The app's policy accepts the call, but a human must approve it before it runs.
+   * The application's policy accepts the call, but a human must approve it before it runs.
    *
    * > The policy's job is done; the decision is now the user's, through the human gate.
    *
@@ -287,12 +287,14 @@ export type TToolCallPolicyResult =
      */
     rejectionText?: string;
     /**
-     * Why this call waits for a human, as a code the app translates; carried by the pause as `IToolApprovalEnvelope.reasonCode`.
+     * Why this call waits for a human, as a code the application translates; carried by the pause as
+     * `IToolApprovalEnvelope.reasonCode`.
      *
      * > Tells the approval card why the call waits, in the user's language.
      *
-     * The card renders what the call does from `toolCall.toolName` and its input; this says why it needs a human, when one tool
-     * pauses for more than one reason. A key of the app's translations, not text: the app owns the card and its language. Never sent to the model.
+     * The card renders what the call does from `toolCall.toolName` and its input; this says why it needs a human, when
+     * one tool pauses for more than one reason. A key of the application's translations, not text: the application owns
+     * the card and its language. Never sent to the model.
      *
      * @example "amountOverLimit" - the refund of 500 waits because it is above the limit of 100
      * @example "newCustomer" - the same tool pauses a first refund of any amount
@@ -599,7 +601,7 @@ export interface IIssue {
    * > The application's own words, already in the user's language.
    *
    * Set by a Guardrails rule that has a text for the user (a judge's issues have none), and on `usage_denied` from the
-   * usage adapter's `denyUserMessage`. A host shows it as it is and never shows `message`.
+   * usage adapter's `denyUserMessage`. The application shows it as it is and never shows `message`.
    */
   userMessage?: string;
   /**

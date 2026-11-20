@@ -30,7 +30,7 @@ import {IUserMemoryStore} from "./types";
  *
  * # Pitfalls
  *
- * `ask()` has no tools: there "remember this" waits for the extraction. An app tool named like one of these is a
+ * `ask()` has no tools: there "remember this" waits for the extraction. An application's tool named like one of these is a
  * duplicate the registry rejects.
  */
 export const makeUserMemoryTools = (

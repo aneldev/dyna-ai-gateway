@@ -23,13 +23,13 @@ export interface IGuardrailsConfig {
   /** Time a rule may take before it counts as failed (ERROR `rule_error`); a rule's own timeoutMs wins. Default 10_000. */
   ruleTimeoutMs?: number;
   /**
-   * The app's rules on the prompt (moderation, a topic filter, …). They run after the built-in rules (prompt not empty,
-   * not over maxPromptChars, no prompt-injection markers) and only when those passed. An ERROR issue returns FAILED and
-   * the prompt is not stored. Names are unique, also against the built-in rules. Default none.
+   * The application's rules on the prompt (moderation, a topic filter, …). They run after the built-in rules (prompt
+   * not empty, not over maxPromptChars, no prompt-injection markers) and only when those passed. An ERROR issue returns
+   * FAILED and the prompt is not stored. Names are unique, also against the built-in rules. Default none.
    */
   inputRules?: IInputRule[];
   /**
-   * The app's rules on the answer (business checks such as sums or ids, grounding, moderation). They run after the
+   * The application's rules on the answer (business checks such as sums or ids, grounding, moderation). They run after the
    * built-in output checks (schema, truncation) and only when those passed. An ERROR issue returns FAILED and the answer
    * is not stored (in a run, the tool turns stay: the tools did run, D70). Names are unique. Default none.
    */
@@ -62,9 +62,9 @@ export interface IGuardrailsDeps {
 }
 
 /**
- * Checks around a model call: the gateway's built-in rules, then the app's. Rules are fixed at construction.
+ * Checks around a model call: the gateway's built-in rules, then the application's. Rules are fixed at construction.
  *
- * Implemented by `Guardrails`; the type of `IAIGatewayDeps.guardrails`, so a host may pass its own in `overrides`.
+ * Implemented by `Guardrails`; the type of `IAIGatewayDeps.guardrails`, so an application may pass its own in `overrides`.
  */
 export interface IGuardrails {
   /**
@@ -72,13 +72,14 @@ export interface IGuardrails {
    *
    * # About
    *
-   * > The built-in rules first, the app's only when those passed.
+   * > The built-in rules first, the application's only when those passed.
    *
-   * Sanitises the prompt (trims, normalises line endings), then runs the built-in input rules (not empty unless files come
-   * with it, not over `maxPromptChars`, no prompt-injection marker) and, only when none of them returned an ERROR, the app's
-   * `inputRules` in parallel. Returns the sanitised prompt, every issue stamped with its rule's name, `ok` and the trace ids
-   * of the judge calls, which the gateway annotates with the issues (D73). The call's `abortSignal` reaches every rule and
-   * its judge call; an aborted call rejects with the signal's reason, not with a `rule_error` (D90).
+   * Sanitises the prompt (trims, normalises line endings), then runs the built-in input rules (not empty unless files
+   * come with it, not over `maxPromptChars`, no prompt-injection marker) and, only when none of them returned an ERROR,
+   * the application's `inputRules` in parallel. Returns the sanitised prompt, every issue stamped with its rule's name,
+   * `ok` and the trace ids of the judge calls, which the gateway annotates with the issues (D73). The call's
+   * `abortSignal` reaches every rule and its judge call; an aborted call rejects with the signal's reason, not with a
+   * `rule_error` (D90).
    *
    * # Who needs it
    *
@@ -106,14 +107,15 @@ export interface IGuardrails {
    *
    * # About
    *
-   * > Truncation and schema first, the app's rules only when those passed.
+   * > Truncation and schema first, the application's rules only when those passed.
    *
-   * Flags a `finishReason` LENGTH as the WARNING `output_truncated` and, with a schema, parses the output against it with
-   * `parseStructured`. Only when no ERROR came out of that, the app's `outputRules` run in parallel on the parsed value (or
-   * the text) with the evidence of the call: the question, the KB chunks, the tool results, the user context, the profile and
-   * the thread. Returns the parsed value, every issue stamped with its rule's name, `ok` and the trace ids of the judge calls,
-   * which the gateway annotates with the issues (D73). The call's `abortSignal` reaches every rule and its judge call; an
-   * aborted call rejects with the signal's reason, not with a `rule_error` (D90).
+   * Flags a `finishReason` LENGTH as the WARNING `output_truncated` and, with a schema, parses the output against it
+   * with `parseStructured`. Only when no ERROR came out of that, the application's `outputRules` run in parallel on the
+   * parsed value (or the text) with the evidence of the call: the question, the KB chunks, the tool results, the user
+   * context, the profile and the thread. Returns the parsed value, every issue stamped with its rule's name, `ok` and
+   * the trace ids of the judge calls, which the gateway annotates with the issues (D73). The call's `abortSignal`
+   * reaches every rule and its judge call; an aborted call rejects with the signal's reason, not with a `rule_error`
+   * (D90).
    *
    * # Who needs it
    *
@@ -216,9 +218,9 @@ export interface IInputRule {
   /** Overrides IGuardrailsConfig.ruleTimeoutMs for this rule. */
   timeoutMs?: number;
   /**
-   * Returns issues; empty array = pass. The app's rules run in parallel. A throw, or no answer within the timeout, becomes
-   * the ERROR issue `rule_error` (the error is logged on the server and reported to `IGuardrailsConfig.onRuleError`).
-   * `abortSignal` is aborted at the timeout.
+   * Returns issues; empty array = pass. The application's rules run in parallel. A throw, or no answer within the
+   * timeout, becomes the ERROR issue `rule_error` (the error is logged on the server and reported to
+   * `IGuardrailsConfig.onRuleError`). `abortSignal` is aborted at the timeout.
    */
   check(args: {
     evidence: IInputEvidence;
@@ -251,9 +253,9 @@ export interface IOutputRule {
   /** Overrides IGuardrailsConfig.ruleTimeoutMs for this rule. */
   timeoutMs?: number;
   /**
-   * Returns issues; empty array = pass. The app's rules run in parallel. A throw, or no answer within the timeout, becomes
-   * the ERROR issue `rule_error` (the error is logged on the server and reported to `IGuardrailsConfig.onRuleError`).
-   * `abortSignal` is aborted at the timeout.
+   * Returns issues; empty array = pass. The application's rules run in parallel. A throw, or no answer within the
+   * timeout, becomes the ERROR issue `rule_error` (the error is logged on the server and reported to
+   * `IGuardrailsConfig.onRuleError`). `abortSignal` is aborted at the timeout.
    */
   check(args: {
     evidence: IOutputEvidence;

@@ -35,8 +35,8 @@ const NOTHING = "(nothing yet)";
  *
  * # Who needs it
  *
- * `KbRetriever.retrieve`, once per call with a knowledge-base scope. A host replaces it with its own `IQueryRewriter`
- * (HyDE, multi-query) in `overrides.queryRewriter`.
+ * `KbRetriever.retrieve`, once per call with a knowledge-base scope. An application replaces it with its own
+ * `IQueryRewriter` (HyDE, multi-query) in `overrides.queryRewriter`.
  *
  * # What needs
  *

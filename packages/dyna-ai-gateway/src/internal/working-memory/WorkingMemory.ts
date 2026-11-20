@@ -51,8 +51,8 @@ const MAX_CATCH_UP_TURNS = 20;
  * # Who needs it
  *
  * `ContextAssembler.build` calls `load` for every request; the background memory update calls `saveContext` after every
- * answer; `AIGateway.getThreadMemory` and `AIGateway.resetThreadMemory` call `getState` and `reset`. A host replaces it
- * with its own `IWorkingMemory` in `overrides.workingMemory`.
+ * answer; `AIGateway.getThreadMemory` and `AIGateway.resetThreadMemory` call `getState` and `reset`. An application
+ * replaces it with its own `IWorkingMemory` in `overrides.workingMemory`.
  *
  * # What needs
  *
@@ -67,8 +67,8 @@ const MAX_CATCH_UP_TURNS = 20;
  *
  * ## When shouldn't use it
  *
- * A host with its own memory model (a vector memory, a graph, a different summary) implements `IWorkingMemory` instead
- * and passes it in `overrides`.
+ * An application with its own memory model (a vector memory, a graph, a different summary) implements `IWorkingMemory`
+ * instead and passes it in `overrides`.
  *
  * # Pitfalls
  *

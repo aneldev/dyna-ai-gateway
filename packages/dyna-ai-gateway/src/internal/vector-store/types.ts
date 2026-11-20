@@ -2,12 +2,12 @@ import {IChunk} from "../../contracts";
 
 /** Configuration of the VectorStore. Lands in IAIGatewayConfig.vectorStore. */
 export interface IVectorStoreConfig {
-  /** The index backend: the host's adapter; `InMemoryVectorIndexAdapter` ships with the gateway. */
+  /** The index backend: the application's adapter; `InMemoryVectorIndexAdapter` ships with the gateway. */
   adapter: IVectorIndexAdapter;
   /**
    * The name of the index, for an adapter that hosts several.
    *
-   * Not read by the gateway today: the adapter is constructed by the host and knows its index.
+   * Not read by the gateway today: the adapter is constructed by the application and knows its index.
    *
    * @default "kb_chunks"
    */
@@ -17,7 +17,7 @@ export interface IVectorStoreConfig {
 /**
  * Tenant-filtered vector index of KB chunks.
  *
- * Implemented by `VectorStore`; the type of `IAIGatewayDeps.vectorStore`, so a host may pass its own in `overrides`.
+ * Implemented by `VectorStore`; the type of `IAIGatewayDeps.vectorStore`, so an application may pass its own in `overrides`.
  */
 export interface IVectorStore {
   /**
@@ -146,7 +146,10 @@ export interface IVectorStore {
   ): Promise<IChunkHit[]>;
 }
 
-/** The index backend seam: what a host implements over its vector database; the `VectorStore` checks, the adapter stores. */
+/**
+ * The index backend seam: what an application implements over its vector database; the `VectorStore` checks, the
+ * adapter stores.
+ */
 export interface IVectorIndexAdapter {
   /**
    * upsert -- inserts or replaces chunk records

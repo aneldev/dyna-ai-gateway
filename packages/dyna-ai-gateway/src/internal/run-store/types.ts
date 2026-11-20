@@ -13,14 +13,14 @@ import {
 
 /** Configuration of the RunStore. Lands in IAIGatewayConfig.runStore. */
 export interface IRunStoreConfig {
-  /** Persistence of the runs: the host's adapter; `InMemoryRunRepository` ships with the gateway. */
+  /** Persistence of the runs: the application's adapter; `InMemoryRunRepository` ships with the gateway. */
   repository: IRunRepository;
 }
 
 /**
  * Tenant-scoped persistence of runs.
  *
- * Implemented by `RunStore`; the type of `IAIGatewayDeps.runStore`, so a host may pass its own in `overrides`.
+ * Implemented by `RunStore`; the type of `IAIGatewayDeps.runStore`, so an application may pass its own in `overrides`.
  */
 export interface IRunStore {
   /**
@@ -184,7 +184,10 @@ export interface IRunStore {
   }): Promise<number>;
 }
 
-/** Persistence seam of the runs: what a host implements over its database; the `RunStore` adds the 404 and the status helpers. */
+/**
+ * Persistence seam of the runs: what an application implements over its database; the `RunStore` adds the 404 and the
+ * status helpers.
+ */
 export interface IRunRepository {
   /**
    * save -- creates or replaces the run

@@ -49,7 +49,7 @@ export const ANONYMIZED_USER_ID_PREFIX = "@anon-";
  *
  * # Pitfalls
  *
- * One tenant only: the same person in another tenant is another erasure. The host's usage adapter keeps its own rows;
+ * One tenant only: the same person in another tenant is another erasure. The application's usage adapter keeps its own rows;
  * nothing here touches them.
  */
 export const forgetUser = async (

@@ -8,7 +8,7 @@ import {
 
 /** Configuration of the UserMemoryStore. Lands in IAIGatewayConfig.userMemoryStore. */
 export interface IUserMemoryStoreConfig {
-  /** Persistence of the facts: the host's adapter; `InMemoryUserMemoryRepository` ships with the gateway. */
+  /** Persistence of the facts: the application's adapter; `InMemoryUserMemoryRepository` ships with the gateway. */
   repository: IUserMemoryRepository;
   /** The switch of the extraction. Off: nothing is due, the model is never called for it; stored facts are still read and editable. No default. */
   enabled: boolean;
@@ -32,9 +32,9 @@ export interface IUserMemoryStoreConfig {
    * > A fact enters every prompt of the user: text the model only read (a tool result, a knowledge-base excerpt, a file) must
    * > not be able to write one unasked.
    *
-   * The run pauses with a TOOL_APPROVAL card whose input is the fact (`{key, value}`). Switch it off for an app that accepts
-   * the risk and wants "remember this" stored at once. The facts the extractor writes and `upsertUserFact` are not affected;
-   * `dyna_aigw_forget_user_fact` never pauses (it only removes).
+   * The run pauses with a TOOL_APPROVAL card whose input is the fact (`{key, value}`). Switch it off for an application
+   * that accepts the risk and wants "remember this" stored at once. The facts the extractor writes and `upsertUserFact`
+   * are not affected; `dyna_aigw_forget_user_fact` never pauses (it only removes).
    *
    * @default true
    */
@@ -58,7 +58,8 @@ export interface IUserMemoryStoreDeps {
 /**
  * Cross-thread user facts, extracted by a cheap LLM, editable by the user.
  *
- * Implemented by `UserMemoryStore`; the type of `IAIGatewayDeps.userMemoryStore`, so a host may pass its own in `overrides`.
+ * Implemented by `UserMemoryStore`; the type of `IAIGatewayDeps.userMemoryStore`, so an application may pass its own in
+ * `overrides`.
  */
 export interface IUserMemoryStore {
   /**
@@ -268,7 +269,7 @@ export interface IUserMemoryStore {
   ): Promise<number>;
 }
 
-/** Persistence seam of the user facts: one record per tenant + user, implemented by the host's adapter. */
+/** Persistence seam of the user facts: one record per tenant + user, implemented by the application's adapter. */
 export interface IUserMemoryRepository {
   /**
    * load -- the facts of one user

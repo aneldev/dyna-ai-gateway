@@ -48,8 +48,9 @@ import {
  *
  * - An override's factory (`IAIGatewayOverrides`) builds the instance in place of the gateway's class, with the same config
  *   and the same deps, and everyone that depends on it gets that instance.
- * - The gateway's own tools (the user-memory tools, `dyna_aigw_ask_user_question`; D61) are registered before the host's.
- *   Their names carry `BUILT_IN_TOOL_NAME_PREFIX`, which a host tool may not take (a 400), so the two never collide.
+ * - The gateway's own tools (the user-memory tools, `dyna_aigw_ask_user_question`; D61) are registered before the
+ *   application's. Their names carry `BUILT_IN_TOOL_NAME_PREFIX`, which an application's tool may not take (a 400), so
+ *   the two never collide.
  *
  * Runs once, in the constructor of `AIGateway`, before any call.
  *
@@ -72,7 +73,7 @@ export const createGatewayDeps = (
     overrides,
   }: {
     config: IAIGatewayConfig;
-    /** Factories to use instead of the gateway's classes (a host's own dep; tests: `() => fakeLLMClient`). */
+    /** Factories to use instead of the gateway's classes (an application's own dep; tests: `() => fakeLLMClient`). */
     overrides: IAIGatewayOverrides;
   },
 ): IAIGatewayDeps => {
@@ -102,7 +103,8 @@ export const createGatewayDeps = (
     llmClient,
     promptTemplateStore,
   }, (config, deps) => new UserMemoryStore(config, deps));
-  // The built-in prefix is the gateway's: an app tool that takes it could collide with a built-in, present or future
+  // The built-in prefix is the gateway's.
+  // An application's tool that takes it could collide with a built-in, present or future.
   assertAppToolNames({
     tools: config.toolRegistry?.tools ?? [],
     source: "toolRegistry.tools",
@@ -183,7 +185,7 @@ export const createGatewayDeps = (
 };
 
 /**
- * The host's factory when there is one, the gateway's class otherwise.
+ * The application's factory when there is one, the gateway's class otherwise.
  * Both get the same config and deps.
  */
 const make = <TConfig, TDeps, TDep>(

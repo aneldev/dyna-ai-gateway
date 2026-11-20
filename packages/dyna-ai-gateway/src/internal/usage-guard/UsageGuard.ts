@@ -8,20 +8,21 @@ import {
 } from "./types";
 
 /**
- * UsageGuard -- asks the app before every model call and tells it what the call used
+ * UsageGuard -- asks the application before every model call and tells it what the call used
  *
  * # About
  *
  * > The gateway holds no token logic; it asks, it reports.
  *
- * Wraps the app's `IUsageAdapter` so that no model call can skip it and no adapter failure can break a call the wrong way:
+ * Wraps the application's `IUsageAdapter` so that no model call can skip it and no adapter failure can break a call the
+ * wrong way:
  *
  * - `check` before every provider call: a throw of the adapter becomes a denial (fail closed) and is logged.
  * - `addUsage` after every approved check, also for a failed or aborted call: a throw of the adapter is logged, the answer
  *   is still returned.
  *
- * Who may spend what, how much is left, per day, per user, per model, with credits or in dollars — all of that is the app's,
- * inside its adapter. The guard holds no state, no numbers and no ledger.
+ * Who may spend what, how much is left, per day, per user, per model, with credits or in dollars — all of that is the
+ * application's, inside its adapter. The guard holds no state, no numbers and no ledger.
  *
  * # Who needs it
  *
@@ -30,7 +31,7 @@ import {
  *
  * # What needs
  *
- * `IUsageGuardConfig.adapter`: the app's adapter, or `InMemoryUsageAdapter` in tests and the sandbox.
+ * `IUsageGuardConfig.adapter`: the application's adapter, or `InMemoryUsageAdapter` in tests and the sandbox.
  *
  * # Pitfalls
  *
@@ -45,10 +46,10 @@ export class UsageGuard implements IUsageGuard {
    *
    * # About
    *
-   * > One question to the app, fail closed.
+   * > One question to the application, fail closed.
    *
    * Passes the call's factors and its rough size to the adapter and returns its answer. When the adapter throws, the call is
-   * refused with `USAGE_CHECK_FAILED_DENY_CODE` and the error is logged: an app that cannot answer has not said yes.
+   * refused with `USAGE_CHECK_FAILED_DENY_CODE` and the error is logged: an application that cannot answer has not said yes.
    *
    * # Who needs it
    *
@@ -68,11 +69,11 @@ export class UsageGuard implements IUsageGuard {
   }
 
   /**
-   * addUsage -- tells the app what the call used
+   * addUsage -- tells the application what the call used
    *
    * # About
    *
-   * > One report to the app, never fatal.
+   * > One report to the application, never fatal.
    *
    * Passes the report to the adapter. When the adapter throws, the error is logged and nothing else happens: the call already
    * ran and its answer belongs to the user.
@@ -86,7 +87,7 @@ export class UsageGuard implements IUsageGuard {
       await this.config.adapter.addUsage(args);
     }
     catch (error) {
-      console.error(`Internal error 5378215504012: UsageGuard: the usage adapter's addUsage threw for call [${args.traceId}] of tenant [${args.tenantId}]; the usage is not recorded by the app`, error);
+      console.error(`Internal error 5378215504012: UsageGuard: the usage adapter's addUsage threw for call [${args.traceId}] of tenant [${args.tenantId}]; the usage is not recorded by the application`, error);
     }
   }
 }

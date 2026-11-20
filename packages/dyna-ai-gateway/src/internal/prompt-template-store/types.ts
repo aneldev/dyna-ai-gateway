@@ -5,7 +5,10 @@ import {
 
 /** Configuration of the PromptTemplateStore. Lands in IAIGatewayConfig.promptTemplateStore. */
 export interface IPromptTemplateStoreConfig {
-  /** Persistence of the templates: the host's adapter (in memory for the tests and the first run, a database in production). */
+  /**
+   * Persistence of the templates: the application's adapter (in memory for the tests and the first run, a database in
+   * production).
+   */
   repository: IPromptTemplateRepository;
   /**
    * How long the active templates stay cached in memory, in milliseconds.
@@ -22,7 +25,7 @@ export interface IPromptTemplateStoreConfig {
   /**
    * Seed body of a template key, used as version 0 while the repository has no active version for that key.
    *
-   * > Lets the host ship its own default wording without a repository write.
+   * > Lets the application ship its own default wording without a repository write.
    *
    * Every key is optional; a key not given here keeps the shipped seed of the library.
    * An active version in the repository always wins over any seed.
@@ -49,7 +52,8 @@ export interface IPromptTemplateStoreConfig {
 /**
  * The prompts as data: every prompt text the gateway writes, keyed by job and versioned.
  *
- * Implemented by `PromptTemplateStore`; the type of `IAIGatewayDeps.promptTemplateStore`, so a host may pass its own in `overrides`.
+ * Implemented by `PromptTemplateStore`; the type of `IAIGatewayDeps.promptTemplateStore`, so an application may pass
+ * its own in `overrides`.
  */
 export interface IPromptTemplateStore {
   /**
@@ -60,7 +64,7 @@ export interface IPromptTemplateStore {
    * > The wording in force for a job, with its version.
    *
    * Reads the cached active templates. Falls back to the seed (version 0) when the repository has no active version for the
-   * key: the host's `seedTemplates` entry, else the shipped one; a key with neither is a 404.
+   * key: the application's `seedTemplates` entry, else the shipped one; a key with neither is a 404.
    *
    * # Who needs it
    *
@@ -108,7 +112,7 @@ export interface IPromptTemplateStore {
    *
    * # Who needs it
    *
-   * The host's administration screen, before `activate` (pick a version) and after `addVersion` (see it listed).
+   * The application's administration screen, before `activate` (pick a version) and after `addVersion` (see it listed).
    */
   listVersions(args: {
     key: EPromptTemplateKey;
@@ -127,7 +131,7 @@ export interface IPromptTemplateStore {
    *
    * # Who needs it
    *
-   * The host's administration screen.
+   * The application's administration screen.
    */
   addVersion(args: {
     key: EPromptTemplateKey;
@@ -146,7 +150,7 @@ export interface IPromptTemplateStore {
    *
    * # Who needs it
    *
-   * The host's administration screen, for a new wording and for a rollback.
+   * The application's administration screen, for a new wording and for a rollback.
    *
    * # Pitfalls
    *
@@ -163,7 +167,7 @@ export interface IPromptTemplateStore {
    *
    * # About
    *
-   * > For a host that changed the repository behind the store's back.
+   * > For an application that changed the repository behind the store's back.
    *
    * The next renders use the reloaded versions; nothing else changes.
    */
@@ -173,8 +177,8 @@ export interface IPromptTemplateStore {
 /**
  * Persistence seam of the prompt templates: the active rows whole, the history of a key paged.
  *
- * Implemented by the host's adapter (`InMemoryPromptTemplateRepository` in the tests and the sandbox); only the `PromptTemplateStore` calls it.
- * A template is identified by `key` + `version`.
+ * Implemented by the application's adapter (`InMemoryPromptTemplateRepository` in the tests and the sandbox); only the
+ * `PromptTemplateStore` calls it. A template is identified by `key` + `version`.
  */
 export interface IPromptTemplateRepository {
   /**

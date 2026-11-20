@@ -69,7 +69,7 @@ const promptInjection: IInputRule = {
  *
  * # About
  *
- * > Code, not configuration: three rules, in this order, before the app's.
+ * > Code, not configuration: three rules, in this order, before the application's.
  *
  * `prompt_not_empty`, `prompt_max_length` with the config's `maxPromptChars`, `prompt_injection` with the markers of
  * `INJECTION_PATTERNS`. None of them asks a judge: they are cheap by design, a model call here would slow and cost every call.

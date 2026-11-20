@@ -16,7 +16,7 @@ import {
 /**
  * The thread memory of the gateway, raw: what the model gets from the thread's history, and what it learns from an answer.
  *
- * Implemented by `WorkingMemory` (two built-in strategies, `EWorkingMemoryStrategy`) and by a host class passed as
+ * Implemented by `WorkingMemory` (two built-in strategies, `EWorkingMemoryStrategy`) and by an application's class passed as
  * `overrides.workingMemory` to the `AIGateway` constructor. The gateway holds no history logic of its own: the
  * `ContextAssembler` calls `load` for every request, the background memory update calls `saveContext` after every
  * answer, the facade calls `getState` and `reset` for the UI.

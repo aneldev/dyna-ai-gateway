@@ -11,7 +11,7 @@ import {
 /**
  * Converts between ITurn (storage) and IMessage (LLMClient request). Stateless.
  *
- * Implemented by `TurnBuilder`; the type of `IAIGatewayDeps.turnBuilder`, so a host may pass its own in `overrides`.
+ * Implemented by `TurnBuilder`; the type of `IAIGatewayDeps.turnBuilder`, so an application may pass its own in `overrides`.
  */
 export interface ITurnBuilder {
   /**

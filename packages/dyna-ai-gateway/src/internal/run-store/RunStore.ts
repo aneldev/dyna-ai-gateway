@@ -16,11 +16,11 @@ import {
  *
  * > A run outlives the request that started it: it pauses for a human, resumes in another process, survives a crash.
  *
- * Implements `IRunStore` over the host's `IRunRepository`: the run's request as built for step 1, its messages so far in
- * `LLMClient` shape, the envelopes of its pause and its status (`ERunStatus`), scoped by tenant. One thread has at most
- * one open run. The store adds to the repository what every caller needs the same way: the 404 of `load`, the status
- * lists, `setStatus`, and `transition`, the compare-and-set that lets exactly one of several racing callers move a run
- * (D69).
+ * Implements `IRunStore` over the application's `IRunRepository`: the run's request as built for step 1, its messages
+ * so far in `LLMClient` shape, the envelopes of its pause and its status (`ERunStatus`), scoped by tenant. One thread
+ * has at most one open run. The store adds to the repository what every caller needs the same way: the 404 of `load`,
+ * the status lists, `setStatus`, and `transition`, the compare-and-set that lets exactly one of several racing callers
+ * move a run (D69).
  *
  * It sits under the `HumanGate` (pause, resume, cancel, expire) and the settlement of the call path (`settleRun`,
  * `closeRun`).
@@ -29,7 +29,7 @@ import {
  *
  * `HumanGate` for every pause and decision; `settleRun`, `settleReview`, `closeRun` for the status of a finished run;
  * `AIGateway.getPausedRun`, `recoverStuckRuns` and the resume path; `AIProfileStore` to refuse deleting a profile with
- * paused runs; `forgetUser` and `deleteThreads` for the GDPR paths. A host replaces it with its own `IRunStore` in
+ * paused runs; `forgetUser` and `deleteThreads` for the GDPR paths. An application replaces it with its own `IRunStore` in
  * `overrides.runStore`.
  *
  * # What needs
@@ -44,7 +44,7 @@ import {
  *
  * ## When shouldn't use it
  *
- * A host that needs another storage writes an `IRunRepository`, not an `IRunStore`: the atomic `transition` is the
+ * An application that needs another storage writes an `IRunRepository`, not an `IRunStore`: the atomic `transition` is the
  * repository's duty, and the store's logic is the same for every database.
  *
  * # Pitfalls

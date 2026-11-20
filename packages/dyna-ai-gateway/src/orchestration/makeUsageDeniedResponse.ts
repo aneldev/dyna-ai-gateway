@@ -18,7 +18,7 @@ export const USAGE_DENIED_REASON = "The usage adapter refused the model call";
  *
  * # About
  *
- * > The app's no, as an issue: its code in `data.denyCode`, its words in `userMessage`.
+ * > The application's no, as an issue: its code in `data.denyCode`, its words in `userMessage`.
  *
  * ERROR when the refusal failed the call, WARNING when a run kept the answer of its earlier steps because a later step was
  * refused. `message` names the refused call's trace id for the log; it is not the user's text.
@@ -49,11 +49,11 @@ export const makeUsageDeniedIssue = (
  *
  * # About
  *
- * > The call ended on the app's word: the response says so, nothing is thrown.
+ * > The call ended on the application's word: the response says so, nothing is thrown.
  *
  * Built when a layer threw the usage-denied error (`isUsageDeniedError`) and the call cannot go on without that model call:
  * the input judges, the search's embedding, the answer, the first step of a run or of a resume, the output judges.
- * `issues` holds one ERROR issue `USAGE_DENIED_ISSUE_CODE`, so a host branches on the code, not on the prose.
+ * `issues` holds one ERROR issue `USAGE_DENIED_ISSUE_CODE`, so an application branches on the code, not on the prose.
  *
  * # Who needs it
  *

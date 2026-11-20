@@ -19,7 +19,8 @@ import {makeTenantKey} from "./utils/makeTenantKey";
  *
  * # Who needs it
  *
- * The gateway tests (`gatewayConfigBase`), the dev sandbox and the cookbook's first run; a host app uses its own adapter.
+ * The gateway tests (`gatewayConfigBase`), the dev sandbox and the cookbook's first run; an application uses its own
+ * adapter.
  *
  * # Pitfalls
  *
@@ -84,7 +85,7 @@ export class InMemoryTraceRepository implements ITraceRepository {
    *
    * # Who needs it
    *
-   * `Trace.query`, for the host's audit pages.
+   * `Trace.query`, for the application's audit pages.
    */
   public async query(
     {

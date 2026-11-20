@@ -6,7 +6,7 @@ export type TConsoleKey<TKey extends string> = TKey | `${TKey}`;
 /**
  * The switches of a `ConsoleController`: one boolean per key, all declared up front.
  *
- * Taken by the `ConsoleController` constructor; the keys are the members of the host's enum.
+ * Taken by the `ConsoleController` constructor; the keys are the members of the application's enum.
  */
 export interface IConsoleControllerConfig<TKey extends string> {
   /** Which keys print; every key is declared. */
@@ -29,7 +29,7 @@ export interface IConsoleControllerConfig<TKey extends string> {
  *
  * # Who needs it
  *
- * The dev sandbox (`devConsole`, keyed by `EDevConsole`); a host that wants switchable debug output of its own.
+ * The dev sandbox (`devConsole`, keyed by `EDevConsole`); an application that wants switchable debug output of its own.
  *
  * # Usage
  *

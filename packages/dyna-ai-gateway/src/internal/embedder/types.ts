@@ -26,7 +26,7 @@ export interface IEmbedderDeps {
 /**
  * Text → vector, one fixed model.
  *
- * Implemented by `Embedder`; the type of `IAIGatewayDeps.embedder`, so a host may pass its own in `overrides`.
+ * Implemented by `Embedder`; the type of `IAIGatewayDeps.embedder`, so an application may pass its own in `overrides`.
  */
 export interface IEmbedder {
   /**

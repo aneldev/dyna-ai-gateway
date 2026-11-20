@@ -12,14 +12,14 @@ import {
 
 /** Configuration of the Trace. Lands in IAIGatewayConfig.trace. */
 export interface ITraceConfig {
-  /** Persistence: the host's adapter; `InMemoryTraceRepository` ships with the gateway for tests and the sandbox. */
+  /** Persistence: the application's adapter; `InMemoryTraceRepository` ships with the gateway for tests and the sandbox. */
   repository: ITraceRepository;
 }
 
 /**
  * Audit log of every model interaction.
  *
- * Implemented by `Trace`; the type of `IAIGatewayDeps.trace`, so a host may pass its own in `overrides`.
+ * Implemented by `Trace`; the type of `IAIGatewayDeps.trace`, so an application may pass its own in `overrides`.
  */
 export interface ITrace {
   /**
@@ -75,7 +75,7 @@ export interface ITrace {
    *
    * # Who needs it
    *
-   * The host, as `gateway.trace.query`, for its audit and debugging pages; the tests, to read what a call did.
+   * The application, as `gateway.trace.query`, for its audit and debugging pages; the tests, to read what a call did.
    */
   query(args: {
     tenantId: string;
@@ -169,7 +169,7 @@ export interface ITraceRepository {
    *
    * # Who needs it
    *
-   * `Trace.query`, for the host's audit pages.
+   * `Trace.query`, for the application's audit pages.
    */
   query(args: {
     tenantId: string;

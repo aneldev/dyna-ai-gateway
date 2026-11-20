@@ -1,6 +1,9 @@
 /** Configuration of the ModelRegistry. Lands in IAIGatewayConfig.modelRegistry. */
 export interface IModelRegistryConfig {
-  /** Persistence of the model entries: the host's adapter (in memory for the tests and the first run, a database in production). */
+  /**
+   * Persistence of the model entries: the application's adapter (in memory for the tests and the first run, a database
+   * in production).
+   */
   repository: IModelRegistryRepository;
   /**
    * How long the catalog stays cached in memory, in milliseconds.
@@ -19,7 +22,8 @@ export interface IModelRegistryConfig {
 /**
  * Global catalog of usable models: facts, not tenant choices. Global by design; no tenantId.
  *
- * Implemented by `ModelRegistry`; the type of `IAIGatewayDeps.modelRegistry`, so a host may pass its own in `overrides`.
+ * Implemented by `ModelRegistry`; the type of `IAIGatewayDeps.modelRegistry`, so an application may pass its own in
+ * `overrides`.
  */
 export interface IModelRegistry {
   /**
@@ -50,7 +54,7 @@ export interface IModelRegistry {
    *
    * # Who needs it
    *
-   * The host's administration screen and profile editor; the dev sandbox.
+   * The application's administration screen and profile editor; the dev sandbox.
    */
   listModels(args?: {
     /** Skip disabled entries. Default true. */
@@ -96,11 +100,11 @@ export interface IModelRegistry {
    * > The administration write: the entry as given, whole, and the cache dropped.
    *
    * Saves through the repository and drops this instance's cache, so the next read sees the entry; other instances see it
-   * after their TTL. No validation of the entry beyond its type: the host's screen is the editor.
+   * after their TTL. No validation of the entry beyond its type: the application's screen is the editor.
    *
    * # Who needs it
    *
-   * The host's administration screen; the tests and the first run, to seed the catalog.
+   * The application's administration screen; the tests and the first run, to seed the catalog.
    */
   upsertModel(args: {model: IModelInfo}): Promise<void>;
 
@@ -142,7 +146,7 @@ export interface IModelRegistry {
    *
    * # About
    *
-   * > For a host that changed the repository behind the registry's back.
+   * > For an application that changed the repository behind the registry's back.
    *
    * The next reads are served from the reloaded catalog; nothing else changes.
    */

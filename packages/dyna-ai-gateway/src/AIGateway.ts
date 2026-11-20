@@ -118,19 +118,19 @@ import {deleteThreads} from "./utils/deleteThreads";
  * - The admin surfaces as getters (`modelRegistry`, `aiProfileStore`, `promptTemplateStore`, `toolRegistry`, `trace`,
  *   `usageGuard`) and the second entry point, `kbIngestor`, for the knowledge-base write endpoints.
  *
- * The host application constructs one per process and keeps it: it holds the background work and the calls in flight,
+ * The application constructs one per process and keeps it: it holds the background work and the calls in flight,
  * the instances of its classes hold the caches.
  *
  * # Who needs it
  *
- * The host application: its HTTP handlers for the chat, the approval screens and the admin pages; its scheduled jobs; its
+ * The application: its HTTP handlers for the chat, the approval screens and the admin pages; its scheduled jobs; its
  * SIGTERM handler. Nothing inside the gateway calls the facade.
  *
  * # What needs
  *
- * `IAIGatewayConfig`: the config of each class, with the repositories and adapters the host implements (or the in-memory
- * ones, for tests and the first run). Optionally `IAIGatewayOverrides`: a factory per class the host replaces (tests: a fake
- * `llmClient`).
+ * `IAIGatewayConfig`: the config of each class, with the repositories and adapters the application implements (or the
+ * in-memory ones, for tests and the first run). Optionally `IAIGatewayOverrides`: a factory per class the application
+ * replaces (tests: a fake `llmClient`).
  *
  * # Usage
  *
@@ -163,7 +163,10 @@ export class AIGateway {
 
   constructor(
     private readonly config: IAIGatewayConfig,
-    /** Factories for the deps the host builds itself; each gets its dep's config and deps (tests: `{llmClient: () => fake}`). */
+    /**
+     * Factories for the deps the application builds itself; each gets its dep's config and deps
+     * (tests: `{llmClient: () => fake}`).
+     */
     overrides: IAIGatewayOverrides = {},
   ) {
     this.deps = createGatewayDeps({
@@ -196,8 +199,8 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's chat endpoint for a conversation without tools, and every feature that needs one answer from the model over
-   * the knowledge base: a summary button, an extraction with `outputSchema`, a classification.
+   * The application's chat endpoint for a conversation without tools, and every feature that needs one answer from the
+   * model over the knowledge base: a summary button, an extraction with `outputSchema`, a classification.
    *
    * # What needs
    *
@@ -470,8 +473,8 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's chat endpoint for an assistant that acts: a support agent with a refund tool, an accounting assistant that
-   * posts a credit note after an approval, a form the model fills by asking the user.
+   * The application's chat endpoint for an assistant that acts: a support agent with a refund tool, an accounting
+   * assistant that posts a credit note after an approval, a form the model fills by asking the user.
    *
    * # What needs
    *
@@ -678,8 +681,8 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's endpoint behind the approval card, the user-question form and the reviewer's screen; called from another
-   * request than the `run` that paused, and often by another user.
+   * The application's endpoint behind the approval card, the user-question form and the reviewer's screen; called from
+   * another request than the `run` that paused, and often by another user.
    *
    * # What needs
    *
@@ -1114,8 +1117,8 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's "dismiss" action next to an approval card or a question. Open to every user of the tenant, like `resume`
-   * (D32): the run id is the key, a random UUID nobody can guess (D115).
+   * The application's "dismiss" action next to an approval card or a question. Open to every user of the tenant, like
+   * `resume` (D32): the run id is the key, a random UUID nobody can guess (D115).
    */
   public async cancelRun(
     {
@@ -1159,7 +1162,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's upload endpoint, before the chat call that sends the file.
+   * The application's upload endpoint, before the chat call that sends the file.
    *
    * # Pitfalls
    *
@@ -1202,7 +1205,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's "remove attachment" before the message is sent.
+   * The application's "remove attachment" before the message is sent.
    */
   public async deleteFile(
     {
@@ -1232,7 +1235,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's chat screen, to show an uploaded image or open a PDF; the `files.toUrl` hook of the Vercel UI module.
+   * The application's chat screen, to show an uploaded image or open a PDF; the `files.toUrl` hook of the Vercel UI module.
    */
   public async getFileUrl(
     {
@@ -1269,8 +1272,8 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host, when only the uploads of a user must go (GDPR); `deleteUserData` and `anonymizeUserData` remove the files as
-   * one of their steps.
+   * The application, when only the uploads of a user must go (GDPR); `deleteUserData` and `anonymizeUserData` remove
+   * the files as one of their steps.
    */
   public async removeFilesByUser(
     {
@@ -1295,8 +1298,8 @@ export class AIGateway {
    * > Everything the gateway holds about one person in a tenant, gone from every store in one call.
    *
    * Deletes the files the user uploaded, the facts remembered about them, their threads with every turn and working
-   * memory, their runs and their trace entries (D54). What the app's usage adapter stored is the app's to erase. Returns the counts per
-   * place; `pseudonym` is null.
+   * memory, their runs and their trace entries (D54). What the application's usage adapter stored is the application's
+   * to erase. Returns the counts per place; `pseudonym` is null.
    *
    * - Waits for the user's own background work first, so nothing is written after the erasure.
    * - While it runs, the user's new calls (`ask`, `run`, `resume`, `uploadFile`, `upsertUserFact`) are a 409, and it waits
@@ -1304,8 +1307,8 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The application, on a data-subject erasure request (GDPR). Raw ids, no user check: an admin surface, the host decides
-   * who may call it.
+   * The application, on a data-subject erasure request (GDPR). Raw ids, no user check: an admin surface, the
+   * application decides who may call it.
    *
    * # Usage
    *
@@ -1320,11 +1323,11 @@ export class AIGateway {
    *
    * # Pitfalls
    *
-   * Hard delete, no way back. A second call finds nothing and returns zeros. "Busy" is the thread's lease, the lock `ask` /
-   * `run` / `resume` hold for the duration of a call (a PAUSED run holds none: its thread is erased and the run with it).
-   * A thread of the user with a live lease (a call on another instance of the gateway) is refused with a `dynaError` of status 409, code `5377210486241`, and
-   * `data.busyThreadIds` naming the threads, before anything is erased: the host retries when the call ended -- the gateway
-   * waits only for the calls of this instance.
+   * Hard delete, no way back. A second call finds nothing and returns zeros. "Busy" is the thread's lease, the lock
+   * `ask` / `run` / `resume` hold for the duration of a call (a PAUSED run holds none: its thread is erased and the run
+   * with it). A thread of the user with a live lease (a call on another instance of the gateway) is refused with a
+   * `dynaError` of status 409, code `5377210486241`, and `data.busyThreadIds` naming the threads, before anything is
+   * erased: the application retries when the call ended -- the gateway waits only for the calls of this instance.
    */
   public async deleteUserData(
     {
@@ -1366,7 +1369,7 @@ export class AIGateway {
    * # Who needs it
    *
    * The application, on a data-subject erasure request (GDPR) where the books must keep the usage and the cost. Raw ids,
-   * no user check: an admin surface, the host decides who may call it.
+   * no user check: an admin surface, the application decides who may call it.
    *
    * # Usage
    *
@@ -1385,7 +1388,7 @@ export class AIGateway {
    * lock `ask` / `run` / `resume` hold for the duration of a call (a PAUSED run holds none: its thread is kept as a skeleton
    * and the run cancelled). A thread of the user with a live lease (a call on another instance of the gateway) is refused with a `dynaError` of status 409, code `5377210486241`,
    * and `data.busyThreadIds` naming the threads, before anything is touched, so the user's rows never end up under two
-   * pseudonyms: the host retries when the call ended.
+   * pseudonyms: the application retries when the call ended.
    */
   public async anonymizeUserData(
     {
@@ -1424,7 +1427,7 @@ export class AIGateway {
    * # Who needs it
    *
    * The application: the user's "delete conversation(s)", a tenant's retention job, a test's teardown. Raw ids, no user
-   * check: an admin surface, the host decides who may call it.
+   * check: an admin surface, the application decides who may call it.
    *
    * # Usage
    *
@@ -1557,7 +1560,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's memory settings screen, next to `upsertUserFact`, `removeUserFact` and `clearUserFacts`.
+   * The application's memory settings screen, next to `upsertUserFact`, `removeUserFact` and `clearUserFacts`.
    */
   public async getUserFacts(
     {userContext}: { userContext: IUserContext },
@@ -1605,7 +1608,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's memory settings screen ("add", "edit").
+   * The application's memory settings screen ("add", "edit").
    */
   public async upsertUserFact(
     {
@@ -1657,7 +1660,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's chat screen, next to `resetThreadMemory`.
+   * The application's chat screen, next to `resetThreadMemory`.
    */
   public async getThreadMemory(
     {
@@ -1879,7 +1882,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's inbox of pending approvals and questions, for the user who asked.
+   * The application's inbox of pending approvals and questions, for the user who asked.
    */
   public async listPausedRuns(
     {userContext}: { userContext: IUserContext },
@@ -1910,8 +1913,9 @@ export class AIGateway {
    *
    * > The whole pause: the draft answer of a review, the tool calls, the request the run was built with.
    *
-   * Raw ids, no user check: an admin surface like `trace`, the host decides who may read it (a reviewer of the tenant). The
-   * envelopes carry the draft answer (`IResultReviewEnvelope.result`), and the run its system prompt and messages.
+   * Raw ids, no user check: an admin surface like `trace`, the application decides who may read it (a reviewer of the
+   * tenant). The envelopes carry the draft answer (`IResultReviewEnvelope.result`), and the run its system prompt and
+   * messages.
    *
    * # Who needs it
    *
@@ -1947,7 +1951,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's knowledge-base write endpoints and import jobs.
+   * The application's knowledge-base write endpoints and import jobs.
    */
   public get kbIngestor(): IKbIngestor {
     return this.deps.kbIngestor;
@@ -1960,11 +1964,11 @@ export class AIGateway {
    *
    * > Which models exist, with their caps and prices.
    *
-   * Raw ids, no user check: the host checks the owner permission before it calls, as for every admin getter.
+   * Raw ids, no user check: the application checks the owner permission before it calls, as for every admin getter.
    *
    * # Who needs it
    *
-   * The host's admin pages and seed scripts.
+   * The application's admin pages and seed scripts.
    */
   public get modelRegistry(): IModelRegistry {
     return this.deps.modelRegistry;
@@ -1977,11 +1981,11 @@ export class AIGateway {
    *
    * > Create, change and read the profiles of a tenant.
    *
-   * Raw ids, no user check: the host checks the owner permission before it calls.
+   * Raw ids, no user check: the application checks the owner permission before it calls.
    *
    * # Who needs it
    *
-   * The host's admin pages and seed scripts.
+   * The application's admin pages and seed scripts.
    */
   public get aiProfileStore(): IAIProfileStore {
     return this.deps.aiProfileStore;
@@ -1994,11 +1998,11 @@ export class AIGateway {
    *
    * > The versions of every template: read, add one, set the active one.
    *
-   * Raw ids, no user check: the host checks the owner permission before it calls.
+   * Raw ids, no user check: the application checks the owner permission before it calls.
    *
    * # Who needs it
    *
-   * The host's prompt editor and seed scripts.
+   * The application's prompt editor and seed scripts.
    */
   public get promptTemplateStore(): IPromptTemplateStore {
     return this.deps.promptTemplateStore;
@@ -2013,7 +2017,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's admin pages; a profile editor that offers the tool names for `allowedTools`.
+   * The application's admin pages; a profile editor that offers the tool names for `allowedTools`.
    */
   public get toolRegistry(): IToolRegistry {
     return this.deps.toolRegistry;
@@ -2026,12 +2030,12 @@ export class AIGateway {
    *
    * > Every model call of the tenant, for the audit page and for debugging.
    *
-   * Raw ids, no user check: it holds system prompts and tool outputs, so the host checks the owner permission before it
-   * calls.
+   * Raw ids, no user check: it holds system prompts and tool outputs, so the application checks the owner permission
+   * before it calls.
    *
    * # Who needs it
    *
-   * The host's audit and debugging pages.
+   * The application's audit and debugging pages.
    */
   public get trace(): ITrace {
     return this.deps.trace;
@@ -2042,11 +2046,11 @@ export class AIGateway {
    *
    * # About
    *
-   * > The checks and the reports the gateway's model calls go through, over the adapter the host passed.
+   * > The checks and the reports the gateway's model calls go through, over the adapter the application passed.
    *
    * # Who needs it
    *
-   * A host that checks or reports usage outside a call, with the gateway's own logic.
+   * An application that checks or reports usage outside a call, with the gateway's own logic.
    */
   public get usageGuard(): IUsageGuard {
     return this.deps.usageGuard;

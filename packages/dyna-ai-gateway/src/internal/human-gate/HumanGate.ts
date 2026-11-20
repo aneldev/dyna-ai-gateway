@@ -44,7 +44,8 @@ const DEFAULT_TIMEOUT_MS = 24 * 60 * 60 * 1_000;
  * # Who needs it
  *
  * `settleRun` and `settleReviewPause` (`pause`); `AIGateway.resume` (`assertResumable`, `matchDecisions`, `resume`),
- * `cancelRun`, `listPausedRuns`, `expirePausedRuns`. A host replaces it with its own `IHumanGate` in `overrides.humanGate`.
+ * `cancelRun`, `listPausedRuns`, `expirePausedRuns`. An application replaces it with its own `IHumanGate` in
+ * `overrides.humanGate`.
  *
  * # What needs
  *
@@ -58,7 +59,7 @@ const DEFAULT_TIMEOUT_MS = 24 * 60 * 60 * 1_000;
  *
  * ## When shouldn't use it
  *
- * To decide whether a call needs a human: that is `ToolPolicy.decide`. To render the card: the app does, from the
+ * To decide whether a call needs a human: that is `ToolPolicy.decide`. To render the card: the application does, from the
  * envelope's data.
  *
  * # Pitfalls

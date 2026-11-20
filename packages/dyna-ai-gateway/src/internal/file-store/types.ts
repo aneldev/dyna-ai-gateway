@@ -27,7 +27,7 @@ export interface IFileStoreConfig {
    * > What the models can read, and nothing that runs where it is shown.
    *
    * `image/*` also allows `image/svg+xml`, which can carry a script: allow it only when the files are never shown inline from
-   * an origin the app trusts.
+   * an origin the application trusts.
    *
    * @example ["application/pdf"] - a document assistant that takes no images
    *
@@ -39,7 +39,7 @@ export interface IFileStoreConfig {
 /**
  * Tenant-scoped file storage; turns reference files by IFileRef.
  *
- * Implemented by `FileStore`; the type of `IAIGatewayDeps.fileStore`, so a host may pass its own in `overrides`.
+ * Implemented by `FileStore`; the type of `IAIGatewayDeps.fileStore`, so an application may pass its own in `overrides`.
  */
 export interface IFileStore {
   /**
@@ -97,7 +97,7 @@ export interface IFileStore {
    *
    * # Who needs it
    *
-   * `AIGateway.getFileUrl`, for the host's chat screen that shows an uploaded image or opens a PDF.
+   * `AIGateway.getFileUrl`, for the application's chat screen that shows an uploaded image or opens a PDF.
    */
   getSignedUrl(args: {
     tenantId: string;

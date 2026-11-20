@@ -1,11 +1,13 @@
 /*
  * The public API of the package. Everything an application can import from "dyna-ai-gateway" is listed here, and only
  * what an application is designed to call:
- *   - the facade `AIGateway` with its types, the shared contracts, the in-memory adapters (the app constructs those);
- *   - the types of every internal (`internal/<folder>/types.ts`): interfaces the app reads or implements, enums, unions;
+ *   - the facade `AIGateway` with its types, the shared contracts, the in-memory adapters (the application constructs
+ *     those);
+ *   - the types of every internal (`internal/<folder>/types.ts`): interfaces the application reads or implements,
+ *     enums, unions;
  *   - the internal classes as TYPES ONLY (`export type`): the facade hands them out (`gateway.modelRegistry`, …) and
- *     `IAIGatewayDeps` names them, so the app can name the type, but it never constructs one — the gateway does;
- *   - `defineTool`, the helper for the app's own tools.
+ *     `IAIGatewayDeps` names them, so the application can name the type, but it never constructs one — the gateway does;
+ *   - `defineTool`, the helper for the application's own tools.
  * Never `export *` from `./internal` or from a class file: a class value, the agent loop, a `make*` / `to*` / `create*`
  * helper or a constant of an internal is not public, even when another file of this repo uses it — repo files import
  * those from `./internal`. This is the one file that reaches a folder's `types.ts` directly: the folder barrels also

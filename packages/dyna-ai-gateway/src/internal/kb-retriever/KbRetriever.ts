@@ -39,7 +39,7 @@ const DEFAULT_MIN_SCORE = 0.6;
  * # Who needs it
  *
  * `prepareCall`, once per `ask` / `run` call, with `IGatewayInput.kbFilters` as the scope; the result goes to the
- * `ContextAssembler`. A host replaces it with its own `IKbRetriever` (a reranker, hybrid search) in
+ * `ContextAssembler`. An application replaces it with its own `IKbRetriever` (a reranker, hybrid search) in
  * `overrides.kbRetriever`.
  *
  * # What needs
