@@ -3,7 +3,7 @@ import {InMemoryBlobAdapter} from "../../../adapters/in-memory";
 import {FileStore} from "../FileStore";
 
 /** An SVG can carry a script: the default list names the image types one by one, and SVG is not among them. */
-test("put refuses image/svg+xml with the default allowed types, and accepts it when the host allows it", async () => {
+test("put refuses image/svg+xml with the default allowed types, and accepts it when the application allows it", async () => {
   const upload = (store: FileStore): ReturnType<FileStore["put"]> => store.put({
     tenantId: "tenant-a",
     userId: "user-a",

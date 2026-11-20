@@ -19,10 +19,10 @@ import {whichInvoiceQuestions} from "./user-question.config";
 import {gatewayConfigUserQuestionWithInputRule} from "./user-question-with-input-rule.config";
 
 /**
- * The app's input rules get the answer's free text as their prompt (D71): a prompt the topic filter lets through pauses on a
- * question; an answer that trips the filter is refused with the rule's issue, and the run stays PAUSED for another answer.
+ * The application's input rules get the answer's free text as their prompt (D71): a prompt the topic filter lets through pauses
+ * on a question; an answer that trips the filter is refused with the rule's issue, and the run stays PAUSED for another answer.
  */
-test("an app input rule screens the free text of the answer; an answer it rejects leaves the run paused", async () => {
+test("an application input rule screens the free text of the answer; an answer it rejects leaves the run paused", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigUserQuestionWithInputRule, {llmClient: () => llmClient});
   llmClient.accountTo({

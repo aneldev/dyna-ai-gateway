@@ -20,11 +20,12 @@ import {
 } from "./denied.config";
 
 /**
- * The first step called a tool; the app says no to the second. The tool has had its effect, so the run is not thrown away: it
- * ends DONE with the text so far, as a run stopped by its step limit does (the WARNING `output_truncated`), plus the WARNING
- * `usage_denied` with the app's code and user message. The tool result is on the thread; only the approved step was reported.
+ * The first step called a tool; the application says no to the second. The tool has had its effect, so the run is not thrown
+ * away: it ends DONE with the text so far, as a run stopped by its step limit does (the WARNING `output_truncated`), plus the
+ * WARNING `usage_denied` with the application's code and user message. The tool result is on the thread; only the approved step
+ * was reported.
  */
-test("a later run step the app refuses ends the run with the text so far and the warning usage_denied", async () => {
+test("a later run step the application refuses ends the run with the text so far and the warning usage_denied", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigDenySecondRunStep, {llmClient: () => llmClient});
   llmClient.accountTo({

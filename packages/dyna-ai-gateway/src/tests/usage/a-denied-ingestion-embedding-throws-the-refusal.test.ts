@@ -29,11 +29,11 @@ const document: IKbDocument = {
 };
 
 /**
- * The app says no to the embedding of an ingestion: there is no response to carry an issue, so `ingestDocument` throws the
- * refusal itself, a 429 the host recognises with `isUsageDeniedError` and whose `data.denyCode` is the app's code. Nothing was
- * embedded, so nothing is reported.
+ * The application says no to the embedding of an ingestion: there is no response to carry an issue, so `ingestDocument` throws
+ * the refusal itself, a 429 the application recognises with `isUsageDeniedError` and whose `data.denyCode` is the application's
+ * code. Nothing was embedded, so nothing is reported.
  */
-test("an ingestion whose embedding the app refuses throws a 429 carrying the app's code", async () => {
+test("an ingestion whose embedding the application refuses throws a 429 carrying the application's code", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigDenyEmbed, {llmClient: () => llmClient});
   llmClient.accountTo({

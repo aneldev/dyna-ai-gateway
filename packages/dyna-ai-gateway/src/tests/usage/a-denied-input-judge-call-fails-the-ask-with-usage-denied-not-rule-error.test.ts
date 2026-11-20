@@ -15,11 +15,11 @@ import {
 } from "./denied.config";
 
 /**
- * The app says no to a judge's model call: the Guardrails pass the refusal through instead of failing the rule, so the ask is
- * FAILED with `usage_denied` (no rule name, no `rule_error`), nothing is logged as an internal error, and the answer's model call
- * is never asked for.
+ * The application says no to a judge's model call: the Guardrails pass the refusal through instead of failing the rule, so the
+ * ask is FAILED with `usage_denied` (no rule name, no `rule_error`), nothing is logged as an internal error, and the answer's
+ * model call is never asked for.
  */
-test("an input judge call the app refuses fails the ask with usage_denied, not rule_error, and the main call is never asked", async () => {
+test("an input judge call the application refuses fails the ask with usage_denied, not rule_error, and the main call is never asked", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigDenyInputJudge, {llmClient: () => llmClient});
   llmClient.accountTo({

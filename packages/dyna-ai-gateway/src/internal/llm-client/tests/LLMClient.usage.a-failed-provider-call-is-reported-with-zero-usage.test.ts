@@ -15,8 +15,9 @@ import {
 jest.mock("../utils/createLanguageModel");
 
 /**
- * The app approved, then the provider failed: the client still tells the app, with zero usage and the trace id of the check,
- * so an adapter that reserved in `check` can settle. The call itself is the 502 it always was, and nothing is traced.
+ * The application approved, then the provider failed: the client still tells the application, with zero usage and the trace id
+ * of the check, so an adapter that reserved in `check` can settle. The call itself is the 502 it always was, and nothing is
+ * traced.
  */
 test("a provider failure after an approved check is reported with zero usage under the check's trace id", async () => {
   jest.mocked(createLanguageModel).mockReturnValue(new MockLanguageModelV4({

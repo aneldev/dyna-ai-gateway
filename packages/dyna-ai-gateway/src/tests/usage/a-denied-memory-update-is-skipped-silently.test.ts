@@ -18,10 +18,10 @@ import {
 } from "./denied.config";
 
 /**
- * The app says no to the thread memory's helper call, after the answer: the answer stands, the memory is left as it was for a
- * later turn, nothing is logged as an internal error and nothing is reported for the refused call.
+ * The application says no to the thread memory's helper call, after the answer: the answer stands, the memory is left as it was
+ * for a later turn, nothing is logged as an internal error and nothing is reported for the refused call.
  */
-test("a memory helper call the app refuses is skipped silently; the answer stands and the memory waits", async () => {
+test("a memory helper call the application refuses is skipped silently; the answer stands and the memory waits", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigDenyMemory, {llmClient: () => llmClient});
   llmClient.accountTo({

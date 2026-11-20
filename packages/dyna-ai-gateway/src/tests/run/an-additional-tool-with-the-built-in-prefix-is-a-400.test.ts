@@ -5,7 +5,7 @@ import {gatewayConfigBase} from "../internal/utils/gatewayConfigBase";
 import {noKb} from "../internal/utils/makeGateway";
 import {sampleUserContext} from "../internal/utils/sampleUserContext";
 
-import {prefixedHostTool} from "./built-in-tool-names.config";
+import {prefixedApplicationTool} from "./built-in-tool-names.config";
 
 /**
  * A call tool (`additionalTools`) may not take the `dyna_aigw_` prefix either: the call is a 400 before anything is stored,
@@ -24,7 +24,7 @@ test("an additional tool whose name starts with dyna_aigw_ is a 400", async () =
     userContext: sampleUserContext,
     prompt: "Find order A-1",
     kbFilters: noKb,
-    additionalTools: [prefixedHostTool],
+    additionalTools: [prefixedApplicationTool],
   }).response;
 
   await expect(response).rejects.toMatchObject({
@@ -32,7 +32,7 @@ test("an additional tool whose name starts with dyna_aigw_ is a 400", async () =
     status: 400,
     data: {
       source: "additionalTools",
-      reservedTools: [prefixedHostTool.name],
+      reservedTools: [prefixedApplicationTool.name],
     },
   });
 });

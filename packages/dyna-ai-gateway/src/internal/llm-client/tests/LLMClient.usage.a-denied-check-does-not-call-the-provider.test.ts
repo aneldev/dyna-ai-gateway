@@ -16,8 +16,8 @@ import {
 jest.mock("../utils/createLanguageModel");
 
 /**
- * The app says no: the provider is never called, nothing is traced, nothing is reported, and the client rejects with the
- * usage-denied error (429) that carries the app's code and user message unchanged.
+ * The application says no: the provider is never called, nothing is traced, nothing is reported, and the client rejects with
+ * the usage-denied error (429) that carries the application's code and user message unchanged.
  */
 test("a check the adapter denies rejects with the usage-denied error and the provider is not called", async () => {
   const doGenerate = jest.fn();

@@ -17,11 +17,11 @@ import {
 } from "./denied.config";
 
 /**
- * The app says no to the answer's model call: the ask is FAILED with the one issue `usage_denied`, carrying the app's `denyCode`
- * in `data` and its `denyUserMessage` in `userMessage`; the model is not called (nothing is enqueued, so a call would throw) and
- * nothing is reported to the adapter.
+ * The application says no to the answer's model call: the ask is FAILED with the one issue `usage_denied`, carrying the
+ * application's `denyCode` in `data` and its `denyUserMessage` in `userMessage`; the model is not called (nothing is enqueued,
+ * so a call would throw) and nothing is reported to the adapter.
  */
-test("an answer call the app refuses fails the ask with usage_denied carrying the app's code and user message", async () => {
+test("an answer call the application refuses fails the ask with usage_denied carrying the application's code and user message", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigDenyChat, {llmClient: () => llmClient});
   llmClient.accountTo({

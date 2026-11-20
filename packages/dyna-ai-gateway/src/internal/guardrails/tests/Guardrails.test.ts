@@ -194,7 +194,7 @@ describe("Guardrails", () => {
   });
 
   describe("M1 — input rules", () => {
-    test("an app rule gets the sanitised prompt and the user context, and its ERROR fails the check", async () => {
+    test("an application rule gets the sanitised prompt and the user context, and its ERROR fails the check", async () => {
       const check = jest.fn(async () => [blockedTopic]);
       const result = await new Guardrails({
         inputRules: [{
@@ -228,7 +228,7 @@ describe("Guardrails", () => {
       ]);
     });
 
-    test("app rules do not run when a built-in rule already failed", async () => {
+    test("application rules do not run when a built-in rule already failed", async () => {
       const check = jest.fn(async () => []);
       const result = await new Guardrails({
         inputRules: [{
@@ -506,7 +506,7 @@ describe("Guardrails", () => {
       expect(result.issues[0]?.message).toBe("The check [slow] did not answer within 20 ms");
     });
 
-    test("the app's rules run in parallel and their issues keep the rule order", async () => {
+    test("the application's rules run in parallel and their issues keep the rule order", async () => {
       let releaseFirst: () => void = () => undefined;
       const secondStarted = new Promise<void>(resolve => {
         releaseFirst = resolve;
