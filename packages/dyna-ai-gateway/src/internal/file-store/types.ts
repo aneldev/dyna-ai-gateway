@@ -6,8 +6,8 @@ export interface IFileStoreConfig {
   adapter: IBlobAdapter;
   /**
    * The folder, inside a tenant's folder, that the files of the gateway are stored under — like a file-system path with any
-   * number of folders: "apps/crm/ai-files". A file is stored at [<tenantId>]/<path>/<userId>/<fileId>; the brackets mark a
-   * part that may be empty, while its "/" stays.
+   * number of folders: "apps/crm/ai-files". A file is stored at [<tenantId>]/<path>/<userId>/<fileId>; the brackets mark the
+   * part that keeps its "/" when it is empty.
    * No default: where the files live is decided where the gateway is configured. It may be an empty string (the files
    * are then at [<tenantId>]/<userId>/<fileId>) and may begin or end with "/": the key never gets a doubled "//".
    * An empty tenant id keeps its empty first folder: its files are at /<path>/<userId>/<fileId> (D130).
@@ -155,7 +155,8 @@ export interface IFileStore {
 
 /**
  * Blob storage seam.
- * A key may begin with "/" (the empty tenant, D130): store it unchanged, never trimmed or resolved as a path.
+ * A key, and a removeByPrefix prefix, may begin with "/" (the empty tenant, D130): use it unchanged, never trimmed or
+ * resolved as a path.
  */
 export interface IBlobAdapter {
   /**

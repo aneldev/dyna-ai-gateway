@@ -5,7 +5,7 @@ keywords: [multi-tenant, single-tenant, tenantId, SaaS, AI gateway]
 
 # Tenants are optional
 
-One gateway serves many customers: every call names its tenant, and the profiles, threads, files, memory, knowledge
+One gateway serves many customers: every call on a tenant's data names its tenant, and the profiles, threads, files, memory, knowledge
 base and trace of one tenant stay apart from every other's. An application with one customer does not need any of
 this.
 
@@ -42,3 +42,5 @@ Set `tenantId` to the id of the customer the user belongs to, from the authentic
 tenant's data apart by that id; one gateway instance serves them all.
 
 What is kept per tenant, what is shared, how to add and remove a tenant: [Tenants](../20-learn-the-gateway/005-tenants.md).
+
+Next: [Example: ask](30-example-ask.md).

@@ -27,7 +27,9 @@ application. A developer who changes how a part of the gateway behaves, not wher
   `config.fileStore.adapter`, … The key is required in every store's config; nothing is defaulted to memory.
 - **The tenant is on every call that touches a tenant's data.** Those methods receive the `tenantId` on their arguments
   or on the record they save, and the adapter filters by it; `IBlobAdapter` gets it inside the key the `FileStore` builds.
-  Tenant isolation rests on it. The model catalog and the prompt templates are global: their methods take no tenant.
+  Tenant isolation rests on it. The empty tenant id `""` is a tenant too: a repository accepts it, and an `IBlobAdapter`
+  keeps a leading `/` ([D130](90-decisions.md#d130-an-empty-tenant-id-is-a-tenant-like-any-other),
+  [The blob adapter](../20-learn-the-gateway/092-chat-files.md#29-the-blob-adapter)). The model catalog and the prompt templates are global: their methods take no tenant.
 - **The adapter chooses its tables.** A real adapter is constructed with the names of the collections or tables it uses,
   so the application decides between one set with a tenant column, a set per tenant, or a schema per tenant
   ([D28, D29](90-decisions.md#d28-d29-every-store-has-a-seam-and-the-names-of-its-tables-are-configuration)).

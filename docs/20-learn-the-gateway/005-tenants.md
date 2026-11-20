@@ -6,13 +6,14 @@ keywords: [multi-tenant, tenant isolation, single-tenant, tenantId, SaaS, AI gat
 # Tenants
 
 A tenant is the customer whose data is kept apart from every other customer's. One gateway instance serves every
-tenant: each call names its tenant, and every per-tenant store reads and writes under it. A SaaS application runs one gateway for
-all its customers, not one per customer.
+tenant: each call on a tenant's data names its tenant, and every per-tenant store reads and writes under it. A SaaS
+application runs one gateway for all its customers, not one per customer.
 
 :::tip[Optional]
 
 Tenants are optional. An application without tenants skips this page and passes `tenantId: ""` wherever the code asks
-for a tenant id ([Tenants are optional](../10-getting-started/25-tenants-are-optional.md)).
+for a tenant id ([Tenants are optional](../10-getting-started/25-tenants-are-optional.md)). Once it writes its own
+repository or blob adapter, [2.4](#24-a-single-tenant-application) and the last two pitfalls concern it.
 
 :::
 
@@ -61,9 +62,7 @@ their choice.
 | system prompt templates | shared               | [`IPromptTemplateRepository`](../30-api/index/interfaces/IPromptTemplateRepository.md) |
 | tools                   | shared               | `toolRegistry` in the config                                                           |
 
-The repository methods that touch a tenant's data take the `tenantId`, or read it from the record they save;
-`IBlobAdapter` gets it inside the key the file store builds. The gateway
-knows no default and no shared profile: each tenant gets its own profiles through `aiProfileStore.upsertProfile`, and a
+How a repository receives the tenant is in [Adapters](../60-architecture/20-adapters.md). The gateway knows no default and no shared profile: each tenant gets its own profiles through `aiProfileStore.upsertProfile`, and a
 call that names a profile its tenant does not have is a 404
 ([D103](../60-architecture/90-decisions.md#d103-a-call-always-names-its-profile)). A tenant's own wording goes into its
 profile's `promptAddendum`; the template stays shared
@@ -76,10 +75,10 @@ profile's `promptAddendum`; the template stays shared
 | a thread, run, profile or trace id of another tenant        | 404, as an id that does not exist                      |
 | a thread id of another tenant in `delete` or `trace.delete` | ignored: nothing is removed or counted                 |
 | a file pointer of another tenant on `ask` or `run`          | 400                                                    |
-| a knowledge-base search                                     | the adapter filters by `tenantId`: the index is shared |
+| a knowledge-base search                                     | the adapter filters by `tenantId`                      |
 | the prompt cache                                            | per tenant with `sharePromptCacheAcrossTenants: false` |
 
-The vector index holds every tenant's chunks. An `IVectorIndexAdapter` that drops the `tenantId` filter of `search`
+A vector index shared by the tenants holds every tenant's chunks: an `IVectorIndexAdapter` that drops the `tenantId` filter of `search`
 returns another tenant's chunks, and the gateway cannot tell
 ([Multi-tenant RAG](../50-ai-best-practices/080-multi-tenant-rag.md)). The prompt-cache scope is described in
 [System prompt layers](../60-architecture/40-system-prompt-production-layers.md#the-layers-in-the-order-the-model-reads-them).
@@ -92,13 +91,14 @@ like any other: the stores keep it apart from the tenants with an id, and the er
 [Tenants are optional](../10-getting-started/25-tenants-are-optional.md). A file of the empty
 tenant is stored at `/<path>/<userId>/<fileId>` ([Chat files](092-chat-files.md#21-upload)).
 
-A repository the application writes must accept `""` as a tenant id, as the in-memory ones do. An `IBlobAdapter` of the
-application stores a key that begins with `/` unchanged ([Chat files](092-chat-files.md#29-the-blob-adapter)).
+A repository or blob adapter the application writes must accept the empty tenant
+([Adapters](../60-architecture/20-adapters.md)).
 
 ### 2.5 Maintenance per tenant
 
 `delete`, `expirePausedRuns` and `recoverStuckRuns` work on one tenant per call. A job that runs them for every tenant
-loops over the tenant ids the application knows. The gateway has no method that lists tenants or removes a whole
+loops over the tenant ids the application knows
+([What happens to the runs a crashed server left behind?](../10-getting-started/90-faq.md#what-happens-to-the-runs-a-crashed-server-left-behind)). The gateway has no method that lists tenants or removes a whole
 tenant.
 
 ## 3. Examples
@@ -134,23 +134,7 @@ await gateway.aiProfileStore.upsertProfile({
 });
 ```
 
-### 3.3 A nightly job over every tenant
-
-```ts
-declare const tenantIds: string[]; // the application's customers
-
-for (const tenantId of tenantIds) {
-  try {
-    const expired = await gateway.expirePausedRuns({tenantId});
-    const recovered = await gateway.recoverStuckRuns({tenantId});
-    console.log(`${tenantId}: ${expired} paused runs expired, ${recovered} stuck runs recovered`);
-  } catch (error) {
-    console.error(`${tenantId}: maintenance failed`, error); // the next tenant still runs
-  }
-}
-```
-
-### 3.4 Offboard a tenant
+### 3.3 Offboard a tenant
 
 No single call removes a tenant. The application removes its threads, then each user's remaining data, its documents
 and profiles, and last the trace entries outside threads (the embedding calls of the knowledge base have none).
@@ -184,14 +168,14 @@ each method removes is in
 - **A vector adapter without the tenant filter.** The search returns every tenant's chunks; the gateway does not see it.
 - **A shared prompt cache by accident.** `sharePromptCacheAcrossTenants: true` lets one tenant's call read another
   tenant's cache entry of the same stable block. Keep it `false` unless every tenant runs the same profile text.
-- **A repository that refuses `""`.** A single-tenant application then fails at the first write. Accept the empty
+- **A repository that refuses `""`.** A single-tenant application then fails at its first call to that repository. Accept the empty
   string as a tenant id.
 - **A blob adapter that trims the leading `/`.** The empty tenant's user `acme` then shares the folder `acme/` with the
   tenant `acme` when `path` is empty. Store the key unchanged.
 
 ## 5. Summary
 
-- Every call names its tenant: `userContext.tenantId` for a user, `tenantId` for the back office.
+- Every call on a tenant's data names its tenant: `userContext.tenantId` for a user, `tenantId` for the back office.
 - Profiles, threads, runs, files, user facts, knowledge base and trace are per tenant; models, templates and tools are
   shared.
 - An id of another tenant reads as an id that does not exist; a file pointer of another tenant is a 400.

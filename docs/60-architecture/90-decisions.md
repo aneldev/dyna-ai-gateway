@@ -771,8 +771,8 @@ The leading `/` keeps the empty tenant's keys apart: without it, the folder of i
 prefix of the tenant `acme` when `path` is empty.
 
 **Consequence.** A single-tenant application needs no tenant of its own invention. A repository of the application must
-accept `""` as a tenant id, as the in-memory ones do. An `IBlobAdapter` stores a key that begins with `/` unchanged
-([Chat files](../20-learn-the-gateway/092-chat-files.md#29-the-blob-adapter)).
+accept `""` as a tenant id, as the in-memory ones do, and an `IBlobAdapter` must keep a leading `/`
+([The blob adapter](../20-learn-the-gateway/092-chat-files.md#29-the-blob-adapter)).
 
 ### D120: The real adapters are packages of their own
 

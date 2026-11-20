@@ -137,4 +137,4 @@ const accountingProfile: IAIProfile = {
 };
 ```
 
-Next: [Example: ask](30-example-ask.md).
+Next: [Tenants are optional](25-tenants-are-optional.md).

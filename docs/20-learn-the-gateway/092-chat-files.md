@@ -34,8 +34,8 @@ The gateway keeps no list of files: a file is its pointer
 ### 2.1 Upload
 
 `uploadFile({userContext, bytes, mime, name})` checks the file, then writes it through the adapter under the key
-`[<tenantId>]/<path>/<userId>/<fileId>`. The brackets mark a part that may be empty, while its `/` stays: the
-empty tenant's key is `/<path>/<userId>/<fileId>`. The id is a new UUID. `path` is `fileStore.path`: any number of folders, or an
+`[<tenantId>]/<path>/<userId>/<fileId>`. The brackets mark the part that keeps its `/` when it is empty; an empty
+`path` is dropped with its `/`. The id is a new UUID. `path` is `fileStore.path`: any number of folders, or an
 empty string.
 
 | Check                                                        | Status | Error `data`          |
@@ -162,8 +162,8 @@ The `FileStore` reaches the storage through five methods of `IBlobAdapter`:
 | `remove`         | deletes one key; a missing key changes nothing                           |
 | `removeByPrefix` | deletes every key under the prefix (it ends with `/`), returns the count |
 
-A key may begin with `/` (the empty tenant,
-[D130](../60-architecture/90-decisions.md#d130-an-empty-tenant-id-is-a-tenant-like-any-other)): the adapter stores it
+A key, and a `removeByPrefix` prefix, may begin with `/` (the empty tenant,
+[D130](../60-architecture/90-decisions.md#d130-an-empty-tenant-id-is-a-tenant-like-any-other)): the adapter uses it
 unchanged, never trimmed or resolved as a file-system path. The 404 is part of the contract: a resume turns it into the "deleted" note, and any other error fails the call.
 `InMemoryBlobAdapter` keeps everything in the process and returns `in-memory://` URLs that no browser opens. The real
 adapters are not shipped yet ([Known limits](../60-architecture/10-architecture-and-trade-offs.md#8-known-limits)).
