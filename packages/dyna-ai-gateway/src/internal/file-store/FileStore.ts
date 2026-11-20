@@ -29,10 +29,12 @@ const SEPARATOR = "/";
  * > The thread database stays small; the model gets the bytes only when it can read them.
  *
  * Stores the files a user uploads for a question (images, PDFs) in the application's blob storage, at
- * `<tenantId>/<path>/<userId>/<fileId>`, and hands back an `IFileRef` pointer that the turn keeps. The call path loads the
+ * `[<tenantId>]/<path>/<userId>/<fileId>`, and hands back an `IFileRef` pointer that the turn keeps. The call path loads the
  * bytes again for the model (`loadInlineFiles`, `restoreInlineBytes`); the pointer is the only record of the file.
  *
  * - Tenant- and user-scoped by the key: the tenant is the first folder, the user the last, so nobody reaches another's files.
+ *   An empty tenant id is a tenant too (D130): its first folder is empty, the key starts with "/", and no other tenant's
+ *   key does.
  * - Capped at the upload: the size (`maxBytes`), the type (`allowedMime`), the name (255 characters, one line).
  * - Deleted with the thread (`deleteThreads`) and with the user (`forgetUser`): the user's whole folder in one call.
  *
@@ -60,7 +62,8 @@ const SEPARATOR = "/";
  * # Pitfalls
  *
  * `path` is checked once, in the constructor (an empty folder is dropped; a ".", ".." or "\\" one throws); the tenant id,
- * user id and file id are checked per call as folder names (no separator, no "." or ".."): a bad one is a 400 before the
+ * user id and file id are checked per call as folder names (no separator, no "." or "..", and only the tenant id may be
+ * empty): a bad one is a 400 before the
  * adapter is reached. The default types exclude SVG on purpose.
  */
 export class FileStore implements IFileStore {
@@ -80,7 +83,7 @@ export class FileStore implements IFileStore {
    *
    * # About
    *
-   * > Bytes at `<tenantId>/<path>/<userId>/<fileId>`, an `IFileRef` for the turn; nothing else is kept.
+   * > Bytes at `[<tenantId>]/<path>/<userId>/<fileId>`, an `IFileRef` for the turn; nothing else is kept.
    *
    * Checks before the write: the type must be allowed (400), the name at most 255 characters without control characters
    * (400; it reaches the model and the memory transcript, so it stays short and on one line), the file not empty (400) and
@@ -293,14 +296,16 @@ export class FileStore implements IFileStore {
   }
 
   /**
-   * <tenantId>/<path>/<userId>: the tenant is the first folder of every key, the user the last.
+   * [<tenantId>]/<path>/<userId>: the tenant is the first folder of every key, the user the last.
    * Nobody can reach into another's files; both ids are checked as folder names.
+   * An empty tenant id keeps its empty first folder ("/<path>/<userId>", D130): dropping it would make its user folder a
+   * prefix of another tenant's keys when the path is empty.
    */
   private getUserFolder(tenantId: string, userId: string): string {
-    this.checkSegment(tenantId, "tenantId");
+    if (tenantId !== "") this.checkSegment(tenantId, "tenantId");
     this.checkSegment(userId, "userId");
     return [tenantId, this.path, userId]
-      .filter(Boolean)
+      .filter((segment, index) => index === 0 || segment !== "")
       .join(SEPARATOR);
   }
 

@@ -6,9 +6,11 @@ export interface IFileStoreConfig {
   adapter: IBlobAdapter;
   /**
    * The folder, inside a tenant's folder, that the files of the gateway are stored under — like a file-system path with any
-   * number of folders: "apps/crm/ai-files". A file is stored at <tenantId>/<path>/<userId>/<fileId>.
+   * number of folders: "apps/crm/ai-files". A file is stored at [<tenantId>]/<path>/<userId>/<fileId>; the brackets mark a
+   * part that may be empty, while its "/" stays.
    * No default: where the files live is decided where the gateway is configured. It may be an empty string (the files
-   * are then at <tenantId>/<userId>/<fileId>) and may begin or end with "/": the key never gets a doubled "//".
+   * are then at [<tenantId>]/<userId>/<fileId>) and may begin or end with "/": the key never gets a doubled "//".
+   * An empty tenant id keeps its empty first folder: its files are at /<path>/<userId>/<fileId> (D130).
    */
   path: string;
   /**
@@ -47,7 +49,7 @@ export interface IFileStore {
    *
    * # About
    *
-   * > Bytes at `<tenantId>/<path>/<userId>/<fileId>`, an `IFileRef` for the turn; nothing else is kept.
+   * > Bytes at `[<tenantId>]/<path>/<userId>/<fileId>`, an `IFileRef` for the turn; nothing else is kept.
    *
    * Checks before the write: the type must be allowed (400), the name at most 255 characters without control characters
    * (400; it reaches the model and the memory transcript, so it stays short and on one line), the file not empty (400) and
@@ -151,7 +153,10 @@ export interface IFileStore {
   }): Promise<number>;
 }
 
-/** Blob storage seam. */
+/**
+ * Blob storage seam.
+ * A key may begin with "/" (the empty tenant, D130): store it unchanged, never trimmed or resolved as a path.
+ */
 export interface IBlobAdapter {
   /**
    * put -- stores the bytes under a key

@@ -223,7 +223,7 @@ const config: IAIGatewayConfig = {
   // What this path uses
   fileStore: {
     adapter: new InMemoryBlobAdapter(), // your IBlobAdapter (S3, Azure Blob, GCS) in production
-    path: "ai-files",                   // keys: <tenantId>/ai-files/<userId>/<fileId>
+    path: "ai-files",                   // keys: [<tenantId>]/ai-files/<userId>/<fileId>
     maxBytes: 10 * 1024 * 1024,         // a larger upload is a 413
     allowedMime: ["application/pdf", "image/jpeg", "image/png"], // another type is a 400
   },

@@ -7,6 +7,7 @@
     00-README.md                              # Welcome, a short description of the library, and the key message: "You don't need to know everything, only what you need"
     10-what-is-the-ai-gateway.md              # Where the library sits (between the application or agent and the LLM)
     20-installation.md
+    25-tenants-are-optional.md                # tenants are optional: tenantId "" everywhere, or the customer's id; links the Learn page
     30-example-ask.md                         # a simple example, like the intro
     40-example-run.md                         # a simple example, like the intro
     45-example-HITL.md                        # a simple example, like the intro
@@ -24,6 +25,7 @@
     # - Summary
     # - FAQ
     # - API references from /30
+    005-Tenants                               # one gateway for many customers, or tenantId "" for a single-tenant application
     010-Models and profiles
     020-Skills
     030-Tools

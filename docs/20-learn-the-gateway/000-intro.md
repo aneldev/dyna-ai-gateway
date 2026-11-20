@@ -26,6 +26,7 @@ The examples reuse the `config` of [Installation](../10-getting-started/20-insta
 
 | Page                                                     | Read it when                                                                      |
 |----------------------------------------------------------|-----------------------------------------------------------------------------------|
+| [Tenants](005-tenants.md)                                | one gateway serves many customers, or the application has a single one            |
 | [Models and profiles](010-models-and-profiles.md)        | always: every call names a profile, and the profile names the model               |
 | [Skills](020-skills.md)                                  | the model needs long instructions that only some calls use                        |
 | [Tools](030-tools.md)                                    | the model must read or change data of your application                            |

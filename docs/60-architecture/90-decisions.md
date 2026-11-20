@@ -267,7 +267,7 @@ instead.
 
 ### D30: A file is its pointer
 
-**Decision.** `uploadFile` stores the bytes under the key `<tenantId>/<path>/<userId>/<fileId>` and returns an `IFileRef`; the gateway keeps no list of files. `IFileStoreConfig.path` is required (any number of folders, may be empty). The allowed types default to PNG, JPEG, WebP, GIF and PDF, named one by one: an SVG can carry a script, so an application allows it only when files are never shown inline from an origin it trusts. A file name is at most 255 characters, on one line.
+**Decision.** `uploadFile` stores the bytes under the key `[<tenantId>]/<path>/<userId>/<fileId>` and returns an `IFileRef`; the gateway keeps no list of files. `IFileStoreConfig.path` is required (any number of folders, may be empty). The allowed types default to PNG, JPEG, WebP, GIF and PDF, named one by one: an SVG can carry a script, so an application allows it only when files are never shown inline from an origin it trusts. A file name is at most 255 characters, on one line.
 
 **Why.** The tenant is the first folder of every key, so everything of a tenant is under one prefix. The user's folder makes "remove the files of this user" one prefix delete. Where the files live is decided where the gateway is configured, like the table names of the stores.
 
@@ -758,6 +758,21 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 **Why.** The whole gateway runs and is tested without infrastructure. Where a tenant's data lives is what tenant isolation rests on, so the developer who wires the gateway decides it: one set of names with a tenant column, a set per tenant, or a schema per tenant.
 
 **Consequence.** The real adapters are planned, see the [Roadmap](../70-roadmap.md#planned).
+
+### D130: An empty tenant id is a tenant like any other
+
+**Decision.** `tenantId: ""` is a valid tenant id. A single-tenant application passes it on every call, and every store
+treats it as one more tenant. The file store keeps its empty first folder: the key of a file is
+`/<path>/<userId>/<fileId>`.
+
+**Why.** The gateway does not interpret a tenant id (the file store checks a non-empty one as a folder name); the repositories
+hold the data and decide how they key it.
+The leading `/` keeps the empty tenant's keys apart: without it, the folder of its user `acme` would be `acme/`, the
+prefix of the tenant `acme` when `path` is empty.
+
+**Consequence.** A single-tenant application needs no tenant of its own invention. A repository of the application must
+accept `""` as a tenant id, as the in-memory ones do. An `IBlobAdapter` stores a key that begins with `/` unchanged
+([Chat files](../20-learn-the-gateway/092-chat-files.md#29-the-blob-adapter)).
 
 ### D120: The real adapters are packages of their own
 

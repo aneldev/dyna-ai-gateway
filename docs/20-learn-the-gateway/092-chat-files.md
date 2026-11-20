@@ -34,7 +34,8 @@ The gateway keeps no list of files: a file is its pointer
 ### 2.1 Upload
 
 `uploadFile({userContext, bytes, mime, name})` checks the file, then writes it through the adapter under the key
-`<tenantId>/<path>/<userId>/<fileId>`. The id is a new UUID. `path` is `fileStore.path`: any number of folders, or an
+`[<tenantId>]/<path>/<userId>/<fileId>`. The brackets mark a part that may be empty, while its `/` stays: the
+empty tenant's key is `/<path>/<userId>/<fileId>`. The id is a new UUID. `path` is `fileStore.path`: any number of folders, or an
 empty string.
 
 | Check                                                        | Status | Error `data`          |
@@ -48,8 +49,10 @@ empty string.
 The default types are PNG, JPEG, WebP, GIF and PDF, named one by one. `image/*` in `allowedMime` allows every image
 subtype, `image/svg+xml` included. The default `maxBytes` is 20 MB.
 
-The tenant id, the user id and every folder of `path` are used as folder names. An empty or invalid tenant id or user id
-(one with `/` or `\`, `.`, `..`) is a 400 before the adapter is reached. An empty folder of `path` is dropped; a folder of
+The tenant id, the user id and every folder of `path` are used as folder names. An invalid tenant id or user id (one
+with `/` or `\`, `.`, `..`) and an empty user id are a 400 before the adapter is reached. An empty tenant id is valid: its
+key starts with `/` (`/<path>/<userId>/<fileId>`), so it never shares a prefix with another tenant's keys
+([D130](../60-architecture/90-decisions.md#d130-an-empty-tenant-id-is-a-tenant-like-any-other)). An empty folder of `path` is dropped; a folder of
 `path` that is `.` or `..`, or that contains `\`, makes the `AIGateway` constructor throw. A file id is letters, digits, `_` and `-` only.
 
 ### 2.2 A question with files
@@ -159,7 +162,9 @@ The `FileStore` reaches the storage through five methods of `IBlobAdapter`:
 | `remove`         | deletes one key; a missing key changes nothing                           |
 | `removeByPrefix` | deletes every key under the prefix (it ends with `/`), returns the count |
 
-The 404 is part of the contract: a resume turns it into the "deleted" note, and any other error fails the call.
+A key may begin with `/` (the empty tenant,
+[D130](../60-architecture/90-decisions.md#d130-an-empty-tenant-id-is-a-tenant-like-any-other)): the adapter stores it
+unchanged, never trimmed or resolved as a file-system path. The 404 is part of the contract: a resume turns it into the "deleted" note, and any other error fails the call.
 `InMemoryBlobAdapter` keeps everything in the process and returns `in-memory://` URLs that no browser opens. The real
 adapters are not shipped yet ([Known limits](../60-architecture/10-architecture-and-trade-offs.md#8-known-limits)).
 
@@ -261,7 +266,7 @@ const gateway = new AIGateway({
   ...config,
   fileStore: {
     adapter: config.fileStore.adapter,
-    path: "apps/crm/ai-files",         // keys: <tenantId>/apps/crm/ai-files/<userId>/<fileId>
+    path: "apps/crm/ai-files",         // keys: [<tenantId>]/apps/crm/ai-files/<userId>/<fileId>
     maxBytes: 5 * 1024 * 1024,         // a larger upload is a 413
     allowedMime: ["application/pdf"],  // a document assistant: no images
   },
@@ -433,7 +438,7 @@ erased.files; // the number of files deleted
 
 ## 5. Summary
 
-- `uploadFile` stores the bytes at `<tenantId>/<path>/<userId>/<fileId>` and returns an `IFileRef`. The question passes
+- `uploadFile` stores the bytes at `[<tenantId>]/<path>/<userId>/<fileId>` and returns an `IFileRef`. The question passes
   the pointer in `files`.
 - A question may carry only the caller's own files. A pointer naming another tenant or user is a 400, a missing file a 404,
   both before anything is stored.

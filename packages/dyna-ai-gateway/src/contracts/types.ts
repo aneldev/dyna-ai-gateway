@@ -9,7 +9,7 @@ import {ZodType} from "zod";
  * by `tenantId`.
  */
 export interface IUserContext {
-  /** Tenant scope of this call. */
+  /** Tenant scope of this call; a single-tenant application passes "" (D130). */
   tenantId: string;
   /** Acting user. */
   userId: string;
