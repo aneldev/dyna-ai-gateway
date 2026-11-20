@@ -285,8 +285,8 @@ export interface IAIGatewayDeps {
  * A dep the application builds itself: the gateway hands it that dep's config and deps, exactly as it would to its own
  * class.
  *
- * The members of `IAIGatewayOverrides`; the `AIGateway` constructor calls a factory where one is given and
- * `new <Class>(config, deps)` otherwise.
+ * The members of `IAIGatewayOverrides`; the `AIGateway` constructor calls a factory where one is given and creates an
+ * instance of the gateway's own class otherwise.
  */
 export type TDepFactory<TConfig, TDeps, TDep> = (config: TConfig, deps: TDeps) => TDep;
 

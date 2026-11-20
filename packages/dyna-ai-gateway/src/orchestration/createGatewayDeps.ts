@@ -60,7 +60,8 @@ import {
  *
  * # What needs
  *
- * A validated `IAIGatewayConfig`: a required slice that is missing fails inside the class's constructor, not here.
+ * An `IAIGatewayConfig` that satisfies its type. Only the names of the tools are checked here: a required slice that is
+ * missing fails as a `TypeError` where it is first read, here or in its class.
  *
  * # Pitfalls
  *
