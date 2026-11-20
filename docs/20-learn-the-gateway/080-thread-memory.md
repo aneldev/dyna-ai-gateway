@@ -165,7 +165,7 @@ outside the lease, in the thread's background line: it is serialised with the ot
 with the next call.
 
 The stored state ([`IWorkingMemoryState`](../30-api/index/interfaces/IWorkingMemoryState.md): `summary`, `facts`,
-`updatedAtTurn`) is a field of the thread record, `IThread.workingMemory`. A host
+`updatedAtTurn`) is a field of the thread record, `IThread.workingMemory`. An application
 [`IThreadRepository`](../30-api/index/interfaces/IThreadRepository.md) persists it with the rest of the thread in
 `saveThread` and returns it in `loadThread`. A memory write does not move `IThread.updatedAt`.
 
@@ -190,7 +190,7 @@ A switch of strategy keeps the stored state. Under `SLIDING_WINDOW` the window i
 
 ### 2.10 Your own memory
 
-A host replaces the built-in `WorkingMemory` with its own class in the constructor's `overrides`. The factory gets the
+An application replaces the built-in `WorkingMemory` with its own class in the constructor's `overrides`. The factory gets the
 gateway's `workingMemory` config and the shared instances
 ([`IWorkingMemoryDeps`](../30-api/index/interfaces/IWorkingMemoryDeps.md): `threadStore`, `turnBuilder`, `llmClient`,
 `promptTemplateStore`). The class implements four methods:
@@ -381,7 +381,7 @@ const gateway = new AIGateway(config, {
   update. A thread where an earlier number or quote must be exact runs `SLIDING_WINDOW`.
 - **`resetThreadMemory` as "delete the conversation".** The turns stay, and the model still reads the window. Deleting
   is `delete`.
-- **A thread repository that drops `workingMemory`.** The state lives on the thread record. A host `IThreadRepository`
+- **A thread repository that drops `workingMemory`.** The state lives on the thread record. An application's `IThreadRepository`
   that stores only some fields loses the summary on every call.
 - **No budget for the helper calls.** A usage adapter that refuses the `MEMORY_WORKING` calls makes the summary lag
   without a log line. Allow them, or run `SLIDING_WINDOW`.
@@ -448,7 +448,7 @@ The thread's facts live on one thread and go with it. The user's facts follow th
 | [`IWorkingMemorySummaryBuffer`](../30-api/index/interfaces/IWorkingMemorySummaryBuffer.md) | `recentTurns`, `updateEveryTurns`, `maxSummaryChars`, `maxFacts` |
 | [`IWorkingMemoryLoad`](../30-api/index/interfaces/IWorkingMemoryLoad.md)                   | what `load` returns: `messages`, `notes`, `issues`               |
 | [`IWorkingMemoryState`](../30-api/index/interfaces/IWorkingMemoryState.md)                 | the stored state: `summary`, `facts`, `updatedAtTurn`            |
-| [`IWorkingMemoryDeps`](../30-api/index/interfaces/IWorkingMemoryDeps.md)                   | what a host memory receives                                      |
+| [`IWorkingMemoryDeps`](../30-api/index/interfaces/IWorkingMemoryDeps.md)                   | what an application's memory receives                            |
 | [`IAIProfile.workingMemory`](../30-api/index/interfaces/IAIProfile.md)                     | the profile's strategy                                           |
 | [`IContextAssemblerConfig`](../30-api/index/interfaces/IContextAssemblerConfig.md)         | `reserveOutputTokens`                                            |
 | [`IThread`](../30-api/index/interfaces/IThread.md)                                         | the thread: `workingMemory`, `turnCount`, `lease`                |
@@ -456,5 +456,5 @@ The thread's facts live on one thread and go with it. The user's facts follow th
 | [`IThreadLease`](../30-api/index/interfaces/IThreadLease.md)                               | the busy mark of a thread                                        |
 | [`IThreadRepository`](../30-api/index/interfaces/IThreadRepository.md)                     | the persistence seam of threads and turns                        |
 | [`IThreadStoreConfig`](../30-api/index/interfaces/IThreadStoreConfig.md)                   | `repository`, `leaseMs`                                          |
-| [`IAIGatewayOverrides`](../30-api/index/interfaces/IAIGatewayOverrides.md)                 | `workingMemory`: the factory of a host memory                    |
+| [`IAIGatewayOverrides`](../30-api/index/interfaces/IAIGatewayOverrides.md)                 | `workingMemory`: the factory of an application's memory          |
 | [`AIGateway`](../30-api/index/classes/AIGateway.md)                                        | `getThreadMemory`, `resetThreadMemory`, `whenIdle`, `delete`     |

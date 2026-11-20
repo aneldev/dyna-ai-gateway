@@ -2,29 +2,29 @@
 
 A user can attach images and PDFs to a question: a screenshot of an error, a photo of a receipt, an invoice as PDF. The
 application uploads the file once and gets a pointer back. The question carries the pointer, and the gateway loads the
-bytes for the model. The bytes live in the host's blob storage only. The thread, the trace and a paused run keep the
+bytes for the model. The bytes live in the application's blob storage only. The thread, the trace and a paused run keep the
 pointer.
 
 ## 1. About
 
-| Piece                                                                   | What it is                                                           | Who provides it                   |
-|-------------------------------------------------------------------------|----------------------------------------------------------------------|-----------------------------------|
-| [`IFileRef`](../30-api/index/interfaces/IFileRef.md)                    | the file pointer: `id`, `tenantId`, `userId`, `mime`, `size`, `name` | `uploadFile` returns it           |
-| `FileStore`                                                             | stores, reads, signs and deletes the files of a tenant's users       | the gateway, from `fileStore`     |
-| [`IBlobAdapter`](../30-api/index/interfaces/IBlobAdapter.md)            | the blob storage behind the `FileStore`: five methods on keys        | the host (S3, Azure Blob, GCS, …) |
-| [`InMemoryBlobAdapter`](../30-api/index/classes/InMemoryBlobAdapter.md) | an `IBlobAdapter` in a `Map`, for tests and the first run            | the package                       |
-| [`IModelCaps`](../30-api/index/interfaces/IModelCaps.md)                | `images` and `pdf` say which files a model reads                     | the model registry                |
+| Piece                                                                   | What it is                                                           | Who provides it                          |
+|-------------------------------------------------------------------------|----------------------------------------------------------------------|------------------------------------------|
+| [`IFileRef`](../30-api/index/interfaces/IFileRef.md)                    | the file pointer: `id`, `tenantId`, `userId`, `mime`, `size`, `name` | `uploadFile` returns it                  |
+| `FileStore`                                                             | stores, reads, signs and deletes the files of a tenant's users       | the gateway, from `fileStore`            |
+| [`IBlobAdapter`](../30-api/index/interfaces/IBlobAdapter.md)            | the blob storage behind the `FileStore`: five methods on keys        | the application (S3, Azure Blob, GCS, …) |
+| [`InMemoryBlobAdapter`](../30-api/index/classes/InMemoryBlobAdapter.md) | an `IBlobAdapter` in a `Map`, for tests and the first run            | the package                              |
+| [`IModelCaps`](../30-api/index/interfaces/IModelCaps.md)                | `images` and `pdf` say which files a model reads                     | the model registry                       |
 
 The methods the application calls:
 
-| Method                                | What it does                                                          | Caller                    |
-|---------------------------------------|-----------------------------------------------------------------------|---------------------------|
-| `uploadFile`                          | stores the bytes in the calling user's folder, returns the `IFileRef` | the host's upload route   |
-| `deleteFile`                          | removes one file of the calling user                                  | "remove attachment"       |
-| `getFileUrl`                          | a short-lived signed URL of one file of the calling user              | the chat screen           |
-| `removeFilesByUser`                   | removes every file of one user, returns the count                     | an admin surface          |
-| `delete`                              | removes threads, and the files their turns point at                   | "delete conversation"     |
-| `deleteUserData`, `anonymizeUserData` | "forget this user": the files go in both                              | an erasure request (GDPR) |
+| Method                                | What it does                                                          | Caller                         |
+|---------------------------------------|-----------------------------------------------------------------------|--------------------------------|
+| `uploadFile`                          | stores the bytes in the calling user's folder, returns the `IFileRef` | the application's upload route |
+| `deleteFile`                          | removes one file of the calling user                                  | "remove attachment"            |
+| `getFileUrl`                          | a short-lived signed URL of one file of the calling user              | the chat screen                |
+| `removeFilesByUser`                   | removes every file of one user, returns the count                     | an admin surface               |
+| `delete`                              | removes threads, and the files their turns point at                   | "delete conversation"          |
+| `deleteUserData`, `anonymizeUserData` | "forget this user": the files go in both                              | an erasure request (GDPR)      |
 
 The gateway keeps no list of files: a file is its pointer
 ([D30](../60-architecture/90-decisions.md#d30-a-file-is-its-pointer)).
@@ -171,14 +171,14 @@ The `config` and the `userContext` are those of [Installation](../10-getting-sta
 
 ### 3.1 Upload, then ask
 
-The upload is the host's own route. The chat call sends the pointer.
+The upload is the application's own route. The chat call sends the pointer.
 
 ```ts
 import {AIGateway, EGatewayResponseKind, IFileRef} from "dyna-ai-gateway";
 
 const gateway = new AIGateway(config);
 
-// The host's upload route: multipart form data with one "file" field
+// The application's upload route: multipart form data with one "file" field
 const uploadRoute = async (request: Request): Promise<IFileRef> => {
   const form = await request.formData();
   const upload = form.get("file");
@@ -407,13 +407,13 @@ erased.files; // the number of files deleted
 ## 4. Pitfalls
 
 - **Trusting the pointer's `userId`.** The client sends the pointer, and the gateway refuses any pointer that is not the
-  caller's. Pass the `userContext` the host authenticated, never one taken from the request
+  caller's. Pass the `userContext` the application authenticated, never one taken from the request
   ([What the gateway trusts](../60-architecture/10-architecture-and-trade-offs.md#72-what-the-gateway-trusts)).
 - **Trusting the `mime`.** The declared type is not compared with the bytes
   ([What no check covers](../60-architecture/10-architecture-and-trade-offs.md#73-what-no-check-covers)). Check the
   bytes in the upload route when it matters.
 - **Allowing SVG.** `image/*` allows `image/svg+xml`, which can carry a script. Allow it only when the files are never
-  shown inline from an origin the app trusts.
+  shown inline from an origin the application trusts.
 - **Allowing a type no model reads.** A text file or a spreadsheet uploads fine and is dropped with `file_dropped` on
   every call. Only images and PDFs reach a model.
 - **A profile on a model without the caps.** A question with a PDF on a model without `caps.pdf` is answered without the
@@ -441,7 +441,7 @@ erased.files; // the number of files deleted
 - Only the files of the current question reach the model. The thread, the trace and a paused run keep no bytes.
 - Files go with `deleteFile`, with their thread (`delete`), with `removeFilesByUser` and with the erasure of the user.
   There is no expiry.
-- The host provides the storage as an `IBlobAdapter`. Its `get` and `signedUrl` throw `status: 404` for a missing key.
+- The application provides the storage as an `IBlobAdapter`. Its `get` and `signedUrl` throw `status: 404` for a missing key.
 
 ## 6. FAQ
 
@@ -485,7 +485,7 @@ knowledge base. See [Knowledge base](070-knowledge-base.md).
 | [`IForgetUserResult`](../30-api/index/interfaces/IForgetUserResult.md)                  | the counts of an erasure, `files` among them                   |
 | [`IAIGatewayConfig.fileStore`](../30-api/index/interfaces/IAIGatewayConfig.md)          | the store's config                                             |
 | [`IFileStoreConfig`](../30-api/index/interfaces/IFileStoreConfig.md)                    | `adapter`, `path`, `maxBytes`, `allowedMime`                   |
-| [`IBlobAdapter`](../30-api/index/interfaces/IBlobAdapter.md)                            | the storage the host implements                                |
+| [`IBlobAdapter`](../30-api/index/interfaces/IBlobAdapter.md)                            | the storage the application implements                         |
 | [`InMemoryBlobAdapter`](../30-api/index/classes/InMemoryBlobAdapter.md)                 | the adapter for tests and the first run                        |
 | [`IModelCaps`](../30-api/index/interfaces/IModelCaps.md)                                | `images`, `pdf`                                                |
 | [`IInputJudgeArgs`](../30-api/index/interfaces/IInputJudgeArgs.md)                      | `fileFilter` of an input rule's judge                          |

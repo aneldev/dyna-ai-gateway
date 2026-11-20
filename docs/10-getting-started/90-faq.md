@@ -129,7 +129,7 @@ The `profile` lets one rule act per use case, e.g. stricter moderation for a "ki
   },
   ```
 
-- **`message` is the developer's text; the end user's text goes in `userMessage`**, which a host shows as it is (a
+- **`message` is the developer's text; the end user's text goes in `userMessage`**, which an application shows as it is (a
   judge's issues have none). Issues go back to the application and into the trace, so keep vendor errors, ids and stack
   traces out of both — throw them instead, and they reach `onRuleError`, not the user.
 - Rule names are unique (also against the built-in ones); a duplicate throws when the gateway is constructed.
@@ -318,7 +318,7 @@ export const lookupOrderTool = defineTool({
   inputSchema: z.object({orderId: z.string()}),
   tags: ["orders"],
   execute: async ({input: {orderId}, userContext}): Promise<{orderId: string; total: number}> => {
-    const order = await ordersDb.find({tenantId: userContext.tenantId, orderId}); // the app's own data access
+    const order = await ordersDb.find({tenantId: userContext.tenantId, orderId}); // the application's own data access
     if (!order) {
       throw dynaError({
         code: 82758244,
@@ -698,7 +698,7 @@ keeps its place. A thread has no title until `renameThread` sets one.
 
 ## How do I delete conversations?
 
-`delete` removes threads with everything they left in the stores: turns, thread memory, files, runs and trace entries ([D119](../60-architecture/90-decisions.md#d119-threads-are-deleted-in-bulk-with-everything-they-left)). It takes raw ids and checks no user, so the host passes the `userId` of the user whose request it serves:
+`delete` removes threads with everything they left in the stores: turns, thread memory, files, runs and trace entries ([D119](../60-architecture/90-decisions.md#d119-threads-are-deleted-in-bulk-with-everything-they-left)). It takes raw ids and checks no user, so the application passes the `userId` of the user whose request it serves:
 
 ```ts
 // The user's "delete selected": only that user's threads among the ids go

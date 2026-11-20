@@ -55,7 +55,7 @@ and `events` throws it. Wrap the call in `try`/`catch`.
 
 | Field          | Why                                                                                         |
 |----------------|---------------------------------------------------------------------------------------------|
-| `userContext`  | who calls, as your host authenticated them; every store is keyed by its `tenantId`          |
+| `userContext`  | who calls, as your application authenticated them; every store is keyed by its `tenantId`   |
 | `profileId`    | the model, the addendum and the limits of the use case                                      |
 | `prompt`       | what the user asked                                                                         |
 | `context`      | what the screen knows; the model reads it, the thread does not keep it                      |

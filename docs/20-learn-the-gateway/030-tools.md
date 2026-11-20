@@ -190,7 +190,7 @@ export const getInvoiceTool = defineTool({
   tags: ["billing", "read"],
   timeoutMs: 5_000,
   execute: async ({input: {invoiceNo}, userContext, abortSignal}): Promise<IInvoiceSummary> => {
-    const invoice = await invoices.load({tenantId: userContext.tenantId, invoiceNo, signal: abortSignal}); // the app's own data access
+    const invoice = await invoices.load({tenantId: userContext.tenantId, invoiceNo, signal: abortSignal}); // the application's own data access
     if (!invoice) {
       throw dynaError({
         code: 82758250,
@@ -287,7 +287,7 @@ const {response} = gateway.run({
   userContext,
   profileId: "accounting",
   prompt: "Make the letter shorter and more polite.",
-  additionalTools: [replaceDraftTool], // not in allowedTools: the app passed it
+  additionalTools: [replaceDraftTool], // not in allowedTools: the application passed it
   kbFilters: {libraryIds: [], bookIds: []},
 });
 ```
@@ -340,7 +340,7 @@ const {events, response} = gateway.run({
 for await (const event of events) {
   const call = event.toolCall;
   if (event.kind === ELLMClientEventKind.TOOL_REQUEST && call && !call.toolName.startsWith(BUILT_IN_TOOL_NAME_PREFIX)) {
-    showProgress(`Looking up: ${call.toolName}`); // the app's own UI
+    showProgress(`Looking up: ${call.toolName}`); // the application's own UI
   }
 }
 ```

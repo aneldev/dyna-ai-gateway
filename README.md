@@ -65,7 +65,7 @@ symbol carries its JSDoc, so the editor shows the contract of each option.
 | Can a human step in?              | Yes. A run pauses on a tool call or on the final answer; `resume()` takes approve, edit or reject.                                                                                                                                     |
 | How do I control the spend?       | In your code. The gateway asks your usage adapter before every model call, with the tenant, user, profile, model, purpose and a token estimate, and reports what the call used after it. It holds no budget, plan or quota of its own. |
 | Can I test without a real model?  | Yes. The agent loop runs on a scripted model (the library's own tests pass a fake `ILLMClient` in `overrides`); the 1000+ deterministic tests need no key.                                                                             |
-| Does it fit my auth and tenants?  | The call carries the `userContext` your host authenticated; every tenant's data (profiles, threads, runs, memory, files, traces) is keyed by its `tenantId`; the model catalog and the prompt templates are shared.                    |
+| Does it fit my auth and tenants?  | The call carries the `userContext` your application authenticated; every tenant's data (profiles, threads, runs, memory, files, traces) is keyed by its `tenantId`; the model catalog and the prompt templates are shared.             |
 
 Every part of the gateway is a class with one job, held behind an interface. The second constructor argument takes a
 factory per part that returns your own instance in its place: a knowledge-base retriever on your search engine, a trace that writes to your
@@ -267,7 +267,7 @@ The guide: [Vercel chat client](https://github.com/aneldev/dyna-ai-gateway/blob/
 ## Design
 
 - **The application keeps control.** The gateway knows no HTTP route, no UI and no session: it receives a `userContext`
-  the host authenticated and returns events and a response.
+  the application authenticated and returns events and a response.
 - **Data is passed, services are injected.** A call loads its profile, memory and history once and hands them on as plain
   data; only the stores and the provider client are injected. One class per job.
 - **Nothing is hidden in the model.** Every decision a tool policy, a guardrail or the usage adapter makes is made in code (a

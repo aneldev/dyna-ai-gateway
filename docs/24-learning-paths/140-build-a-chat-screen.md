@@ -64,7 +64,7 @@ flowchart LR
 | an approval or a question  | the `PAUSED` envelopes, then `resume()`                                                                               | the SDK's card through `chat`; answers, edits and typed rejections through `resume` ([Approvals](../10-getting-started/50-vercel-chat-client.md#4-approvals-and-the-other-decisions)) |
 | a second message too early | a 409 while the thread's lease is held ([D77](../60-architecture/90-decisions.md#d77-one-call-at-a-time-on-a-thread)) | a JSON response with the status 409 ([The endpoints](../10-getting-started/50-vercel-chat-client.md#2-the-endpoints))                                                                 |
 
-The user is your host's: `userContext` comes from your authentication, never from the request body
+The user is your application's: `userContext` comes from your authentication, never from the request body
 ([D118](../60-architecture/90-decisions.md#d118-the-gateway-checks-what-a-user-could-forge-and-trusts-what-the-application-sets)).
 
 ## 6. API you should know

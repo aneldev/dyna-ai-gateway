@@ -5,7 +5,7 @@
     # These file will show to stranger developers the simplicity of this lib, that can start and work with minimal code
     # consider these files as the teaser
     00-README.md                              # Welcome, short desc of this library, important, "You don't need to know everything, just what you need"
-    10-what-is-the-ai-gateway.md              # Where this lib sits (between app/agent and LLM)
+    10-what-is-the-ai-gateway.md              # Where this lib sits (between application/agent and LLM)
     20-installation.md
     30-example-ask.md                         # simple example like intro
     40-example-run.md                         # simple example like intro
@@ -101,7 +101,7 @@
       03-data-protection-regulation-tools
       04-maintenance-methods                  # keep your resources tidy
       05-production-tools                     # tools to make your gateway bulletproof
-    /20-adapters                              # what the host implements, most important first; in-memory versions ship with the package
+    /20-adapters                              # what the application implements, most important first; in-memory versions ship with the package
       # Not hand-written: covered by the generated TypeDoc page of each interface; the pattern and the table of the ten seams are in /60-architecture/20-adapters.md
       README.md                               # the pattern: config → repository/adapter interface, overrides, the in-memory defaults
       01-model-registry-repository.md        # IModelRegistryRepository: the models allowed, their caps and cost — needed by every call
@@ -198,7 +198,7 @@
       /30-user-facts-across-threads
       /40-memory-tools
     /80-operations
-      /10-usage-adapter                       # the app decides every token
+      /10-usage-adapter                       # the application decides every token
       /20-trace                               # one entry per model call
       /30-prompt-caching                      # the stable block and its cost
       /40-cancel-and-timeout
@@ -222,7 +222,7 @@
       /10-collect-the-fields                  # the model asks the missing fields (question → form → resumeWithAnswers)
       /20-submit-when-complete                # structured output + a tool with endsRun that stores the form
     /150-back-office-job                      # learning path 130
-      /10-nightly-report                      # run() started by the host, a service user, one thread per job
+      /10-nightly-report                      # run() started by the application, a service user, one thread per job
       /20-guarded-workflow                    # requires: a tool only after another ran, endsRun closes the job
 
   /50-ai-best-practices
@@ -233,7 +233,7 @@
     # - (intro: the problem in one paragraph, what the practice gives)
     # - The problem
     # - The practice                          # numbered rules
-    # - In code                               # what the app owns is a `declare` line; each page compiles as one module (docs:check-samples)
+    # - In code                               # what the application owns is a `declare` line; each page compiles as one module (docs:check-samples)
     # - Pitfalls
     # - Checklist
     # - Go further                            # the learn page, the learning path with the full setup

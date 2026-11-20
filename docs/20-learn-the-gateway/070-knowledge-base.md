@@ -362,7 +362,7 @@ const reports = await gateway.kbIngestor.reindexBook({
 const failed = reports.filter(report => report.error);
 ```
 
-### 3.7 The host's vector index
+### 3.7 The application's vector index
 
 `InMemoryVectorIndexAdapter` keeps the records in a `Map` and scans every record of the tenant on each search. It is for
 tests, the sandbox and a first run. Production implements
@@ -468,7 +468,7 @@ matched when the chunk has any of them (the in-memory index matches nothing for 
   call overrides both with `kbRetrieval`.
 - The excerpts reach the model labelled as documents, not instructions. `citations` lists the ids of the chunks it was
   given.
-- The index is the host's `IVectorIndexAdapter`; `InMemoryVectorIndexAdapter` is for tests and the sandbox.
+- The index is the application's `IVectorIndexAdapter`; `InMemoryVectorIndexAdapter` is for tests and the sandbox.
 
 ## 6. FAQ
 
@@ -515,7 +515,7 @@ Briefly. Between the delete of the old chunks and the write of the new ones, a s
 | [`IMdChunkerConfig`](../30-api/index/interfaces/IMdChunkerConfig.md)                  | `maxTokens`, `minTokens`, `overlapTokens`                                     |
 | [`IEmbedderConfig`](../30-api/index/interfaces/IEmbedderConfig.md)                    | `embeddingModelId`, `dimensions`, `batchSize`                                 |
 | [`IVectorStoreConfig`](../30-api/index/interfaces/IVectorStoreConfig.md)              | `adapter`                                                                     |
-| [`IVectorIndexAdapter`](../30-api/index/interfaces/IVectorIndexAdapter.md)            | the index backend a host implements                                           |
+| [`IVectorIndexAdapter`](../30-api/index/interfaces/IVectorIndexAdapter.md)            | the index backend an application implements                                   |
 | [`IVectorIndexInfo`](../30-api/index/interfaces/IVectorIndexInfo.md)                  | the model and the vector length of the index                                  |
 | [`IChunkRecord`](../30-api/index/interfaces/IChunkRecord.md)                          | a stored chunk with its vector                                                |
 | [`InMemoryVectorIndexAdapter`](../30-api/index/classes/InMemoryVectorIndexAdapter.md) | the index in memory, for tests and the sandbox                                |

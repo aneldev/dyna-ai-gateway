@@ -32,7 +32,7 @@ interfaces you implement or take in-memory.
 
 ## What stays in your application
 
-- **Authentication.** Every call carries the `userContext` your host authenticated: tenant, user, permissions, locale.
+- **Authentication.** Every call carries the `userContext` your application authenticated: tenant, user, permissions, locale.
   The gateway knows no HTTP route, no session and no UI.
 - **The transport.** A call returns its `events` and its `response`; how they reach a screen is your code. The
   [Vercel chat client](50-vercel-chat-client.md) is one ready-made transport.

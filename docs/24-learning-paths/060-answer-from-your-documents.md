@@ -443,7 +443,7 @@ try {
   earlier `SUMMARY_BUFFER` period left them; the rewrite then reads those stale ones
   ([The follow-up is rewritten](../20-learn-the-gateway/070-knowledge-base.md#25-the-follow-up-is-rewritten)).
 - `InMemoryVectorIndexAdapter` is for tests and the sandbox
-  ([The host's vector index](../20-learn-the-gateway/070-knowledge-base.md#37-the-hosts-vector-index)).
+  ([The application's vector index](../20-learn-the-gateway/070-knowledge-base.md#37-the-applications-vector-index)).
 
 ## 10. Summary
 

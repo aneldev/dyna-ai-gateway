@@ -548,7 +548,7 @@ if (asked.kind === EGatewayResponseKind.PAUSED) {
   const {runId} = asked.envelopes[0];
   const {pauseId} = asked; // your server passes both on to the reviewer
 
-  const run = await gateway.getPausedRun({tenantId: "acme", runId}); // raw ids: your host decides who may review
+  const run = await gateway.getPausedRun({tenantId: "acme", runId}); // raw ids: your application decides who may review
   for (const envelope of run.pending ?? []) {
     if (envelope.kind === EPauseKind.RESULT_REVIEW) showToUser(envelope.result?.text ?? ""); // the draft
   }

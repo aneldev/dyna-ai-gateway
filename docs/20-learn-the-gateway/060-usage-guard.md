@@ -133,7 +133,7 @@ the call that paused), without the cache split, which only each step's `addUsage
 | `cacheWriteInputTokens`                                             | `costCacheWritePerMTokUsd` | Anthropic: 1.25 × `costInPerMTokUsd` (a 5-minute write); others: `costInPerMTokUsd`                                                              |
 | `outputTokens`                                                      | `costOutPerMTokUsd`        | required                                                                                                                                         |
 
-The estimate knows no exchange rate, discount or contract price. An app that bills in its own currency or in credits
+The estimate knows no exchange rate, discount or contract price. An application that bills in its own currency or in credits
 computes from `usage`. A cost estimate that fails is logged, and the call is reported with `costUsd: 0`. The same estimate
 is available as `gateway.modelRegistry.estimateCostUsd`. When and how the prompt cache produces read and write tokens is in
 [Is the system prompt cached](../10-getting-started/90-faq.md#is-the-system-prompt-cached-and-what-does-it-cost).

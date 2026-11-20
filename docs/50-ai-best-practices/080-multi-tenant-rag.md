@@ -111,6 +111,6 @@ const getContract = defineTool({
 ## 6. Go further
 
 - [Add a knowledge base to the LLM](../20-learn-the-gateway/070-knowledge-base.md#23-the-scope-of-a-call-kbfilters): the
-  fields of `kbFilters`, the host's vector index.
+  fields of `kbFilters`, the application's vector index.
 - [Who may read a thread, a file or a paused run?](../10-getting-started/90-faq.md#who-may-read-a-thread-a-file-or-a-paused-run)
 - [Stop hallucinations](020-stop-llm-hallucinations.md): grounded answers from the scope.

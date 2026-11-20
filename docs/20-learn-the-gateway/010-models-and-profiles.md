@@ -144,7 +144,7 @@ Every call reads a profile and a model, so both stores cache their repository.
 | `ModelRegistry`  | the whole catalog          | 60 000               | `upsertModel`, `setEnabled`, `removeModel`, `refresh()` |
 | `AIProfileStore` | the profiles of one tenant | 30 000               | `upsertProfile`, `removeProfile` (that tenant only)     |
 
-A write drops the cache of the instance that made it. Another server instance sees the change after its TTL. A host that
+A write drops the cache of the instance that made it. Another server instance sees the change after its TTL. An application that
 writes the repository directly, past the registry, calls `modelRegistry.refresh()`. The profile store has no `refresh()`.
 The full table of what changes how is in
 [Live adjustment](../60-architecture/50-live-adjustment-and-dependency-injection.md#6-live-adjustment).
@@ -285,7 +285,7 @@ const anthropicOnly = await gateway.modelRegistry.listModels({provider: EModelPr
 const allForAdmin = await gateway.modelRegistry.listModels({enabledOnly: false});
 ```
 
-`gateway.modelRegistry` and `gateway.aiProfileStore` check no user. The host checks the admin permission before it
+`gateway.modelRegistry` and `gateway.aiProfileStore` check no user. The application checks the admin permission before it
 calls them.
 
 ### 3.5 Retire a model

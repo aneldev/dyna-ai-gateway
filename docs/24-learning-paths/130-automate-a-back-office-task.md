@@ -18,7 +18,7 @@ approver like any other run.
 
 ## 2. Description
 
-The same agent loop as a chat, started by a scheduler instead of a user. The job runs under a `userContext` your host
+The same agent loop as a chat, started by a scheduler instead of a user. The job runs under a `userContext` your application
 sets for it, whose permissions unlock the job's tools. Nobody reads the stream; the job awaits `response`. A deadline
 and the step limit bound it; your usage adapter decides what it may spend.
 
@@ -261,7 +261,7 @@ const fileReport = defineTool({
 
 const jobContext: IUserContext = {
   tenantId: "acme",
-  userId: "job-nightly-reconciliation", // a service user of your host
+  userId: "job-nightly-reconciliation", // a service user of your application
   permissions: ["bank.read", "ledger.write"],
   locale: "en-GB",
   timezone: "Europe/Oslo",
@@ -325,9 +325,9 @@ The three are defined in 8.0; their order and their permissions are its `toolPol
 
 ### 8.2 The service user the job runs as
 
-The job has no logged-in user, so it runs with the `IUserContext` of a service user of your host: `jobContext`, defined in 8.0. Its `permissions` decide, through `toolPolicy.permissionsToTools`, which tools the model is offered.
+The job has no logged-in user, so it runs with the `IUserContext` of a service user of your application: `jobContext`, defined in 8.0. Its `permissions` decide, through `toolPolicy.permissionsToTools`, which tools the model is offered.
 
-> **The bigger picture:** A technical account your host creates per job: the job's threads and paused runs belong to this user, and its permissions are the only ones the job has.
+> **The bigger picture:** A technical account your application creates per job: the job's threads and paused runs belong to this user, and its permissions are the only ones the job has.
 
 ### 8.3 The job starts the run and handles its three outcomes
 

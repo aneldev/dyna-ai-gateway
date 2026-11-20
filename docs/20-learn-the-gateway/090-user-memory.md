@@ -24,7 +24,7 @@ Four writers fill and edit the facts:
 | the application                           | `upsertUserFact`, `removeUserFact`, `clearUserFacts`                            | no                            |
 
 Every fact goes into the `{memory}` slot of every prompt of the user, as data (chapter 2.4). The facts live in the
-host's [`IUserMemoryRepository`](../30-api/index/interfaces/IUserMemoryRepository.md).
+application's [`IUserMemoryRepository`](../30-api/index/interfaces/IUserMemoryRepository.md).
 
 | Config                                  | Default | What it does                                                 |
 |-----------------------------------------|---------|--------------------------------------------------------------|
@@ -42,10 +42,10 @@ host's [`IUserMemoryRepository`](../30-api/index/interfaces/IUserMemoryRepositor
 `userMemoryStore.enabled` is required
 ([D16, D19](../60-architecture/90-decisions.md#d16-d19-memory-has-a-switch-and-the-switch-is-required)).
 
-| `enabled` | Extraction | `dyna_aigw_remember_user_fact`, `dyna_aigw_forget_user_fact` | Stored facts in the prompt | Host methods |
-|-----------|------------|--------------------------------------------------------------|----------------------------|--------------|
-| `true`    | runs       | offered in every `run()`                                     | yes                        | work         |
-| `false`   | never      | not offered                                                  | yes                        | work         |
+| `enabled` | Extraction | `dyna_aigw_remember_user_fact`, `dyna_aigw_forget_user_fact` | Stored facts in the prompt | Methods the application calls |
+|-----------|------------|--------------------------------------------------------------|----------------------------|-------------------------------|
+| `true`    | runs       | offered in every `run()`                                     | yes                        | work                          |
+| `false`   | never      | not offered                                                  | yes                        | work                          |
 
 Off switches the writers of the model off. It does not hide the facts already stored.
 
@@ -137,7 +137,7 @@ and a `userMessage` the UI can show. The same key replaces the stored fact.
 | `saveAll`      | replaces the whole list; an empty list keeps the record                              |
 | `deleteByUser` | removes the record and returns the number of facts it held                           |
 
-`InMemoryUserMemoryRepository` ships with the package. A host that keeps users elsewhere replaces the whole store with
+`InMemoryUserMemoryRepository` ships with the package. An application that keeps users elsewhere replaces the whole store with
 its own [`IUserMemoryStore`](../30-api/index/interfaces/IUserMemoryStore.md) in `overrides.userMemoryStore`.
 
 ### 2.7 Privacy and deletion
@@ -211,7 +211,7 @@ if (paused.kind === EGatewayResponseKind.PAUSED) {
 }
 ```
 
-An app that accepts the risk stores the fact at once with `rememberNeedsApproval: false`; the run then answers without a
+An application that accepts the risk stores the fact at once with `rememberNeedsApproval: false`; the run then answers without a
 pause.
 
 ### 3.3 A "what you know about me" screen
@@ -324,7 +324,7 @@ A 409 with `data.busyThreadIds` means a call of the user still runs on another i
   with `dyna_aigw_forget_user_fact`.
 - The application reads and edits with `getUserFacts`, `upsertUserFact`, `removeUserFact`, `clearUserFacts`; it erases
   with `deleteUserData` or `anonymizeUserData`.
-- `maxFacts` and `maxFactChars` bound the cost; the facts live in the host's `IUserMemoryRepository`.
+- `maxFacts` and `maxFactChars` bound the cost; the facts live in the application's `IUserMemoryRepository`.
 
 ## 6. FAQ
 
@@ -359,7 +359,7 @@ The thread's facts are part of the [thread memory](080-thread-memory.md#24-summa
 | [`InMemoryUserMemoryRepository`](../30-api/index/classes/InMemoryUserMemoryRepository.md) | the in-memory repository                                                                                    |
 | [`IUserMemoryStore`](../30-api/index/interfaces/IUserMemoryStore.md)                      | the contract to pass in `overrides` to replace the store                                                    |
 | [`UserMemoryStore`](../30-api/index/interfaces/UserMemoryStore.md)                        | the built-in store                                                                                          |
-| [`IUserMemoryStoreDeps`](../30-api/index/interfaces/IUserMemoryStoreDeps.md)              | what a host store receives                                                                                  |
+| [`IUserMemoryStoreDeps`](../30-api/index/interfaces/IUserMemoryStoreDeps.md)              | what an application's store receives                                                                        |
 | [`EUserMemoryFactOp`](../30-api/index/enumerations/EUserMemoryFactOp.md)                  | `SET`, `DELETE`: the operations of the extraction                                                           |
 | [`BUILT_IN_TOOL_NAMES`](../30-api/index/variables/BUILT_IN_TOOL_NAMES.md)                 | `REMEMBER_USER_FACT`, `FORGET_USER_FACT`                                                                    |
 | [`IForgetUserResult`](../30-api/index/interfaces/IForgetUserResult.md)                    | the counts of an erasure, `userFacts` among them                                                            |
