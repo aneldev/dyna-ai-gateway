@@ -254,7 +254,7 @@ const attachments = await Promise.all(
 );
 ```
 
-The [Vercel chat client](../10-getting-started/50-vercel-chat-client.md#5-files) module does the same through its
+The [Vercel chat client](../10-getting-started/50-vercel-chat-client.md#files) module does the same through its
 `files.toUrl` hook.
 
 ### 3.4 The caps of the store

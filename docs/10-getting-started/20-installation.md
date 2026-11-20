@@ -7,7 +7,7 @@ pnpm add dyna-ai-gateway zod
 Node.js 24 or newer. `zod` 4 is a peer dependency: the tools and the structured answers are typed with it. The package is
 server-only; never bundle it into a browser build.
 
-## 1. The configuration
+## The configuration
 
 One object: the stores, the providers and the switches. The in-memory stores ship with the package; a database adapter
 implements the same interface, so moving to production changes these lines and nothing else.
@@ -56,7 +56,7 @@ The switches (`enabled`, `promptCaching`, `sharePromptCacheAcrossTenants`) are r
 the model sees or what a tenant shares, so the configuration states it. `InMemoryUsageAdapter` allows every call; in
 production your own usage adapter decides.
 
-## 2. A model
+## A model
 
 A **model** (`IModelInfo`) is registered with its provider, its capabilities and its price. The gateway reads the
 capabilities to decide what a call may send (tools, images, PDFs) and prices the usage with the costs.
@@ -116,7 +116,7 @@ A model holds one price: OpenAI bills `gpt-6.1-terra` at higher rates for a requ
 the registry does not price. `contextTokens` is the room of the request and its answer; `gpt-6.1-terra` takes at most
 922 000 input tokens of its 1 050 000, so the entry gives that limit.
 
-## 3. A profile
+## A profile
 
 A **profile** (`IAIProfile`) is what a tenant's use case runs on: the model, the tools it may call, the approvals, a
 prompt addendum and the limits. Each call names its profile, so one thread can switch model between two calls. Models

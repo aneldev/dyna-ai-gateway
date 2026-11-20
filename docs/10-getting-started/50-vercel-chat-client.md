@@ -5,7 +5,7 @@ module that takes your `AIGateway` instance and a configuration per chat use cas
 Each endpoint of your application becomes one call. The gateway itself knows nothing of the chat client
 ([D40](../60-architecture/90-decisions.md#d40-the-gateway-knows-no-ui)).
 
-## 1. One instance per use case
+## One instance per use case
 
 ```ts
 import {AIGateway} from "dyna-ai-gateway";
@@ -30,7 +30,7 @@ const supportChat = new AIGatewayVercelUi({
 overrides it per request, for example the `context` of the record the user is looking at, carried in the request's `body`.
 A second use case, an invoice assistant on another profile and another knowledge base, is a second instance.
 
-## 2. The endpoints
+## The endpoints
 
 ```ts
 // POST /api/chat — what useChat posts
@@ -75,14 +75,14 @@ a new thread. An error of `chat` before the first chunk (a 400 of the input, a 4
 the 401 of your hook) is a JSON response with that status; an error once the stream runs is an `error` chunk. A 5xx never carries
 its message to the browser.
 
-## 3. What the client receives
+## What the client receives
 
 | In the stream                                                        | Meaning                                                                                                                                                                 |
 |----------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `start`                                                              | The message id, and on the message's metadata `createdAt` and, when known, `threadId`                                                                                   |
 | `text-start` / `text-delta` / `text-end`                             | The answer's text, one text per model step                                                                                                                              |
 | `tool-input-available`, `tool-output-available`, `tool-output-error` | A tool call of the run and its result; `dynamic: true`, render it by `toolName`                                                                                         |
-| `tool-approval-request`                                              | A tool call that waits for a human: the SDK's approval card, see § 4                                                                                                    |
+| `tool-approval-request`                                              | A tool call that waits for a human: the SDK's approval card, see [Approvals](#approvals-and-the-other-decisions)                                                        |
 | `message-metadata`                                                   | The gateway's results on the message: `threadId`, `usage`, `citations`, `issues`, `structured` (a use case with an `outputSchema`), `endedByTool`, `withdrawn`, `pause` |
 | `error`                                                              | The call failed: the reason                                                                                                                                             |
 
@@ -109,7 +109,7 @@ type TBuiltInToolName = (typeof BUILT_IN_TOOL_NAMES)[keyof typeof BUILT_IN_TOOL_
 const REMEMBER_USER_FACT: TBuiltInToolName = "dyna_aigw_remember_user_fact";
 ```
 
-## 4. Approvals and the other decisions
+## Approvals and the other decisions
 
 A run that pauses for a tool streams a `tool-approval-request` and `metadata.pause`; the message's tool part is in state
 `approval-requested`. The SDK's card does the rest: `addToolApprovalResponse({id, approved, reason})` and, with
@@ -135,14 +135,14 @@ The pause must be one of the calling user's own paused runs; anything else is a 
 sees it ([D99](../60-architecture/90-decisions.md#d99-the-answer-waits-for-a-human)) streams no text and sets `metadata.pause`
 with the kind `RESULT_REVIEW`; the reviewer's screen is `AIGateway.getPausedRun`, not this module.
 
-## 5. Files
+## Files
 
 Uploads are your own route on `AIGateway.uploadFile`; the client then names the file in a file part of its message. The `files`
 hooks of the config translate both ways: `fromUi` turns the part into the stored file's pointer, `toUrl` gives `history` the url
 the client loads a stored file from (`AIGateway.getFileUrl`, a signed url of the storage, or your own download route). Without the hooks, a file part in a request is a 400 and
 the file parts of a stored thread are left out of `history`.
 
-## 6. What stays the gateway's
+## What stays the gateway's
 
 The thread list of the sidebar, renaming and deleting (`listThreads`, `renameThread`; deleting is `delete`, which takes
 raw ids and checks no user unless it gets a `userId`, so pass the `userId` of the user whose request it serves; see

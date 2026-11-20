@@ -10,7 +10,7 @@ A model call costs money before you know whether it was worth it. A loop that ru
 uses the expensive model, a user who pastes a book into the chat: the bill shows it a month later. The practice is to
 decide every model call before it runs, against your own budget, and to record what it really used right after.
 
-## 1. The problem
+## The problem
 
 - A spend limit at the provider applies to the organization, a project or a workspace, monthly, not to a user or a plan. When your customers
   share one project, it stops all of them at once.
@@ -18,7 +18,7 @@ decide every model call before it runs, against your own budget, and to record w
 - A check that reads the remaining budget and writes it later lets two parallel calls spend the same remainder.
 - A call refused with a technical error leaves the user without a reason or a next step.
 
-## 2. The practice
+## The practice
 
 1. **Ask before every call.** The gateway asks your usage adapter before every model call, helpers included, with the
    tenant, the user, the profile, the model, the kind of call and the estimated tokens. A `false` means the provider is
@@ -39,7 +39,7 @@ decide every model call before it runs, against your own budget, and to record w
    updates. A profile without one runs its judges on the main model, and its rewrite and memory updates on the gateway's
    `defaultCheapModelId`.
 
-## 3. In code
+## In code
 
 The samples run on your configuration and the caller's `userContext`. The setup they need is in the learning path
 [Run it in production](../24-learning-paths/080-run-it-in-production.md).
@@ -114,7 +114,7 @@ the run was refused, and the text is that of the last step that completed, often
 `ask()` has no later step: a refused answer, judge or search embedding is a `FAILED`; a refused query rewrite is skipped and the prompt is searched as typed. A refused memory update after the
 answer is skipped, and the answer stands.
 
-## 4. Pitfalls
+## Pitfalls
 
 - **`InMemoryUsageAdapter` in production.** It approves every call. It is a test double, not a limit.
 - **A rule that counts only the answers.** The `kind` of the call says what it is for; a budget that skips the judge,
@@ -128,14 +128,14 @@ answer is skipped, and the answer stands.
 - **`maxStepsPerRun` as a budget.** It caps one invocation: the next run, and each `resume()` of a paused one, starts
   with the full count.
 
-## 5. Checklist
+## Checklist
 
 - [ ] A usage adapter of your own decides every call, by tenant, user, model or plan.
 - [ ] `check` reserves atomically; `addUsage` settles by `traceId`, also for zero tokens.
 - [ ] Every refusal has a `denyCode` and a `denyUserMessage`.
 - [ ] Profiles have `maxOutputTokens`, `maxStepsPerRun` and a `cheapModelId`.
 
-## 6. Go further
+## Go further
 
 - [Token control with the Usage Guard](../20-learn-the-gateway/060-usage-guard.md): what the adapter receives, what a
   denial does per kind of call, how the cost is estimated.

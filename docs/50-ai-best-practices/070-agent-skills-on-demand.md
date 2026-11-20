@@ -11,13 +11,13 @@ the system prompt and every call pays for all of them, and the model reads pages
 question. The practice is progressive disclosure: the prompt carries one line per procedure, and the model loads the full
 text only when the task needs it.
 
-## 1. The problem
+## The problem
 
 - The system prompt grows with every procedure, and so does the cost of every call.
 - The rule that matters for this question is buried among rules that do not.
 - A procedure that only one screen needs is sent with the calls of every screen.
 
-## 2. The practice
+## The practice
 
 1. **A skill per procedure.** A skill is a `name`, a `description` and a `body` of Markdown instructions.
 2. **The description decides the load.** In a `run()` on a model that calls tools, the system prompt lists each skill as one `name: description`
@@ -30,7 +30,7 @@ text only when the task needs it.
 5. **Room for the load.** A load is one model step. Size the profile's `limits.maxStepsPerRun` so the model can load a
    skill and still act on it.
 
-## 3. In code
+## In code
 
 The samples run on your `gateway` and the caller's `userContext`. The setup they need is in the learning path
 [Let the model act](../24-learning-paths/020-let-the-model-act.md).
@@ -94,7 +94,7 @@ const {response} = gateway.run({
 });
 ```
 
-## 4. Pitfalls
+## Pitfalls
 
 - **A vague description.** "Refunds" is loaded too often or too rarely. Say what the skill covers and when to load it.
 - **Skills in an `ask()`.** An `ask()` offers no tools, so the bodies of every skill are written into its prompt. A
@@ -107,14 +107,14 @@ const {response} = gateway.run({
 - **Showing the load as an action.** A UI that renders every tool call also shows `dyna_aigw_load_skill`. Filter the
   built-in tools by `BUILT_IN_TOOL_NAME_PREFIX`.
 
-## 5. Checklist
+## Checklist
 
 - [ ] Each long, occasional procedure is a skill with a "when to load it" description.
 - [ ] Rules for every call are in `promptAddendum`, not in a skill.
 - [ ] Screen-specific procedures come with the call's `skills`.
 - [ ] `maxStepsPerRun` leaves a step for the load.
 
-## 6. Go further
+## Go further
 
 - [Skills](../20-learn-the-gateway/020-skills.md): the lifecycle, the caps, a paused run.
 - [Context engineering](010-context-engineering.md): which layer each kind of information goes into.

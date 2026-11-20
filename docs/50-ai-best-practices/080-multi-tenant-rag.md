@@ -11,14 +11,14 @@ users may read. A retrieval that ignores either boundary puts another company's 
 answer. The practice is to isolate the tenant in every search and write, and to compute the scope of each call from the
 user's rights, in your code, on every call.
 
-## 1. The problem
+## The problem
 
 - A vector search returns the nearest chunks of the whole index unless something filters it.
 - A scope stored on the conversation outlives a change of the user's rights.
 - A default of "search everything" turns a missing permission into a leak.
 - A tool that takes the tenant or the customer id from the model's input lets an injected prompt name another one.
 
-## 2. The practice
+## The practice
 
 1. **The tenant is never a parameter of the model.** Every knowledge-base search carries the `tenantId` of the
    caller's `userContext`, and the vector store refuses to write a record of another tenant. The filter itself is your
@@ -36,7 +36,7 @@ user's rights, in your code, on every call.
 6. **The prompt cache follows the same boundary.** With `sharePromptCacheAcrossTenants: false`, each tenant writes and
    reads its own cache entries ([Prompt caching](110-prompt-caching.md)).
 
-## 3. In code
+## In code
 
 The samples run on your `gateway` and the caller's `userContext`. The setup they need is in the learning path
 [Answer from your documents](../24-learning-paths/060-answer-from-your-documents.md).
@@ -90,7 +90,7 @@ const getContract = defineTool({
 });
 ```
 
-## 4. Pitfalls
+## Pitfalls
 
 - **`"all"` as the default scope.** The gateway does not know who may read a library. A scope wider than the user's
   rights puts documents they may not see into the prompt.
@@ -100,7 +100,7 @@ const getContract = defineTool({
 - **The scope cached on the session.** A revoked permission keeps working until the session ends. Compute it per call.
 - **Tenant ids in tool inputs.** A field the model fills is a field an injected prompt can fill.
 
-## 5. Checklist
+## Checklist
 
 - [ ] `userContext.tenantId` comes from your authentication, never from the request body.
 - [ ] `kbFilters` is computed from the user's rights on every call.
@@ -108,7 +108,7 @@ const getContract = defineTool({
 - [ ] Your vector index adapter filters every query by `tenantId`.
 - [ ] Tools read the tenant and the user from `userContext`.
 
-## 6. Go further
+## Go further
 
 - [Add a knowledge base to the LLM](../20-learn-the-gateway/070-knowledge-base.md#23-the-scope-of-a-call-kbfilters): the
   fields of `kbFilters`, the application's vector index.

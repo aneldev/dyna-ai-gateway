@@ -11,7 +11,7 @@ choosing what goes into each call and where: the product's rules, the rule of th
 looking at, what the model should remember, and the documents. This page shows how to place each of them in its own layer
 with `dyna-ai-gateway`.
 
-## 1. The problem
+## The problem
 
 The usual first version of an AI feature has one system prompt that grows with every request from the product team. The
 invoice on screen is pasted into the user's question, a rule for one button is appended to the prompt of every call, and a
@@ -24,7 +24,7 @@ policy document is copied into the prompt "so the model knows it". The result:
 - Text that changes on every call sits inside the prompt, so the provider can cache only the part before it, and often
   nothing.
 
-## 2. The practice
+## The practice
 
 Give each kind of information its own layer. The gateway assembles the system prompt from these layers, in this order,
 stable first:
@@ -51,7 +51,7 @@ The user's own words stay in `prompt`. They are the message, not part of the sys
    `skills` change them ([Prompt caching](110-prompt-caching.md) has the list). The per-call layers follow. The order is in
    [System prompt layers](../60-architecture/40-system-prompt-production-layers.md).
 
-## 3. In code
+## In code
 
 The samples run on your `gateway` and the caller's `userContext`. The setup they need is in the learning path
 [Answer a question](../24-learning-paths/010-answer-a-question.md).
@@ -108,7 +108,7 @@ const followUp = await gateway.ask({
 }).response;
 ```
 
-## 4. Pitfalls
+## Pitfalls
 
 - **Documents to search in `context` or `instructions`.** They cost tokens on every call, are not searched and are not
   cited. Put them in the [knowledge base](../20-learn-the-gateway/070-knowledge-base.md). The one document a call is
@@ -124,7 +124,7 @@ const followUp = await gateway.ask({
 - **One profile with branches.** "If the user is on the invoice screen, …" in one prompt grows without limit. A second
   profile, or `instructions` from that screen, keeps each behaviour separate.
 
-## 5. Checklist
+## Checklist
 
 - [ ] The product's rules are in the profile's `promptAddendum`, once.
 - [ ] Each screen sends its record as `context` and its own rule as `instructions`.
@@ -132,7 +132,7 @@ const followUp = await gateway.ask({
 - [ ] Nothing per call is in the profile.
 - [ ] A different behaviour is a different profile.
 
-## 6. Go further
+## Go further
 
 - [System prompt layers](../60-architecture/40-system-prompt-production-layers.md): every layer, its slot and its label.
 - [Example: ask](../10-getting-started/30-example-ask.md#the-parts-of-the-call): the fields of a call.

@@ -42,7 +42,7 @@ chapter 8 writes them.
 | 2 | [Human in the loop](../20-learn-the-gateway/040-human-in-the-loop.md)                                                         | the three pause kinds, the decisions, resume, expiry |
 | 3 | [Tools: The path of a tool call](../20-learn-the-gateway/030-tools.md#21-the-path-of-a-tool-call)                             | where the gate sits in a run                         |
 | 4 | [Guardrails: Answers a user types on a resume](../20-learn-the-gateway/050-guardrails.md#29-answers-a-user-types-on-a-resume) | a free-text answer is screened like a prompt         |
-| 5 | [Vercel chat client: Approvals](../10-getting-started/50-vercel-chat-client.md#4-approvals-and-the-other-decisions)           | the cards in a `useChat` screen                      |
+| 5 | [Vercel chat client: Approvals](../10-getting-started/50-vercel-chat-client.md#approvals-and-the-other-decisions)             | the cards in a `useChat` screen                      |
 
 ## 5. How the parts connect
 

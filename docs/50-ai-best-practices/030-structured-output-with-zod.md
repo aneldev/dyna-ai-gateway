@@ -11,14 +11,14 @@ Asking the model for "JSON only" and parsing the text breaks on the first answer
 The practice is to declare the shape as a schema, let the provider produce it, validate it before anything is stored, and
 handle the answer that does not fit.
 
-## 1. The problem
+## The problem
 
 - A regular expression over the answer text breaks when the model changes its wording.
 - `JSON.parse` succeeds on an object with a missing field or a value outside the expected set, and the error surfaces
   later, far from the call.
 - A classifier forced to choose among the expected classes picks one even when none fits.
 
-## 2. The practice
+## The practice
 
 1. **The schema is the contract.** Pass a zod schema as `outputSchema`. The gateway asks the provider for output in that
    shape, validates the answer against it, and returns it typed as `structured`.
@@ -32,7 +32,7 @@ handle the answer that does not fit.
 6. **Check what the schema cannot.** A schema checks the shape, not the business rule ("no line listed twice"). An output
    rule reads the parsed value and blocks an answer that breaks the rule.
 
-## 3. In code
+## In code
 
 The samples run on your `gateway` and the caller's `userContext`. The setup they need is in the learning path
 [Classify and route requests](../24-learning-paths/090-classify-and-route-requests.md).
@@ -107,7 +107,7 @@ const resumed = await gateway.resume({
 }).response;
 ```
 
-## 4. Pitfalls
+## Pitfalls
 
 - **No way out in the enum.** A classifier without `other` puts the unclassifiable message into a real queue.
 - **Treating `FAILED` as an exception.** A schema miss is a normal outcome. Give it a path in your code.
@@ -116,7 +116,7 @@ const resumed = await gateway.resume({
   data in `context`, or leave the field to your code.
 - **`outputFormat` with a schema.** It is ignored: the schema fixes the shape.
 
-## 5. Checklist
+## Checklist
 
 - [ ] The answer your code acts on has an `outputSchema`.
 - [ ] Closed sets are `z.enum`, with a value for "none of these".
@@ -124,7 +124,7 @@ const resumed = await gateway.resume({
 - [ ] A `FAILED` answer has a fallback path.
 - [ ] Business rules on the value are output rules.
 
-## 6. Go further
+## Go further
 
 - [Guardrails: Structured output](../20-learn-the-gateway/050-guardrails.md#24-structured-output): how the answer is
   validated, and the issues of a miss.

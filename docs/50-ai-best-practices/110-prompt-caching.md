@@ -11,13 +11,13 @@ Providers cache such a prefix and bill the cached tokens at a fraction of the in
 The cache only matches an exact prefix, so the practice is to keep the stable part byte for byte the same and to put every
 per-call value after it.
 
-## 1. The problem
+## The problem
 
 - One changing value at the top of the prompt (a date, the user's name) makes every call a cache miss.
 - A short stable part is below the provider's minimum and is never cached.
 - Without the cache numbers per call, nobody notices that the cache stopped working.
 
-## 2. The practice
+## The practice
 
 1. **Turn it on.** With `contextAssembler.promptCaching: true`, the system prompt is sent as two blocks: the stable block
    (the template, the output format, the profile's addendum and skills) and the per-call block (the date, locale and timezone,
@@ -45,7 +45,7 @@ per-call value after it.
 6. **Decide the tenant boundary.** `sharePromptCacheAcrossTenants: false` gives each tenant its own entries. `true` lets
    tenants with a byte-identical stable block share one, in exchange for no cache isolation between them.
 
-## 3. In code
+## In code
 
 The samples run on your configuration and the caller's `userContext`. The setup they need is in
 [Installation](../10-getting-started/20-installation.md).
@@ -110,7 +110,7 @@ await gateway.modelRegistry.upsertModel({
 });
 ```
 
-## 4. Pitfalls
+## Pitfalls
 
 - **A per-call value in the addendum.** Every call writes a new entry and none reads one.
 - **A stored template with a per-call slot before `{cacheBreakpoint}`.** The cache is off for the call, and the response
@@ -122,7 +122,7 @@ await gateway.modelRegistry.upsertModel({
 - **Mixing `ask()` and `run()`, or schemas, on one profile.** Each variant of the stable block, and each tool set, is its own entry, and each
   writes it once before it can be read.
 
-## 5. Checklist
+## Checklist
 
 - [ ] `contextAssembler.promptCaching` is `true`.
 - [ ] Profiles hold no per-call values.
@@ -130,7 +130,7 @@ await gateway.modelRegistry.upsertModel({
 - [ ] `cachedInputTokens` is visible in your usage reports.
 - [ ] `sharePromptCacheAcrossTenants` is a decision, written down.
 
-## 6. Go further
+## Go further
 
 - [Is the system prompt cached, and what does it cost?](../10-getting-started/90-faq.md#is-the-system-prompt-cached-and-what-does-it-cost):
   the providers, the minimum sizes, the prices.

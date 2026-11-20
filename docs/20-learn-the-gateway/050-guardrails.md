@@ -162,7 +162,7 @@ Two stops are not rule errors and are not reported to `onRuleError`:
 The answer streams on `events` (`TEXT_DELTA`) while the model writes it. The output rules run when it is complete. A
 blocked answer has therefore already streamed. The stream then ends with `DONE` followed by one last event,
 `ELLMClientEventKind.ANSWER_WITHDRAWN`, whose `issues` are those of the `FAILED` response. A client drops or greys the
-text it rendered. The [Vercel chat client](../10-getting-started/50-vercel-chat-client.md#3-what-the-client-receives)
+text it rendered. The [Vercel chat client](../10-getting-started/50-vercel-chat-client.md#what-the-client-receives)
 receives it as `metadata.withdrawn`.
 
 ### 2.8 Prompt injection

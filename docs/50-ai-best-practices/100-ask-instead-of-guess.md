@@ -10,14 +10,14 @@ A request with a missing detail ("refund my last order" from a customer with thr
 and the guess becomes an action. The practice is to give the model a way to ask: a question tool that pauses the run with
 a form, and a resume that hands the answers back, so the model continues with facts instead of assumptions.
 
-## 1. The problem
+## The problem
 
 - A model that must produce an answer fills a gap with the most likely value.
 - A question written into the answer text ends the run. The next message is a new turn, and your code has to piece the
   request together again.
 - A reply as a new message is free text: the model has to read the missing value out of it, and may misread it.
 
-## 2. The practice
+## The practice
 
 1. **Offer the question tool.** With `humanGate.userQuestions.enabled`, every `run()` on a model with tools offers the built-in tool
    `dyna_aigw_ask_user_question`. Its call never executes: the run pauses with a `USER_QUESTION` card. A call whose input
@@ -34,7 +34,7 @@ a form, and a resume that hands the answers back, so the model continues with fa
    cards. `resume()` takes one decision per card, named by its `callId`.
 7. **Loop until it settles.** A resumed run may ask again. Handle its response like the response of `run()`.
 
-## 3. In code
+## In code
 
 The samples run on your configuration and the caller's `userContext`. The setup they need is in the learning path
 [Fill a form by conversation](../24-learning-paths/120-fill-a-form-by-conversation.md).
@@ -128,7 +128,7 @@ const answerFor = (question: IUserQuestions["questions"][number], picked: string
 };
 ```
 
-## 4. Pitfalls
+## Pitfalls
 
 - **Expecting a question in `ask()`.** An `ask()` offers no tools, so the model cannot pause there. Use `run()`.
 - **No rule for when to ask.** Without one, the model decides alone. Name the details that must not be guessed.
@@ -138,14 +138,14 @@ const answerFor = (question: IUserQuestions["questions"][number], picked: string
   calls `cancelRun`.
 - **A follow-up message sent with `resume()`.** `resume()` answers a pause only. A new message is a new call on the thread.
 
-## 5. Checklist
+## Checklist
 
 - [ ] `humanGate.userQuestions.enabled` is on for the agents that can act.
 - [ ] The profile names the details the model must ask for.
 - [ ] The screen renders `RADIO`, `CHECK` and `FREE_TEXT` questions.
 - [ ] The code resumes until the response is no longer `PAUSED`, with one decision per card.
 
-## 6. Go further
+## Go further
 
 - [Human in the loop: The model asks the user](../20-learn-the-gateway/040-human-in-the-loop.md#22-the-model-asks-the-user)
 - [Human-in-the-loop approvals](060-human-in-the-loop-approvals.md): the pause before a tool call.

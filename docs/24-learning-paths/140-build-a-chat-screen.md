@@ -34,15 +34,15 @@ each step. Every other path plugs into this screen: tools, approvals, memory, do
 
 ## 4. The parts
 
-| # | Read                                                                                                                                                                                                   | For                                             |
-|---|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
-| 1 | [Vercel chat client](../10-getting-started/50-vercel-chat-client.md)                                                                                                                                   | the module, the endpoints, the cards, the files |
-| 2 | [How do I show the user's conversations and open one?](../10-getting-started/90-faq.md#how-do-i-show-the-users-conversations-and-open-one)                                                             | the sidebar                                     |
-| 3 | [How do I delete conversations?](../10-getting-started/90-faq.md#how-do-i-delete-conversations)                                                                                                        | "delete conversation"                           |
-| 4 | [Thread memory: About](../20-learn-the-gateway/080-thread-memory.md#1-about)                                                                                                                           | threads and turns                               |
-| 5 | [Tools: Showing the tool calls in a UI](../20-learn-the-gateway/030-tools.md#36-showing-the-tool-calls-in-a-ui)                                                                                        | the tool events                                 |
-| 6 | [Chat files: Show the files of a thread](../20-learn-the-gateway/092-chat-files.md#33-show-the-files-of-a-thread), [Vercel chat client: Files](../10-getting-started/50-vercel-chat-client.md#5-files) | attachments                                     |
-| 7 | [Human in the loop: Render the cards and resume](../20-learn-the-gateway/040-human-in-the-loop.md#32-render-the-cards-and-resume)                                                                      | the cards                                       |
+| # | Read                                                                                                                                                                                                 | For                                             |
+|---|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
+| 1 | [Vercel chat client](../10-getting-started/50-vercel-chat-client.md)                                                                                                                                 | the module, the endpoints, the cards, the files |
+| 2 | [How do I show the user's conversations and open one?](../10-getting-started/90-faq.md#how-do-i-show-the-users-conversations-and-open-one)                                                           | the sidebar                                     |
+| 3 | [How do I delete conversations?](../10-getting-started/90-faq.md#how-do-i-delete-conversations)                                                                                                      | "delete conversation"                           |
+| 4 | [Thread memory: About](../20-learn-the-gateway/080-thread-memory.md#1-about)                                                                                                                         | threads and turns                               |
+| 5 | [Tools: Showing the tool calls in a UI](../20-learn-the-gateway/030-tools.md#36-showing-the-tool-calls-in-a-ui)                                                                                      | the tool events                                 |
+| 6 | [Chat files: Show the files of a thread](../20-learn-the-gateway/092-chat-files.md#33-show-the-files-of-a-thread), [Vercel chat client: Files](../10-getting-started/50-vercel-chat-client.md#files) | attachments                                     |
+| 7 | [Human in the loop: Render the cards and resume](../20-learn-the-gateway/040-human-in-the-loop.md#32-render-the-cards-and-resume)                                                                    | the cards                                       |
 
 ## 5. How the parts connect
 
@@ -55,14 +55,14 @@ flowchart LR
   VUI --> GW
 ```
 
-| Screen element             | Gateway                                                                                                               | `useChat` through `vercel-ui`                                                                                                                                                         |
-|----------------------------|-----------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| the sidebar                | `listThreads`, `renameThread`, `delete`                                                                               | the same methods, from your own endpoints ([What stays the gateway's](../10-getting-started/50-vercel-chat-client.md#6-what-stays-the-gateways))                                      |
-| opening a conversation     | `getTurns`                                                                                                            | `history`                                                                                                                                                                             |
-| sending a message          | `ask()` or `run()` with the `threadId`; `events` stream                                                               | `chat`                                                                                                                                                                                |
-| an attachment              | `uploadFile`, then `files` on the call; `getFileUrl` to show it                                                       | [Files](../10-getting-started/50-vercel-chat-client.md#5-files)                                                                                                                       |
-| an approval or a question  | the `PAUSED` envelopes, then `resume()`                                                                               | the SDK's card through `chat`; answers, edits and typed rejections through `resume` ([Approvals](../10-getting-started/50-vercel-chat-client.md#4-approvals-and-the-other-decisions)) |
-| a second message too early | a 409 while the thread's lease is held ([D77](../60-architecture/90-decisions.md#d77-one-call-at-a-time-on-a-thread)) | a JSON response with the status 409 ([The endpoints](../10-getting-started/50-vercel-chat-client.md#2-the-endpoints))                                                                 |
+| Screen element             | Gateway                                                                                                               | `useChat` through `vercel-ui`                                                                                                                                                       |
+|----------------------------|-----------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| the sidebar                | `listThreads`, `renameThread`, `delete`                                                                               | the same methods, from your own endpoints ([What stays the gateway's](../10-getting-started/50-vercel-chat-client.md#what-stays-the-gateways))                                      |
+| opening a conversation     | `getTurns`                                                                                                            | `history`                                                                                                                                                                           |
+| sending a message          | `ask()` or `run()` with the `threadId`; `events` stream                                                               | `chat`                                                                                                                                                                              |
+| an attachment              | `uploadFile`, then `files` on the call; `getFileUrl` to show it                                                       | [Files](../10-getting-started/50-vercel-chat-client.md#files)                                                                                                                       |
+| an approval or a question  | the `PAUSED` envelopes, then `resume()`                                                                               | the SDK's card through `chat`; answers, edits and typed rejections through `resume` ([Approvals](../10-getting-started/50-vercel-chat-client.md#approvals-and-the-other-decisions)) |
+| a second message too early | a 409 while the thread's lease is held ([D77](../60-architecture/90-decisions.md#d77-one-call-at-a-time-on-a-thread)) | a JSON response with the status 409 ([The endpoints](../10-getting-started/50-vercel-chat-client.md#the-endpoints))                                                                 |
 
 The user is your application's: `userContext` comes from your authentication, never from the request body
 ([D118](../60-architecture/90-decisions.md#d118-the-gateway-checks-what-a-user-could-forge-and-trusts-what-the-application-sets)).
@@ -453,7 +453,7 @@ export const POST = async (request: Request): Promise<Response> => {
   ([How do I show the user's conversations?](../10-getting-started/90-faq.md#how-do-i-show-the-users-conversations-and-open-one)).
 - A streamed answer can be withdrawn by an output rule: the stream ends with `ANSWER_WITHDRAWN`, in `useChat` the
   message carries `metadata.withdrawn`; grey or drop the text
-  ([What the client receives](../10-getting-started/50-vercel-chat-client.md#3-what-the-client-receives),
+  ([What the client receives](../10-getting-started/50-vercel-chat-client.md#what-the-client-receives),
   [A streamed answer that is blocked](../20-learn-the-gateway/050-guardrails.md#27-a-streamed-answer-that-is-blocked)).
 - `vercel-ui` is server-only, like the gateway; the browser runs only `useChat`
   ([Vercel chat client](../10-getting-started/50-vercel-chat-client.md)).

@@ -11,14 +11,14 @@ policy does not allow, is this photo a receipt. LLM-as-a-judge is the practice o
 short model call that classifies instead of answering. Done well, it runs on a cheap model, after the free checks, and
 its verdict is part of the response.
 
-## 1. The problem
+## The problem
 
 - A regular expression cannot tell whether a prompt is on topic.
 - A judge on the main model adds a call at the main model's price to every call.
 - A judge that times out or answers out of shape must not let the call through.
 - A judge that the application cannot see is a judge nobody can debug.
 
-## 2. The practice
+## The practice
 
 1. **Deterministic checks first.** A pattern that decides (an IBAN, a length) is plain code and calls no model. The
    built-in input rules run before yours, so a prompt they reject pays for no judge. Your own rules run in parallel: a
@@ -40,7 +40,7 @@ its verdict is part of the response.
    judge call then still runs to its end and is billed), catches the failure and returns a `WARNING`. A judge call the usage adapter refuses is
    `usage_denied`, not `rule_error`.
 
-## 3. In code
+## In code
 
 The samples run on your configuration and the caller's `userContext`. The setup they need is in the learning path
 [Protect the conversation](../24-learning-paths/040-protect-the-conversation.md).
@@ -124,7 +124,7 @@ if (result.kind === EGatewayResponseKind.FAILED) {
 }
 ```
 
-## 4. Pitfalls
+## Pitfalls
 
 - **A judge where a pattern decides.** Every judge is one model call on every call its rule reaches.
 - **No `cheapModelId` on the profile.** `EJudgeModel.CHEAP` then runs on the main model, at its price.
@@ -143,7 +143,7 @@ if (result.kind === EGatewayResponseKind.FAILED) {
   text; a text for the user goes in `userMessage`, which the rule sets itself, since a judge's issues have none. A vendor
   error is thrown instead, and reaches `onRuleError`.
 
-## 5. Checklist
+## Checklist
 
 - [ ] Pattern checks are plain code; judges only where understanding is needed.
 - [ ] Every profile with judges has a `cheapModelId`.
@@ -151,7 +151,7 @@ if (result.kind === EGatewayResponseKind.FAILED) {
 - [ ] Rules return early outside their use case.
 - [ ] `onRuleError` reports to your logs.
 
-## 6. Go further
+## Go further
 
 - [Guardrails](../20-learn-the-gateway/050-guardrails.md): the input and output checks, the judge, rule errors.
 - [Stop hallucinations](020-stop-llm-hallucinations.md): a grounding judge over the knowledge-base excerpts.

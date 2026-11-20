@@ -10,13 +10,13 @@ An agent that can post a credit note, send an email or delete a record will one 
 practice is to decide, for each call and on its actual input, whether it runs, waits for a person or is refused, and to
 make the wait a stored state that any server instance can continue hours later.
 
-## 1. The problem
+## The problem
 
 - Approving every call invites approval fatigue: people click "approve" without reading. Approving none lets a wrong call through.
 - A wait implemented as an open request or a process in memory is lost at the next deploy.
 - The approver is often not the asker, and two approvers who click at once can run the call twice.
 
-## 2. The practice
+## The practice
 
 1. **Decide on the input.** The tool's `policy` is a function of the parsed input: a small amount runs, a large one waits
    for a human, an impossible one is refused with a reason the model reads. The decision runs before `execute`, outside
@@ -36,7 +36,7 @@ make the wait a stored state that any server instance can continue hours later.
    cards. `resume()` takes one decision per card, named by its `callId`.
 8. **Pauses expire.** A scheduled job closes the pauses past their expiry, so a thread is never blocked for good.
 
-## 3. In code
+## In code
 
 The samples run on your configuration and on the asker's and the approver's `IUserContext`. The setup they need is in the
 learning path [Keep a human in control](../24-learning-paths/030-keep-a-human-in-control.md).
@@ -137,7 +137,7 @@ const closeStalePauses = async (): Promise<void> => {
 };
 ```
 
-## 4. Pitfalls
+## Pitfalls
 
 - **Approval on every call.** People stop reading. Let small, reversible calls run; hold the large ones.
 - **Authorisation in the description.** "Only for admins" in the text does not stop the model. Use the policy, the
@@ -148,7 +148,7 @@ const closeStalePauses = async (): Promise<void> => {
 - **The card worded from `rejectionText`.** That text is for the model. The card renders from the tool name, the input and
   `reasonCode`.
 
-## 5. Checklist
+## Checklist
 
 - [ ] Every tool with a side effect has a `policy`.
 - [ ] Tenants that want a human on a tool list it in the profile's `approvals`.
@@ -156,7 +156,7 @@ const closeStalePauses = async (): Promise<void> => {
 - [ ] The approve endpoint checks the approver's role before `resume()`.
 - [ ] `expirePausedRuns` and `recoverStuckRuns` run on a schedule.
 
-## 6. Go further
+## Go further
 
 - [Human in the loop](../20-learn-the-gateway/040-human-in-the-loop.md): the pause kinds, the decisions, the run
   repository.

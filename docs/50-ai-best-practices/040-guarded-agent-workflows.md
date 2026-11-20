@@ -10,13 +10,13 @@ keywords: [AI agent workflow, tool calling, agent guardrails, tool order, LLM ag
 the model follows it. The practice is to state the order in code, so a tool is not even offered before its prerequisites
 have run, and to end the run with a terminal tool once the job is done.
 
-## 1. The problem
+## The problem
 
 - An agent with every tool available from the first step can call the write tool first, with an amount it guessed.
 - A rule in the prompt is a request. Nothing stops a model that skips it, or a prompt that talks it out of it.
 - An agent that has finished its job keeps calling tools, because nothing tells the loop the job is done.
 
-## 2. The practice
+## The practice
 
 1. **Prerequisites in the configuration.** `toolPolicy.requires` names, per tool, the tools that must have run in this run
    before it is offered (after a `resume()`, also in the earlier runs the request carries). Until then the model does not see it, and a call by name is refused with a message that names
@@ -29,7 +29,7 @@ have run, and to end the run with a terminal tool once the job is done.
 5. **The order in words too.** `requires` and `visibleWhen` hide a tool until its moment; they do not force a call. Say the
    order in the tool's description as well, so the model calls the prerequisite instead of answering without it.
 
-## 3. In code
+## In code
 
 The samples run on your `gateway` configuration and the caller's `userContext`. The setup they need is in the learning
 path [Automate a back-office task](../24-learning-paths/130-automate-a-back-office-task.md).
@@ -106,7 +106,7 @@ if (result.kind === EGatewayResponseKind.ANSWER) {
 }
 ```
 
-## 4. Pitfalls
+## Pitfalls
 
 - **Expecting `requires` to force a call.** It hides the tool until its prerequisite ran. The model may still answer
   without calling anything. `endedByTool` tells your job whether the terminal tool ran.
@@ -123,7 +123,7 @@ if (result.kind === EGatewayResponseKind.ANSWER) {
 - **A terminal tool that can fail silently.** A call that failed, timed out or was refused never ends the run. Throw on a
   failure so the model reads it and can recover.
 
-## 5. Checklist
+## Checklist
 
 - [ ] Every write tool that depends on a read has a `requires` entry.
 - [ ] The tool that completes the job has `endsRun`.
@@ -131,7 +131,7 @@ if (result.kind === EGatewayResponseKind.ANSWER) {
 - [ ] `maxStepsPerRun` fits the longest job.
 - [ ] The job reads `endedByTool` to know whether it finished.
 
-## 6. Go further
+## Go further
 
 - [Tools](../20-learn-the-gateway/030-tools.md): the path of a tool call, narrowing, failures.
 - [How does a run end, and can a tool end it?](../10-getting-started/90-faq.md#how-does-a-run-end-and-can-a-tool-end-it)
