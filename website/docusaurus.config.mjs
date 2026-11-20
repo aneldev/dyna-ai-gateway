@@ -1,13 +1,14 @@
-import apiSidebar from "./api-sidebar.mjs";
+import {buildApiSidebar} from "./api-sidebar.mjs";
 import rehypeSectionByHeading from "./plugins/rehype-section-by-heading.mjs";
 
 const GITHUB_URL = "https://github.com/aneldev/dyna-ai-gateway";
 const NPM_URL = "https://www.npmjs.com/package/dyna-ai-gateway";
 
+/** Replaces the folder-generated "API" category with the curated tree plus "All types" (`api-sidebar.mjs` says why). */
 const arrangeSidebar = async ({defaultSidebarItemsGenerator, ...args}) => {
   const items = await defaultSidebarItemsGenerator(args);
   return items.map((item) => (item.link?.id?.startsWith("api/")
-    ? {type: "category", label: "API", items: apiSidebar}
+    ? {type: "category", label: "API", items: buildApiSidebar(args.docs)}
     : item));
 };
 
