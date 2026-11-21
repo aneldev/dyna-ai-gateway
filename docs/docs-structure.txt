@@ -1,52 +1,72 @@
-# Indented tree: "/name" is a folder, plain name is a file, "#" starts a comment. Order = the number prefix.
+# Indented tree: "/name" is a folder, a plain name is a file, "#" starts a comment. Order = the number prefix.
 
 /docs
   /10-getting-started
-    # These file will show to stranger developers the simplicity of this lib, that can start and work with minimal code
-    # consider these files as the teaser
-    00-README.md                              # Welcome, short desc of this library, important, "You don't need to know everything, just what you need"
-    10-what-is-the-ai-gateway.md              # Where this lib sits (between app/agent and LLM)
+    # These files show developers new to the library how simple it is: they start and work with minimal code
+    # Treat these files as the teaser
+    00-README.md                              # Welcome, a short description of the library, and the key message: "You don't need to know everything, only what you need"
+    10-what-is-the-ai-gateway.md              # Where the library sits (between the application or agent and the LLM)
     20-installation.md
-    30-example-ask.md                         # simple example like intro
-    40-example-run.md                         # simple example like intro
-    45-example-HITL.md                        # simple example like intro
+    25-tenants-are-optional.md                # tenants are optional: tenantId "" everywhere, or the customer's id; links the Learn page
+    30-example-ask.md                         # a simple example, like the intro
+    40-example-run.md                         # a simple example, like the intro
+    45-example-HITL.md                        # a simple example, like the intro
     50-vercel-chat-client.md
     90-faq.md
 
   /20-Learn the Gateway
-    # These files will show to developers that this lib is not magic,
-    000-Intro                                    # These library? covers all parts of the gateway, you don't have to learn all (jump to /24 instead to learn only what you need), use this as reference to understand them
-    # Chapters for the rest files
+    # These files show developers that the library is not magic
+    000-Intro                                 # This section covers every part of the gateway; nobody has to learn all of it (go to /24 to learn only what you need); use it as the reference that explains the parts
+    # Chapters of the other files
     # - About
     # - Logic
-    # - Examples/Cases                           # List many real examples, real code, real imports
-    # - Pitfalls (What you shouldn't do)
+    # - Examples/Cases                        # many real examples, with real code and real imports
+    # - Pitfalls (what you shouldn't do)
     # - Summary
     # - FAQ
-    # - API references from the /30
+    # - API references from /30
+    005-Tenants                               # one gateway for many customers, or tenantId "" for a single-tenant application
     010-Models and profiles
     020-Skills
     030-Tools
     040-Human in the loop
     050-Guardrails
-    060-Tokens control with Usage Guard
-    070-Add knowledhe base to LLM
-    080-Thread memory (aka Working Memory)       # The LLM's memory of a thread
-    090-User memory, store user's facts          # The "profile" of the user that LLM should know
-    092-Chats' files, the storage
+    060-Token control with the Usage Guard
+    070-Add a knowledge base to the LLM
+    080-Thread memory (aka working memory)    # the LLM's memory of a thread
+    090-User memory, the user's facts         # the "profile" of the user that the LLM should know
+    092-Chat files and their storage
 
   /24-learning-paths
-    # These files are the guide to learn
-    # Each file will list only the needed APIs articles needs to know
-    # For instance, all should have on top the 10.10, 10.20, 10.30, 10.40
-    # The goal is a developer that has specific need, would follow ony guide file and that's it
+    # These files are the guides to learn the gateway, one per goal
+    # Each file lists only the API articles its goal needs
+    # All of them open with the Getting started pages 10, 20, 30 and 40,
+    # then a Prerequisites line: the API keys the 8.0 config reads, the front end a path assumes
+    # A developer with one specific need follows one file and nothing else
+    # README.md lists every path in file order, titled with its h1 (checked by website/scripts/check-output.mjs)
+    # Each file holds the links and the examples the developer needs,
+    # and explains how the parts connect
     # Chapters
     # - About
-    # - Descripion
+    # - Description
     # - What you will be able to do
-    # - API you should know from /30          # List the references
-    # - API advanced (most of it for the classes replacement)
-    # - Pitfalls (What you shouldn't do)
+    #   each item links the 8.x examples that show it
+    # - List of the parts
+    # - Understanding the connection of parts
+    #   a Mermaid diagram (sequence for numbered steps, flowchart for a table), then the text; numbered steps carry the same numbers in both
+    # - API you should know from /30          # the list of the references
+    #   grouped by the step of the developer's code: set up, make the call, read the result, what follows
+    #   each group links the 8.x examples that use its symbols
+    # - API advanced (mostly for the replacement of classes)
+    #   grouped by the part that is replaced; the last group says how a class is plugged in (IAIGatewayOverrides)
+    # - Examples (8.0 is the IAIGatewayConfig the examples run on, each key commented with why)
+    #   the required keys the path does not use go into baseConfig, a collapsed <details> block above it,
+    #   spread first in the config, so a key the path sets wins over it
+    #   8.0 + one example, pasted into one file, compile: what several examples run on is in 8.0,
+    #   what comes from the application is a `declare` line of the example (checked by docs:check-samples)
+    #   each 8.x: a title that says what it does, a short description, a "The bigger picture" quote;
+    #   in the order the application meets them (setup, the call, its variants, what follows)
+    # - Pitfalls (what you shouldn't do)
     # - Summary
     # - FAQ
     README.md                                 # you don't have to know everything, only the parts you need
@@ -56,46 +76,47 @@
     040-protect-the-conversation.md           # guardrails, rules
     050-remember-the-user.md                  # memory window/summary, user facts
     060-answer-from-your-documents.md         # knowledge base, citations
-    070-extract-data-from-files.md            # extracr data from files using the LLM
+    070-extract-data-from-files.md            # extract data from files with the LLM
     080-run-it-in-production.md               # cancel, timeout, shutdown, recovery, trace, cost
-    090-classify-and-route-requests.md        # ask() with outputSchema, cheap model: triage tickets, intents
-    100-summarize-a-document.md               # ask() with files or context, plain or structured summary (data extraction)
+    090-classify-and-route-requests.md        # ask() with outputSchema on a cheap model: triage tickets, intents
+    100-summarize-a-document.md               # ask() with files or context, a plain or structured summary (data extraction)
     110-generate-content.md                   # emails, descriptions, replies from the screen's data
-    120-fill-a-form-by-conversation.md        # model's questions to the user + structured output
+    120-fill-a-form-by-conversation.md        # the model's questions to the user + structured output
     130-automate-a-back-office-task.md        # run() as a job, no chat screen: guarded tool sequence, endsRun
     140-build-a-chat-screen.md                # threads, streaming, Vercel useChat
 
   /30-api
-    # These files are generated by the Docusaurus, deps: typedoc  typedoc-plugin-markdown  docusaurus-plugin-typedoc
-    # These files have hand written content, but the Types (references) are injected in the MD by placeholders _somehow_
+    # These files are generated by Docusaurus; deps: typedoc, typedoc-plugin-markdown, docusaurus-plugin-typedoc
+    # These files have hand-written content, and the types (references) are injected into the MD through placeholders
     # Chapters
     # - About
     # - Description
     # - When this is needed
-    # - Best practices implementing this
-    # - API (injection by Docusaurus plugins, source is the code!)
+    # - Best practices for implementing it
+    # - API (injected by the Docusaurus plugins; the source is the code)
     # - Summary
     # - FAQ
     README.md                                 # the reference: one page per public class / method (TypeDoc candidate)
     /10-AIGateway
-      01-basics-ask-run.md                          # All method to ask() and run()
+      01-basics-ask-run.md                    # every method to ask() and run()
       02-files-in-chat
-      03-data-protection-regulation-tools
       04-maintenance-methods                  # keep your resources tidy
-      05-production-tools                     # tools to make your gateway bulletproof
-    /20-adapters                              # what the host implements, most important first; in-memory versions ship with the package
+      05-production-tools                     # the tools that make your gateway robust in production
+    /20-adapters                              # what the application implements, most important first; in-memory versions ship with the package
+      # Not hand-written: covered by the generated TypeDoc page of each interface; the pattern and the table of the ten seams are in /60-architecture/20-adapters.md
       README.md                               # the pattern: config → repository/adapter interface, overrides, the in-memory defaults
-      01-model-registry-repository.md        # IModelRegistryRepository: the models allowed, their caps and cost — needed by every call
-      02-ai-profile-repository.md            # IAIProfileRepository: the profiles per tenant — needed by every call
-      03-thread-repository.md                # IThreadRepository: threads, turns, the lease — needed by every call
-      04-usage-adapter.md                    # IUsageAdapter: check before, addUsage after every model call — needed by every call
-      05-run-repository.md                   # IRunRepository: paused and running runs — agents, human in the loop, recovery
-      06-prompt-template-repository.md       # IPromptTemplateRepository: versioned system prompt per tenant
-      07-blob-adapter.md                     # IBlobAdapter: the files of a question (images, PDFs)
-      08-user-memory-repository.md           # IUserMemoryRepository: the user's facts across threads
-      09-vector-index-adapter.md             # IVectorIndexAdapter: the knowledge base chunks and their embeddings
-      10-trace-repository.md                 # ITraceRepository: one entry per model call, for debugging and audit
+      01-model-registry-repository.md         # IModelRegistryRepository: the models allowed, their caps and cost — needed by every call
+      02-ai-profile-repository.md             # IAIProfileRepository: the profiles per tenant — needed by every call
+      03-thread-repository.md                 # IThreadRepository: threads, turns, the lease — needed by every call
+      04-usage-adapter.md                     # IUsageAdapter: check before, addUsage after every model call — needed by every call
+      05-run-repository.md                    # IRunRepository: paused and running runs — agents, human in the loop, recovery
+      06-prompt-template-repository.md        # IPromptTemplateRepository: versioned system prompt, global
+      07-blob-adapter.md                      # IBlobAdapter: the files of a question (images, PDFs)
+      08-user-memory-repository.md            # IUserMemoryRepository: the user's facts across threads
+      09-vector-index-adapter.md              # IVectorIndexAdapter: the knowledge-base chunks and their embeddings
+      10-trace-repository.md                  # ITraceRepository: one entry per model call, for debugging and audit
     /30-Advanced-replace-classes              # every class of the gateway can be replaced: IAIGatewayOverrides, one factory per class, same I<Class> contract
+      # Not hand-written: covered by the generated TypeDoc page of each interface; the pattern and the table of the 24 factories are in /60-architecture/30-class-replacement.md
       README.md                               # the pattern: (config, deps) => new MyClass(config, deps); grouped below by concern, most replaced first
       01-llm-client.md                        # ILLMClient: the provider call itself (another SDK, a proxy, a fake for tests)
       02-context-assembler.md                 # IContextAssembler: how the system prompt and the history are assembled
@@ -123,12 +144,12 @@
       24-trace.md                             # ITrace: one entry per model call (on top of its repository)
 
   /40-cookbook
-    # Cookbooks are recipies, on how to do something
-    # Should complain simplified code in the MD to focus on basic
-    # StackBlitz link to open and run this
-    # StackBlitz should console to the developer what can, can call and what should expect
-    # StackBlitz should have also the aux methods of dev-tools-helper-methods.js
-    # StackBlitz should console to developer, the dev-tools-helper-methods methods, and link to the MD file to read
+    # Cookbook entries are recipes: how to do one thing
+    # The MD holds simplified code, to focus on the essentials
+    # A StackBlitz link opens and runs the recipe
+    # The StackBlitz project logs to the console what the developer can call and what to expect
+    # The StackBlitz project also includes the helper methods of dev-tools-helper-methods.js
+    # The StackBlitz project logs the dev-tools-helper-methods methods to the console, with a link to the MD file to read
     README.md                                 # what a recipe is, how to run one, the chapters table
     /10-ask
       README.md                               # the chapter intro (optional; without it the label is "ask")
@@ -178,7 +199,7 @@
       /30-user-facts-across-threads
       /40-memory-tools
     /80-operations
-      /10-usage-adapter                       # the app decides every token
+      /10-usage-adapter                       # the application decides every token
       /20-trace                               # one entry per model call
       /30-prompt-caching                      # the stable block and its cost
       /40-cancel-and-timeout
@@ -199,24 +220,47 @@
       /10-reply-to-an-email                   # the email in context, tone in instructions
       /20-product-description                 # structured input → Markdown, two profiles compared
     /140-fill-a-form-by-conversation          # learning path 120
-      /10-collect-the-fields                  # the model asks the missing fields (question → form → resumeWithAnswers)
+      /10-collect-the-fields                  # the model asks for the missing fields (question → form → resumeWithAnswers)
       /20-submit-when-complete                # structured output + a tool with endsRun that stores the form
     /150-back-office-job                      # learning path 130
-      /10-nightly-report                      # run() started by the host, a service user, one thread per job
+      /10-nightly-report                      # run() started by the application, a service user, one thread per job
       /20-guarded-workflow                    # requires: a tool only after another ran, endsRun closes the job
 
   /50-ai-best-practices
-    README.md                                 # today's index.md, just say there that will come later
+    # One proven practice per file, complete, with only the code of the practice; the folder is the teaser that search finds
+    # Each file opens with front matter (description, keywords, sidebar_label); the h1 is the title a developer searches for
+    # Order of the files: a shuffle, not a ranking
+    # Chapters
+    # - (intro: the problem in one paragraph, what the practice gives)
+    # - The problem
+    # - The practice                          # numbered rules
+    # - In code                               # what the application owns is a `declare` line; each page compiles as one module (docs:check-samples)
+    # - Pitfalls
+    # - Checklist
+    # - Go further                            # the learn page, the learning path with the full setup
+    index.md                                  # one row per practice: the page, what it solves
+    010-context-engineering.md
+    020-stop-llm-hallucinations.md
+    030-structured-output-with-zod.md
+    040-guarded-agent-workflows.md
+    050-control-llm-costs.md
+    060-human-in-the-loop-approvals.md
+    070-agent-skills-on-demand.md
+    080-multi-tenant-rag.md
+    090-prompt-injection-defense.md
+    100-ask-instead-of-guess.md
+    110-prompt-caching.md
+    120-llm-as-a-judge-guardrails.md
 
   /60-architecture
-    # These files simply describe the Architecture of this lib, is not for all users, but only thise need to dig how this works.
-    # It is not mandatory to know any from this section, point this explicitly
+    # These files describe the architecture of the library; they are not for every user, only for those who need to dig into how it works
+    # Nothing in this section is required knowledge; the section says so explicitly
     # Chapters
     # - About
     # - Description
     # - For whom is this chapter
-    # - How it works (if capable)
-    # - How can be extended  (if capable)
+    # - How it works (if applicable)
+    # - How it can be extended (if applicable)
     # - Other focused chapters
     # - Summary
     # - FAQ
@@ -229,12 +273,18 @@
     50-live-adjustment-and-dependency-injection.md
     90-decisions.md
 
+  /69-data-protection
+    _category_.json                           # the sidebar label of the folder: "Data protection"
+    README.md                                 # the section's index: About, For whom, The pages
+    10-gdpr-ccpa-hipaa.md                     # GDPR, CCPA and HIPAA: what each law requires of an LLM application, what the gateway covers
+    20-data-protection-tools.md               # the tools the gateway provides: access, correction, erasure, anonymization, retention, memory, trace, input rules
+    30-data-protection-best-practices.md      # how to combine them: minimize, contract, retain, erase as a procedure
 
   70-roadmap.md
   80-backlog.md                               # public in the repo, excluded from the site
   85-workspace.md                             # for developers who fork the repo; public in the repo, excluded from the site
   90-terminology.md
 
-  /internal                                   # private — a gitignored symlink to the docs/internal, outside the repo (85-workspace.md § Private notes)
+  /internal                                   # private — a gitignored symlink to docs/internal, outside the repo (85-workspace.md § Private notes)
   /plans                                      # private — excluded, gitignored
   /implementation                             # private — excluded, leaves the repo before publishing

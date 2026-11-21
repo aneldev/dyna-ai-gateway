@@ -16,7 +16,7 @@ import {gatewayConfigErasure} from "./erasure.config";
 /**
  * A live lease on a thread of the user is a call running on another instance of the gateway: this instance cannot wait for
  * it. The erasure is refused whole (409, the busy threads named) before anything is touched; once the lease is released
- * same call erases. A partial erasure is never done: the host retries.
+ * same call erases. A partial erasure is never done: the application retries.
  */
 test("anonymizeUserData is refused with the busy thread ids while a thread of the user holds a live lease, and anonymizes once it is released", async () => {
   const llmClient = new FakeLLMClient();

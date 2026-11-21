@@ -52,6 +52,9 @@ ESLint 8, webpack 5 (from `dyna-ts-module-boilerplate`), pnpm workspace.
 - Flow of every change: 1. update `docs/internal` (the truth) → 2. update the user docs it affects →
   3. `docs/60-architecture` is derived from `docs/internal` **and** the codebase → 4. all docs agree with each
      other and with the code. JSDoc counts as user documentation (it ships in the `.d.ts`).
+- **Step 4 is checked by the `consistency-pressure-test` skill** (`.claude/skills/consistency-pressure-test/SKILL.md`),
+  run by `jsdoc-style`, `write-user-docs` and `stepwise-plan` before a handoff: rounds until one finds zero issues, at most 5,
+  then the open problems go to Dennis. It owns the rule of which side of a contradiction is right.
 
 ## Commands
 
@@ -61,6 +64,7 @@ ESLint 8, webpack 5 (from `dyna-ts-module-boilerplate`), pnpm workspace.
 - Types: `pnpm typecheck` — `tsc` over sources **and tests** (each package's `tsconfig.tests.json`); `tsconfig.json` excludes tests and ts-jest only warns, so this is the only check that fails on a type error in a test
 - Build: `pnpm build` (every package: lint + typecheck + CJS + ESM + `.d.ts` into its `dist/`)
 - Docs site: `pnpm docs:install` once, then `pnpm docs:start` / `pnpm docs:build` (`website/`, outside the workspace; deployed to https://aneldev.github.io/dyna-ai-gateway/ by `.github/workflows/docs.yml`) — `docs/30-api` is generated from the JSDoc, never edited; the API navigation is the list in `website/api-sidebar.mjs` (`docs/85-workspace.md` § Docs site)
+- Doc samples: `pnpm docs:check-samples [folder…]` type-checks each example of the learning paths as pasted, 8.0 plus the example, and each page of the best practices as one module (default `docs/24-learning-paths` and `docs/50-ai-best-practices`), against `src/`; run it after editing a sample (`docs/85-workspace.md` § Docs site)
 - Sandbox: `pnpm sandbox-cli <ask|run>` (chat) and `pnpm sandbox-debug` (inspector) run the config of `src/dev-sandbox/sandbox.config.ts` — point it at a test's `gatewayConfig<Scenario>`; keys from the repo-root `.env`
 
 ## Rules enforced by lint
@@ -146,13 +150,14 @@ conversation, not only while planning:
 
 **Multiplier rule:** if the number is below 100, multiply it by 100. It's an abbreviation. `1c` = 100, `7c` = 700, `12c` = 1200, `99c` = 9900. Numbers of 100 or more are taken literally (`200c` = 200). In ranges, apply this to each number separately (`2-5c` = 200–500).
 
-| Shorthand | Means |
-| --- | --- |
-| `2c` / `200c` | Answer in 200 characters or fewer. |
-| `5c` / `500c` | Answer in 500 characters or fewer. |
-| `2-5c` / `200-500c` | Answer in 200 to 500 characters. |
-| `from now on <number>c` or `<number>c from now on` (e.g. `from now on 3c` = 300) | Sticky: apply that budget to this answer **and every answer after**, until reset. The multiplier rule applies. |
-| `from now on full` / `full from now on` | Reset: drop any sticky budget, go back to answering as before. |
+| Shorthand                                                                        | Means                                                                                                                                              |
+|----------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `2c` / `200c`                                                                    | Answer in 200 characters or fewer.                                                                                                                 |
+| `5c` / `500c`                                                                    | Answer in 500 characters or fewer.                                                                                                                 |
+| `2-5c` / `200-500c`                                                              | Answer in 200 to 500 characters.                                                                                                                   |
+| `from now on <number>c` or `<number>c from now on` (e.g. `from now on 3c` = 300) | Sticky: apply that budget to this answer **and every answer after**, until reset. The multiplier rule applies.                                     |
+| `from now on full` / `full from now on`                                          | Reset: drop any sticky budget, go back to answering as before.                                                                                     |
+| `*c`                                                                             | No limit: answer at the length the content needs (an abbreviation, like `5c`). `from now on *c` / `*c from now on` is the same as the reset above. |
 
 - Counts the whole visible answer — prose, code, everything. Formatting (tables, headings, corrections block) still applies, but compressed to fit the budget; drop scaffolding before dropping correctness.
 - Can't fit a correct answer in budget → say so briefly and give the shortest correct version, even if it overruns. Never silently truncate into something wrong or misleading.

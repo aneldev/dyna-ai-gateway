@@ -19,9 +19,10 @@ import {makeFailedResponse} from "./makeFailedResponse";
  *
  * > The call ended on the caller's word, not on an error: the response says so, nothing is thrown.
  *
- * Built when the call's signal is aborted, whether before anything ran, when a layer threw the signal's reason or when the
- * agent loop came back aborted. `reason` is `abortReason`; `issues` holds one ERROR issue whose `code` is
- * `CALL_TIMED_OUT_ISSUE_CODE` or `CALL_ABORTED_ISSUE_CODE`, so a host branches on the code, not on the prose (as `USAGE_DENIED_ISSUE_CODE`).
+ * Built when the call's signal is aborted, whether before anything ran, when a layer threw the signal's reason or when
+ * the agent loop came back aborted. `reason` is `abortReason`; `issues` holds one ERROR issue whose `code` is
+ * `CALL_TIMED_OUT_ISSUE_CODE` or `CALL_ABORTED_ISSUE_CODE`, so an application branches on the code, not on the prose
+ * (as `USAGE_DENIED_ISSUE_CODE`).
  *
  * # Who needs it
  *

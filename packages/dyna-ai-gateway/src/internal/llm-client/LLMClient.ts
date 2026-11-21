@@ -166,12 +166,12 @@ export class LLMClient implements ILLMClient {
    *
    * Resolves the model, refuses a temperature on a model without `caps.temperature` (400, D82), asks the `UsageGuard`
    * (a no rejects with the usage-denied error, 429, and the provider is not called), then makes the SDK call: streamed
-   * through `hooks.onEvent` (TEXT_DELTA, then DONE) when hooks are given, generated otherwise. Returns the text, the parsed
-   * structured output when the request had a schema, the tool requests as the model made them, the finish reason, the usage
-   * and the trace id. After the call the app is told what it used and the entry is recorded, also for a failed or aborted
-   * call (then with zero usage and no entry). A provider failure is a 502; an aborted signal rejects with its reason, the
-   * partial stream is neither returned nor traced (D90). An answer that does not parse against the schema is returned as
-   * text, for the `Guardrails` to report.
+   * through `hooks.onEvent` (TEXT_DELTA, then DONE) when hooks are given, generated otherwise. Returns the text, the
+   * parsed structured output when the request had a schema, the tool requests as the model made them, the finish
+   * reason, the usage and the trace id. After the call the application is told what it used and the entry is recorded,
+   * also for a failed or aborted call (then with zero usage and no entry). A provider failure is a 502; an aborted
+   * signal rejects with its reason, the partial stream is neither returned nor traced (D90). An answer that does not
+   * parse against the schema is returned as text, for the `Guardrails` to report.
    *
    * # Who needs it
    *
@@ -429,10 +429,10 @@ export class LLMClient implements ILLMClient {
    *
    * > One vector per text, in order; checked, reported and traced like a completion.
    *
-   * Refuses a model without `caps.embeddings` (400), asks the `UsageGuard` with the token count of the texts, embeds them in
-   * one SDK call under the client's timeout and retries, then reports the usage and records the entry (kind EMBED, no
-   * request and no result: the usage is what matters). A provider failure is a 502, after the app was told the call used
-   * nothing. An empty list returns an empty list without a call.
+   * Refuses a model without `caps.embeddings` (400), asks the `UsageGuard` with the token count of the texts, embeds
+   * them in one SDK call under the client's timeout and retries, then reports the usage and records the entry (kind
+   * EMBED, no request and no result: the usage is what matters). A provider failure is a 502, after the application was
+   * told the call used nothing. An empty list returns an empty list without a call.
    *
    * # Who needs it
    *
@@ -519,7 +519,7 @@ export class LLMClient implements ILLMClient {
    *
    * # Who needs it
    *
-   * The real-provider tests, to skip a provider without a key; a host that lists what its gateway can reach.
+   * The real-provider tests, to skip a provider without a key; an application that lists what its gateway can reach.
    */
   public get providers(): EModelProvider[] {
     return Object.values(EModelProvider).filter(provider => this.config.providers[provider] !== undefined);
@@ -550,7 +550,8 @@ export class LLMClient implements ILLMClient {
       toolCalls: result.toolCalls,
       finishReason: result.finishReason,
       usage: result.usage,
-      output: options.output ? result.output : undefined,
+      // A step that ends in tool calls has no answer to parse yet: reading `output` would throw and lose its tool calls
+      output: options.output && result.finishReason !== "tool-calls" ? result.output : undefined,
     };
   }
 
@@ -577,12 +578,14 @@ export class LLMClient implements ILLMClient {
     }
     if (streamError !== undefined) throw streamError;
 
+    const finishReason = await result.finishReason;
     return {
       text: await result.text,
       toolCalls: await result.toolCalls,
-      finishReason: await result.finishReason,
+      finishReason,
       usage: await result.usage,
-      output: options.output ? await result.output : undefined,
+      // A step that ends in tool calls has no answer to parse yet: reading `output` would throw and lose its tool calls
+      output: options.output && finishReason !== "tool-calls" ? await result.output : undefined,
     };
   }
 
@@ -655,7 +658,7 @@ export class LLMClient implements ILLMClient {
   }
 
   /**
-   * Asks the app through the UsageGuard.
+   * Asks the application through the UsageGuard.
    * A no throws the usage-denied error: the provider is not called.
    */
   private async askUsageGuard(
@@ -686,7 +689,7 @@ export class LLMClient implements ILLMClient {
 
   /**
    * An approved call that failed or was aborted.
-   * The app is told it used nothing, so a reservation can settle.
+   * The application is told it used nothing, so a reservation can settle.
    */
   private reportNoUsage(
     {

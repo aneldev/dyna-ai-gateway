@@ -27,23 +27,23 @@ import {
  * `ETraceKind`. `query` serves an audit or debugging page; `delete` and `anonymizeByUser` are the forgetting side (D54, D119).
  * Tenant-scoped: every method takes the tenant, nothing crosses it.
  *
- * Sits between the `LLMClient` and the orchestration, which write, and the host's `ITraceRepository`, which stores.
+ * Sits between the `LLMClient` and the orchestration, which write, and the application's `ITraceRepository`, which stores.
  *
  * # Who needs it
  *
- * The `LLMClient` after every call; the orchestration (`annotateTraces`, `deleteThreads`, `forgetUser`); the host, as
- * `gateway.trace`, for its audit pages. Constructed once from `IAIGatewayConfig.trace`; a host replaces it through
+ * The `LLMClient` after every call; the orchestration (`annotateTraces`, `deleteThreads`, `forgetUser`); the application, as
+ * `gateway.trace`, for its audit pages. Constructed once from `IAIGatewayConfig.trace`; an application replaces it through
  * `IAIGatewayDeps.trace`.
  *
  * # What needs
  *
- * `ITraceConfig.repository`: the host's adapter.
+ * `ITraceConfig.repository`: the application's adapter.
  *
  * # Pitfalls
  *
- * The entry holds the request as sent and the raw result: system prompts, tool outputs, the user's text. A repository that
- * must not keep them drops `request` and `result` in `save`; `query` returns them raw, so the host checks who may read before
- * it calls.
+ * The entry holds the request as sent and the raw result: system prompts, tool outputs, the user's text. A repository
+ * that must not keep them drops `request` and `result` in `save`; `query` returns them raw, so the application checks
+ * who may read before it calls.
  */
 export class Trace implements ITrace {
   constructor(private readonly config: ITraceConfig) {}
@@ -144,7 +144,7 @@ export class Trace implements ITrace {
    *
    * # Who needs it
    *
-   * The host, as `gateway.trace.query`, for its audit and debugging pages; the tests, to read what a call did.
+   * The application, as `gateway.trace.query`, for its audit and debugging pages; the tests, to read what a call did.
    */
   public async query(
     {

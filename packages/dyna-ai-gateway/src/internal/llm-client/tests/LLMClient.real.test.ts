@@ -18,7 +18,7 @@ import {
 // Real providers. A test runs only when its key is in .env (see .env.sample); otherwise it is skipped.
 const openAiKey = process.env.AIGATEWAY_TEST_OPENAI_API_KEY || "";
 const anthropicKey = process.env.AIGATEWAY_TEST_ANTHROPIC_API_KEY || "";
-const openAiModel = process.env.AIGATEWAY_TEST_OPENAI_MODEL || "gpt-5-mini";
+const openAiModel = process.env.AIGATEWAY_TEST_OPENAI_MODEL || "gpt-6.1-terra";
 const anthropicModel = process.env.AIGATEWAY_TEST_ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
 
 const describeWithOpenAi = openAiKey ? describe : describe.skip;

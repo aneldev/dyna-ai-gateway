@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 420" preserveAspectRatio="xMidYMid slice">
+  <!-- The footer's backdrop: the logo's night sky (orbit rings, ringed planet, four-point sparkles) in its palette. -->
+  <defs>
+    <radialGradient id="glowRight" cx="82%" cy="95%" r="55%">
+      <stop offset="0" stop-color="#8755f1" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#8755f1" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowLeft" cx="8%" cy="0%" r="45%">
+      <stop offset="0" stop-color="#6c31f3" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#6c31f3" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="planet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c3a2fb"/>
+      <stop offset="1" stop-color="#5b30d6"/>
+    </linearGradient>
+    <path id="sparkle" d="M0-10C1-2 2-1 10 0 2 1 1 2 0 10-1 2-2 1-10 0-2-1-1-2 0-10Z"/>
+  </defs>
+
+  <rect width="1600" height="420" fill="url(#glowLeft)"/>
+  <rect width="1600" height="420" fill="url(#glowRight)"/>
+
+  <g fill="none" stroke="#c5affc" transform="rotate(-9 1180 330)">
+    <ellipse cx="1180" cy="330" rx="760" ry="150" stroke-opacity="0.16" stroke-width="1.5"/>
+    <ellipse cx="1180" cy="330" rx="560" ry="104" stroke-opacity="0.10" stroke-width="1" stroke-dasharray="2 10"/>
+    <ellipse cx="1180" cy="330" rx="980" ry="210" stroke-opacity="0.07" stroke-width="1"/>
+  </g>
+
+  <g transform="translate(1385 118)" opacity="0.5">
+    <circle r="26" fill="url(#planet)"/>
+  </g>
+  <circle cx="470" cy="352" r="7" fill="#e8d9fc" opacity="0.35"/>
+
+  <g fill="#fbf8fe">
+    <use href="#sparkle" transform="translate(1250 70) scale(1.4)" opacity="0.75"/>
+    <use href="#sparkle" transform="translate(1520 240) scale(0.9)" opacity="0.55"/>
+    <use href="#sparkle" transform="translate(980 46) scale(0.7)" opacity="0.5"/>
+    <use href="#sparkle" transform="translate(720 300) scale(0.8)" opacity="0.4"/>
+    <use href="#sparkle" transform="translate(210 90) scale(0.6)" opacity="0.4"/>
+    <use href="#sparkle" transform="translate(1110 380) scale(0.6)" opacity="0.45"/>
+  </g>
+
+  <g fill="#e8d9fc">
+    <circle cx="90" cy="300" r="1.4" opacity="0.5"/>
+    <circle cx="340" cy="40" r="1.1" opacity="0.6"/>
+    <circle cx="560" cy="150" r="1.3" opacity="0.35"/>
+    <circle cx="640" cy="60" r="0.9" opacity="0.6"/>
+    <circle cx="860" cy="210" r="1.2" opacity="0.4"/>
+    <circle cx="905" cy="355" r="1" opacity="0.5"/>
+    <circle cx="1040" cy="160" r="1.5" opacity="0.45"/>
+    <circle cx="1170" cy="250" r="1" opacity="0.55"/>
+    <circle cx="1310" cy="300" r="1.3" opacity="0.5"/>
+    <circle cx="1460" cy="40" r="1.1" opacity="0.6"/>
+    <circle cx="1570" cy="150" r="1.4" opacity="0.45"/>
+    <circle cx="260" cy="210" r="1" opacity="0.4"/>
+    <circle cx="1490" cy="370" r="1" opacity="0.5"/>
+  </g>
+</svg>

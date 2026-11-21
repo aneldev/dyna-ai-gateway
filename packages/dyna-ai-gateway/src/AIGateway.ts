@@ -102,10 +102,10 @@ import {deleteThreads} from "./utils/deleteThreads";
  *
  * # About
  *
- * > One object the application talks to; every child of the gateway behind it.
+ * > One object the application talks to; every class of the gateway behind it.
  *
- * Creates every child once from `IAIGatewayConfig` (through `createGatewayDeps`), injects the shared instances, and runs a
- * call as a sequence of child calls: no prompt text, no token math, no SDK of its own.
+ * Creates one instance of every class from `IAIGatewayConfig`, injects the shared instances, and runs a call as a sequence
+ * of calls to them: no prompt text, no token math, no SDK of its own.
  *
  * - Three calls:
  *   - `ask` (one grounded answer, no tools)
@@ -116,21 +116,21 @@ import {deleteThreads} from "./utils/deleteThreads";
  *   erasure of a user (`deleteUserData`, `anonymizeUserData`) and of conversations (`delete`), the scheduled jobs
  *   (`expirePausedRuns`, `recoverStuckRuns`) and a graceful `shutdown`.
  * - The admin surfaces as getters (`modelRegistry`, `aiProfileStore`, `promptTemplateStore`, `toolRegistry`, `trace`,
- *   `usageGuard`) and the second root, `kbIngestor`, for the knowledge-base write endpoints.
+ *   `usageGuard`) and the second entry point, `kbIngestor`, for the knowledge-base write endpoints.
  *
- * The host application constructs one per process and keeps it: the children hold caches, the background work and the
- * calls in flight.
+ * The application constructs one per process and keeps it: it holds the background work and the calls in flight,
+ * the instances of its classes hold the caches.
  *
  * # Who needs it
  *
- * The host application: its HTTP handlers for the chat, the approval screens and the admin pages; its scheduled jobs; its
+ * The application: its HTTP handlers for the chat, the approval screens and the admin pages; its scheduled jobs; its
  * SIGTERM handler. Nothing inside the gateway calls the facade.
  *
  * # What needs
  *
- * `IAIGatewayConfig`: one config per child, with the repositories and adapters the host implements (or the in-memory ones,
- * for tests and the first run). Optionally `IAIGatewayOverrides`: a factory per child the host replaces (tests: a fake
- * `llmClient`).
+ * `IAIGatewayConfig`: the config of each class, with the repositories and adapters the application implements (or the
+ * in-memory ones, for tests and the first run). Optionally `IAIGatewayOverrides`: a factory per class the application
+ * replaces (tests: a fake `llmClient`).
  *
  * # Usage
  *
@@ -163,7 +163,10 @@ export class AIGateway {
 
   constructor(
     private readonly config: IAIGatewayConfig,
-    /** Factories for the deps the host builds itself; each gets its dep's config and deps (tests: `{llmClient: () => fake}`). */
+    /**
+     * Factories for the deps the application builds itself; each gets its dep's config and deps
+     * (tests: `{llmClient: () => fake}`).
+     */
     overrides: IAIGatewayOverrides = {},
   ) {
     this.deps = createGatewayDeps({
@@ -187,7 +190,7 @@ export class AIGateway {
    * - `response` is FAILED when the prompt is rejected, the answer does not pass the checks (a failed answer is not stored),
    *   the usage adapter refuses the model call, or `abortSignal` / `timeoutMs` stop the call (D90). Nothing is thrown for
    *   those.
-   * - `response` rejects with the `dynaError` of a child for what the caller got wrong or the provider broke: an unknown
+   * - `response` rejects with a `dynaError` for what the caller got wrong or the provider broke: an unknown
    *   profile, thread or model, another user's thread (404), a thread that waits for a human or has a call in flight (409),
    *   a provider failure.
    *
@@ -196,8 +199,8 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's chat endpoint for a conversation without tools, and every feature that needs one answer from the model over
-   * the knowledge base: a summary button, an extraction with `outputSchema`, a classification.
+   * The application's chat endpoint for a conversation without tools, and every feature that needs one answer from the
+   * model over the knowledge base: a summary button, an extraction with `outputSchema`, a classification.
    *
    * # What needs
    *
@@ -470,8 +473,8 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's chat endpoint for an assistant that acts: a support agent with a refund tool, an accounting assistant that
-   * posts a credit note after an approval, a form the model fills by asking the user.
+   * The application's chat endpoint for an assistant that acts: a support agent with a refund tool, an accounting
+   * assistant that posts a credit note after an approval, a form the model fills by asking the user.
    *
    * # What needs
    *
@@ -659,7 +662,8 @@ export class AIGateway {
    *   started it.
    * - The run continues on its profile as it is now, or on `profileId` (D65): the model, the output cap, the tools and the
    *   limits come from that profile; the system prompt and the messages so far stay. The review of the answer and the
-   *   approvals are those of both profiles (D113): a switch never skips a guard the run started under. The skills the run
+   *   approvals are those of both profiles (D113) for this resume; the run is then stored with the new profile, so a later
+   *   pause resumed without `profileId` has only its guards. The skills the run
    *   kept (D124) and the profile's are offered again through a rebuilt `dyna_aigw_load_skill`; the system prompt keeps the list of
    *   the start.
    * - The free text of an ANSWER goes through the input rules like a prompt (D71): an ERROR returns FAILED and the run
@@ -677,8 +681,8 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's endpoint behind the approval card, the user-question form and the reviewer's screen; called from another
-   * request than the `run` that paused, and often by another user.
+   * The application's endpoint behind the approval card, the user-question form and the reviewer's screen; called from
+   * another request than the `run` that paused, and often by another user.
    *
    * # What needs
    *
@@ -699,7 +703,7 @@ export class AIGateway {
    * # Pitfalls
    *
    * A decision that names no envelope, an envelope left without one, an action its envelope does not allow, a pending tool
-   * the profile does not allow, a skill name in both the run and the profile, or an EDIT that misses the schema is a 400,
+   * the profile does not allow or the resumer's permissions do not unlock (also on a REJECT), a skill name in both the run and the profile, or an EDIT that misses the schema is a 400,
    * and the run stays paused. Without the `outputSchema` a structured run answers in plain text, and an EDIT of a
    * structured reviewed answer is a 400.
    */
@@ -1113,8 +1117,8 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's "dismiss" action next to an approval card or a question. Open to every user of the tenant, like `resume`
-   * (D32): the run id is the key, a random UUID nobody can guess (D115).
+   * The application's "dismiss" action next to an approval card or a question. Open to every user of the tenant, like
+   * `resume` (D32): the run id is the key, a random UUID nobody can guess (D115).
    */
   public async cancelRun(
     {
@@ -1158,7 +1162,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's upload endpoint, before the chat call that sends the file.
+   * The application's upload endpoint, before the chat call that sends the file.
    *
    * # Pitfalls
    *
@@ -1201,7 +1205,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's "remove attachment" before the message is sent.
+   * The application's "remove attachment" before the message is sent.
    */
   public async deleteFile(
     {
@@ -1231,7 +1235,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's chat screen, to show an uploaded image or open a PDF; the `files.toUrl` hook of the Vercel UI module.
+   * The application's chat screen, to show an uploaded image or open a PDF; the `files.toUrl` hook of the Vercel UI module.
    */
   public async getFileUrl(
     {
@@ -1268,8 +1272,8 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host, when only the uploads of a user must go (GDPR); `deleteUserData` and `anonymizeUserData` remove the files as
-   * one of their steps.
+   * The application, when only the uploads of a user must go (GDPR); `deleteUserData` and `anonymizeUserData` remove
+   * the files as one of their steps.
    */
   public async removeFilesByUser(
     {
@@ -1294,8 +1298,8 @@ export class AIGateway {
    * > Everything the gateway holds about one person in a tenant, gone from every store in one call.
    *
    * Deletes the files the user uploaded, the facts remembered about them, their threads with every turn and working
-   * memory, their runs and their trace entries (D54). What the app's usage adapter stored is the app's to erase. Returns the counts per
-   * place; `pseudonym` is null.
+   * memory, their runs and their trace entries (D54). What the application's usage adapter stored is the application's
+   * to erase. Returns the counts per place; `pseudonym` is null.
    *
    * - Waits for the user's own background work first, so nothing is written after the erasure.
    * - While it runs, the user's new calls (`ask`, `run`, `resume`, `uploadFile`, `upsertUserFact`) are a 409, and it waits
@@ -1303,8 +1307,8 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The application, on a data-subject erasure request (GDPR). Raw ids, no user check: an admin surface, the host decides
-   * who may call it.
+   * The application, on a data-subject erasure request (GDPR). Raw ids, no user check: an admin surface, the
+   * application decides who may call it.
    *
    * # Usage
    *
@@ -1319,11 +1323,11 @@ export class AIGateway {
    *
    * # Pitfalls
    *
-   * Hard delete, no way back. A second call finds nothing and returns zeros. "Busy" is the thread's lease, the lock `ask` /
-   * `run` / `resume` hold for the duration of a call (a PAUSED run holds none: its thread is erased and the run with it).
-   * A thread of the user with a live lease (a call on another instance of the gateway) is refused with a `dynaError` of status 409, code `5377210486241`, and
-   * `data.busyThreadIds` naming the threads, before anything is erased: the host retries when the call ended -- the gateway
-   * waits only for the calls of this instance.
+   * Hard delete, no way back. A second call finds nothing and returns zeros. "Busy" is the thread's lease, the lock
+   * `ask` / `run` / `resume` hold for the duration of a call (a PAUSED run holds none: its thread is erased and the run
+   * with it). A thread of the user with a live lease (a call on another instance of the gateway) is refused with a
+   * `dynaError` of status 409, code `5377210486241`, and `data.busyThreadIds` naming the threads, before anything is
+   * erased: the application retries when the call ended -- the gateway waits only for the calls of this instance.
    */
   public async deleteUserData(
     {
@@ -1365,7 +1369,7 @@ export class AIGateway {
    * # Who needs it
    *
    * The application, on a data-subject erasure request (GDPR) where the books must keep the usage and the cost. Raw ids,
-   * no user check: an admin surface, the host decides who may call it.
+   * no user check: an admin surface, the application decides who may call it.
    *
    * # Usage
    *
@@ -1384,7 +1388,7 @@ export class AIGateway {
    * lock `ask` / `run` / `resume` hold for the duration of a call (a PAUSED run holds none: its thread is kept as a skeleton
    * and the run cancelled). A thread of the user with a live lease (a call on another instance of the gateway) is refused with a `dynaError` of status 409, code `5377210486241`,
    * and `data.busyThreadIds` naming the threads, before anything is touched, so the user's rows never end up under two
-   * pseudonyms: the host retries when the call ended.
+   * pseudonyms: the application retries when the call ended.
    */
   public async anonymizeUserData(
     {
@@ -1423,7 +1427,7 @@ export class AIGateway {
    * # Who needs it
    *
    * The application: the user's "delete conversation(s)", a tenant's retention job, a test's teardown. Raw ids, no user
-   * check: an admin surface, the host decides who may call it.
+   * check: an admin surface, the application decides who may call it.
    *
    * # Usage
    *
@@ -1518,8 +1522,8 @@ export class AIGateway {
    *
    * > The user's own name for a conversation.
    *
-   * Replaces the title, also the one the working memory wrote. The thread must be the calling user's; another user's thread
-   * is a 404, like an unknown one.
+   * Sets or replaces the title; a thread has none until this sets it. The thread must be the calling user's; another user's
+   * thread is a 404, like an unknown one.
    */
   public async renameThread(
     {
@@ -1556,7 +1560,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's memory settings screen, next to `upsertUserFact`, `removeUserFact` and `clearUserFacts`.
+   * The application's memory settings screen, next to `upsertUserFact`, `removeUserFact` and `clearUserFacts`.
    */
   public async getUserFacts(
     {userContext}: { userContext: IUserContext },
@@ -1604,7 +1608,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's memory settings screen ("add", "edit").
+   * The application's memory settings screen ("add", "edit").
    */
   public async upsertUserFact(
     {
@@ -1656,7 +1660,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's chat screen, next to `resetThreadMemory`.
+   * The application's chat screen, next to `resetThreadMemory`.
    */
   public async getThreadMemory(
     {
@@ -1803,7 +1807,7 @@ export class AIGateway {
    * > A run nobody works on any more is closed like a broken one: run FAILED, its cut tool call answered with an error in
    * > the thread, the thread open again. Returns how many were recovered.
    *
-   * An instance that dies inside a call leaves its run RUNNING and, after a `resume`, its thread waiting for a human:
+   * An instance that dies inside a `resume` leaves its run RUNNING and, after a `resume`, its thread waiting for a human:
    * no door reopens it (D97). The job lists the RUNNING runs of the tenant and, for each, takes the thread's lease first:
    * a live call holds it, so a lease obtained proves nobody works on the thread. Then it moves the run RUNNING to FAILED
    * atomically (D69), closes it with `closeRun` and releases the lease.
@@ -1878,7 +1882,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's inbox of pending approvals and questions, for the user who asked.
+   * The application's inbox of pending approvals and questions, for the user who asked.
    */
   public async listPausedRuns(
     {userContext}: { userContext: IUserContext },
@@ -1909,8 +1913,9 @@ export class AIGateway {
    *
    * > The whole pause: the draft answer of a review, the tool calls, the request the run was built with.
    *
-   * Raw ids, no user check: an admin surface like `trace`, the host decides who may read it (a reviewer of the tenant). The
-   * envelopes carry the draft answer (`IResultReviewEnvelope.result`), and the run its system prompt and messages.
+   * Raw ids, no user check: an admin surface like `trace`, the application decides who may read it (a reviewer of the
+   * tenant). The envelopes carry the draft answer (`IResultReviewEnvelope.result`), and the run its system prompt and
+   * messages.
    *
    * # Who needs it
    *
@@ -1938,7 +1943,7 @@ export class AIGateway {
   }
 
   /**
-   * kbIngestor -- the second root: the write side of the knowledge base
+   * kbIngestor -- the second entry point: the write side of the knowledge base
    *
    * # About
    *
@@ -1946,7 +1951,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's knowledge-base write endpoints and import jobs.
+   * The application's knowledge-base write endpoints and import jobs.
    */
   public get kbIngestor(): IKbIngestor {
     return this.deps.kbIngestor;
@@ -1959,11 +1964,11 @@ export class AIGateway {
    *
    * > Which models exist, with their caps and prices.
    *
-   * Raw ids, no user check: the host checks the owner permission before it calls, as for every admin getter.
+   * Raw ids, no user check: the application checks the owner permission before it calls, as for every admin getter.
    *
    * # Who needs it
    *
-   * The host's admin pages and seed scripts.
+   * The application's admin pages and seed scripts.
    */
   public get modelRegistry(): IModelRegistry {
     return this.deps.modelRegistry;
@@ -1976,11 +1981,11 @@ export class AIGateway {
    *
    * > Create, change and read the profiles of a tenant.
    *
-   * Raw ids, no user check: the host checks the owner permission before it calls.
+   * Raw ids, no user check: the application checks the owner permission before it calls.
    *
    * # Who needs it
    *
-   * The host's admin pages and seed scripts.
+   * The application's admin pages and seed scripts.
    */
   public get aiProfileStore(): IAIProfileStore {
     return this.deps.aiProfileStore;
@@ -1993,11 +1998,11 @@ export class AIGateway {
    *
    * > The versions of every template: read, add one, set the active one.
    *
-   * Raw ids, no user check: the host checks the owner permission before it calls.
+   * Raw ids, no user check: the application checks the owner permission before it calls.
    *
    * # Who needs it
    *
-   * The host's prompt editor and seed scripts.
+   * The application's prompt editor and seed scripts.
    */
   public get promptTemplateStore(): IPromptTemplateStore {
     return this.deps.promptTemplateStore;
@@ -2012,7 +2017,7 @@ export class AIGateway {
    *
    * # Who needs it
    *
-   * The host's admin pages; a profile editor that offers the tool names for `allowedTools`.
+   * The application's admin pages; a profile editor that offers the tool names for `allowedTools`.
    */
   public get toolRegistry(): IToolRegistry {
     return this.deps.toolRegistry;
@@ -2025,12 +2030,12 @@ export class AIGateway {
    *
    * > Every model call of the tenant, for the audit page and for debugging.
    *
-   * Raw ids, no user check: it holds system prompts and tool outputs, so the host checks the owner permission before it
-   * calls.
+   * Raw ids, no user check: it holds system prompts and tool outputs, so the application checks the owner permission
+   * before it calls.
    *
    * # Who needs it
    *
-   * The host's audit and debugging pages.
+   * The application's audit and debugging pages.
    */
   public get trace(): ITrace {
     return this.deps.trace;
@@ -2041,11 +2046,11 @@ export class AIGateway {
    *
    * # About
    *
-   * > The checks and the reports the gateway's model calls go through, over the adapter the host passed.
+   * > The checks and the reports the gateway's model calls go through, over the adapter the application passed.
    *
    * # Who needs it
    *
-   * A host that checks or reports usage outside a call, with the gateway's own logic.
+   * An application that checks or reports usage outside a call, with the gateway's own logic.
    */
   public get usageGuard(): IUsageGuard {
     return this.deps.usageGuard;
@@ -2053,7 +2058,8 @@ export class AIGateway {
 
   /**
    * The profile a resume continues on (D65). A switch keeps what the run started under: the review of the answer and the
-   * approvals are the union of both profiles (D113), so a resume cannot pick a profile that skips them. A paused run's
+   * approvals are the union of both profiles (D113) for this resume. The run is stored with the new profile, so a later
+   * pause of it, resumed without `profileId`, has only the new profile's guards. A paused run's
    * profile that no longer exists is the AIProfileStore's 404: its rules are not known, so the switch is refused.
    */
   private async getResumeProfile(

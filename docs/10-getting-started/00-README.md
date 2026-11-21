@@ -9,11 +9,13 @@ pauses for a human when a policy says so, asks your code before every model call
 **You don't need to know everything, only what you need.** A first answer takes one configuration object and one call.
 Tools, approvals, memory, the knowledge base and the class replacements are there when a use case asks for them, and not
 before.
+The [learning paths](../24-learning-paths/README.md) give each goal one page: the sections to read, the configuration and the examples it needs, and nothing else.
 
 | Chapter                                                | What you get                                                           |
 |--------------------------------------------------------|------------------------------------------------------------------------|
 | [What is the AI gateway](10-what-is-the-ai-gateway.md) | where the library sits between your application and the providers      |
 | [Installation](20-installation.md)                     | the package, the configuration, a model and a profile                  |
+| [Tenants are optional](25-tenants-are-optional.md)     | one customer passes `tenantId: ""`; many customers pass their ids      |
 | [Example: ask](30-example-ask.md)                      | a structured answer on the data of the screen, streamed                |
 | [Example: run](40-example-run.md)                      | an agent that calls your function to answer                            |
 | [Example: a human in the loop](45-example-HITL.md)     | a tool call that waits for an approver, then resumes                   |

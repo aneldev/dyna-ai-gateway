@@ -6,6 +6,17 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+## [0.0.13-beta.10] - 2026-11-21
+
+### Fixed
+
+- **A `run()` with `outputSchema` no longer fails when the model calls a tool before it answers.** The step's tool calls
+  were dropped and the run ended `FAILED` with `output_invalid_json`; they now run, and the next step gives the
+  structured answer.
+- **An empty tenant id (`tenantId: ""`) works with files.** `uploadFile`, `removeFilesByUser`, `deleteUserData` and
+  `anonymizeUserData` were a 400 for it. Its files are stored at `/<path>/<userId>/<fileId>`; an `IBlobAdapter` of your
+  own must keep that leading `/` in keys and in `removeByPrefix` prefixes.
+
 ## [0.0.13-beta.9] - 2026-11-10
 
 ### Breaking changes

@@ -1,20 +1,32 @@
 # Decisions
 
-Status: 2026-11-10.
+## 1. About
 
-The design decisions that shape how the gateway behaves, one chapter per class, in the order a call meets them. Each entry says what the gateway does, why, and what that means for the application. Read it when a behaviour surprises you or when you want to know what you cannot do and what to do instead.
+The design decisions that shape how the gateway behaves, with their reasons and what they mean for the application.
+Not needed to use the library.
 
-A decision has an id, `D46`; the JSDoc of the code cites the id where a behaviour comes from a decision (`… chosen per call, not stored on the thread (D46)`). The ids are not contiguous: the numbers in between are implementation decisions that do not change what the application sees. An entry without an id is a design principle, not a single decision.
+## 2. Description
+
+Chapters 4–20 group the entries by the class, or the group of classes, a decision belongs to; chapter 19 holds what the
+stores share. An entry says what the gateway does (**Decision**) and, where it is not evident, why (**Why**) and what
+that means for the application (**Consequence**).
+
+A decision has an id, `D46`; the JSDoc of the code cites the id where a behaviour comes from a decision (`The profile this call runs on: its model, tools, approvals and limits (D46, D103).`). An entry without an id is a design principle, not a single decision.
 
 The composition of the classes is in [Architecture and trade-offs](10-architecture-and-trade-offs.md); how a change takes effect while the service runs is in [Live adjustment and dependency injection](50-live-adjustment-and-dependency-injection.md); where a sentence of the system prompt comes from is in [System prompt layers](40-system-prompt-production-layers.md).
 
+## 3. For whom is this chapter
+
+A developer whom a behaviour of the gateway surprised, or who wants to know what the gateway refuses and what to do
+instead.
+
 ---
 
-## 1. AIGateway
+## 4. AIGateway
 
 ### D38: A call returns its stream and its response
 
-**Decision.** `ask(input)` and `run(input)` are not async. They return at once an `IGatewayCall`: `events`, an async iterable of every event of the call (`ELLMClientEventKind`: text deltas, tool requests and results, step ends, a pause, done, error, a withdrawn answer), and `response`, a promise of the final `ANSWER`, `PAUSED` or `FAILED` response. `resume()` returns the same shape.
+**Decision.** `ask(input)` and `run(input)` are not async. They return at once an `IGatewayCall`: `events`, an async iterable of every event of the call (`ELLMClientEventKind`: text deltas, tool requests and results, step ends, a pause, the end of a run by a tool, done, error, a withdrawn answer), and `response`, a promise of the final `ANSWER`, `PAUSED` or `FAILED` response. `resume()` returns the same shape.
 
 **Why.** This is the shape of the AI SDK's `streamText`: the caller decides whether to stream, and a backend service that only needs the answer awaits `response` and pays nothing for the events. A channel id delivered with the response would reach the client when nothing is left to stream.
 
@@ -46,11 +58,11 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ### D105: The package exports its public API only
 
-**Decision.** Everything an application can import from `dyna-ai-gateway` comes from one entry, and that entry carries only what an application is designed to call: `AIGateway` and its types, the contracts, the in-memory adapters, the interfaces and enums of every internal (`IAIProfile`, `IThreadRepository`, `ERunStatus`, …), the internal classes as types only, and `defineTool`. The classes the gateway composes (`ModelRegistry`, `LLMClient`, `Trace`, …), its agent loop and its helpers are not exported as values.
+**Decision.** Everything an application can import from `dyna-ai-gateway` comes from two entries, `dyna-ai-gateway` and `dyna-ai-gateway/vercel-ui` (D40), and the main one carries only what an application is designed to call: `AIGateway` and its types, the contracts, the in-memory adapters, the interfaces and enums of every internal (`IAIProfile`, `IThreadRepository`, `ERunStatus`, …), the internal classes as types only, `defineTool`, `joinSystem`, `isUsageDeniedError` and the constants of the codes and texts (`USAGE_DENIED_ERROR_CODE`, `CALL_ABORTED_ISSUE_CODE`, `BUILT_IN_TOOL_NAME_PREFIX`, …). The package's `exports` also carry `./dist/*`, which reaches every built file: it is not a supported entry (a known gap). The classes the gateway composes (`ModelRegistry`, `LLMClient`, `Trace`, …), its agent loop and its helpers are not exported as values.
 
 **Why.** The internals are constructed by the gateway, never by the application; a class or a helper that is importable is a class that gets called, and its signature then becomes a contract the library did not mean to give. The types stay public because the application implements the repositories and reads what the gateway returns.
 
-**Consequence.** `gateway.modelRegistry`, `gateway.trace` and the other exposed children can be named as types (`const registry: IModelRegistry = gateway.modelRegistry`) but not constructed: `new ModelRegistry(...)` is a type error. The `overrides` argument of the constructor exists for tests, which pass an instance of a public interface such as `ILLMClient` ([Live adjustment and dependency injection](50-live-adjustment-and-dependency-injection.md) § 2.3). An application that needs something the entry does not export asks for a facade method instead of a deep import; there is no sub path to import from.
+**Consequence.** `gateway.modelRegistry`, `gateway.trace` and the other classes the gateway exposes can be named as types (`const registry: IModelRegistry = gateway.modelRegistry`) but not constructed: `new ModelRegistry(...)` is a type error. The `overrides` argument of the constructor takes a factory of a public interface (`ILLMClient`, `IWorkingMemory`, …): a test's fake, or the application's own implementation ([Class replacement](30-class-replacement.md)). An application that needs something the entry does not export asks for a facade method instead of a deep import.
 
 ### D106: An enum's value is its member name
 
@@ -62,11 +74,11 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ### D65: Resume continues a paused run on another profile
 
-**Decision.** `resume({userContext, runId, decision, profileId?})` derives from the given profile what `run()` derives from its own: the model, the output cap, the tools and the limits. The system prompt and the messages so far stay.
+**Decision.** `resume({userContext, runId, pauseId, decisions, profileId?})` derives from the given profile what `run()` derives from its own: the model, the output cap, the tools and the limits. The system prompt and the messages so far stay.
 
 **Why.** A stored run froze its model at the first step, so a profile change between the pause and the approval never reached the model.
 
-**Consequence.** A pending tool the new profile does not allow is a 400 and the run stays paused. The run is stored with the profile it continued on. The [skills](#d124-skills-instructions-the-model-loads-on-demand) follow the same rule: the profile's are those of the profile the run continues on, the call's travel with the run. What guards the run is not dropped by the switch: the [review of the answer and the approvals](#d113-a-profile-switch-on-resume-keeps-the-review-and-the-approvals) are those of both profiles.
+**Consequence.** A pending tool the new profile does not allow is a 400 and the run stays paused. The run is stored with the profile it continued on. The [skills](#d124-skills-instructions-the-model-loads-on-demand) follow the same rule: the profile's are those of the profile the run continues on, the call's travel with the run. What guards the run is not dropped by the switch: the [review of the answer and the approvals](#d113-a-profile-switch-on-resume-keeps-the-review-and-the-approvals) are those of both profiles for that resume.
 
 ### Resume is only for a paused run
 
@@ -82,7 +94,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 **Why.** The profile's `promptAddendum` is stored once per tenant and profile; the prompt is the user's words. Nothing carried what the application knows or wants on this one call.
 
-**Consequence.** Neither is stored: a later call on the thread passes its own, a paused run keeps the prompt it started with and `resume()` takes none. Which layer to use for which text is in [System prompt layers](40-system-prompt-production-layers.md#which-layer-to-use).
+**Consequence.** Neither is carried to a later call: a later call on the thread passes its own, a paused run keeps the prompt it started with and `resume()` takes none. Both stay, as part of the rendered prompt, in the call's trace entry and in the stored run of a run that paused. Which layer to use for which text is in [System prompt layers](40-system-prompt-production-layers.md#which-layer-to-use).
 
 ### D124: Skills, instructions the model loads on demand
 
@@ -126,7 +138,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 **Decision.** A call on an existing thread takes a lease on it (`IThread.lease`) and releases it when the call ends. A second call while the lease is held is a 409. `IThreadStoreConfig.leaseMs` (default 5 minutes) sizes the lease for the longest run.
 
-**Why.** Two calls on one thread at once (a double click, two tabs) both stored a turn and both answered, and the conversation got mixed up. The lease is one atomic check-and-set in the repository, so it also holds across server instances. A fixed expiry means a crashed server leaves no thread busy for ever.
+**Why.** Two calls on one thread at once (a double click, two tabs) both stored a turn and both answered, and the conversation got mixed up. The lease is one atomic compare-and-set in the repository, so it also holds across server instances. A fixed expiry means a crashed server leaves no thread busy for ever.
 
 **Consequence.** Show the 409 as "still answering" and retry after the response. `cancelRun` and the expiry job take no lease: they store no turns.
 
@@ -152,7 +164,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 **Why.** Erasure and pseudonymisation are the two data-protection obligations; a pseudonym that is a hash of the user id would be reversible.
 
-**Consequence.** Both return `IForgetUserResult` with the counts per place. Both wait for the user's own calls and background work first, so a running call or a queued memory update cannot bring a fact back ([D114](#d114-the-erasure-keeps-the-users-calls-out)). What the app's usage adapter stored is the app's to erase; the knowledge base has no user.
+**Consequence.** Both return `IForgetUserResult` with the counts per place. Both wait for the user's own calls and background work first, so a running call or a queued memory update cannot bring a fact back ([D114](#d114-the-erasure-keeps-the-users-calls-out)). What the application's usage adapter stored is the application's to erase; the knowledge base has no user.
 
 ### D114: The erasure keeps the user's calls out
 
@@ -162,7 +174,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 **Consequence.** An erasure takes as long as the user's longest running call. The guard is per server instance: on several instances, route the erasure to where the user's calls run, or stop the user's traffic first.
 
-**Limit.** The gateway waits only for the calls of its own process. A thread of the user whose [lease](#d77-one-call-at-a-time-on-a-thread) is live is a call running on another instance: both methods are then a 409 (`data.busyThreadIds` names the threads) before anything is touched, never a partial erasure, so the user's rows never split over two pseudonyms. The host retries when the call ended; a lease ends with the call or with `leaseMs` at the latest.
+**Limit.** The gateway waits only for the calls of its own process. A thread of the user whose [lease](#d77-one-call-at-a-time-on-a-thread) is live is a call running on another instance: both methods are then a 409 (`data.busyThreadIds` names the threads) before anything is touched, never a partial erasure, so the user's rows never split over two pseudonyms. The application retries when the call ended; a lease ends with the call or with `leaseMs` at the latest.
 
 
 ### D116: The model cannot write a user fact unasked
@@ -199,7 +211,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 **Why.** The gateway is also called by backend services to complete an operation.
 
-**Consequence.** The module is `dyna-ai-gateway/vercel-ui` (`AIGatewayVercelUi`, see [chapter 17](#17-aigatewayvercelui)): an endpoint for a Vercel chat client becomes one call into it; a second use case is a second instance with another configuration. The gateway's own API stays free of chat-client types; an application that never streams to a browser never loads the module.
+**Consequence.** The module is `dyna-ai-gateway/vercel-ui` (`AIGatewayVercelUi`, see [chapter 20](#20-aigatewayvercelui)): an endpoint for a Vercel chat client becomes one call into it; a second use case is a second instance with another configuration. The gateway's own API stays free of chat-client types; an application that never streams to a browser never loads the module.
 
 ### D43: `zod` is a peer dependency
 
@@ -211,15 +223,15 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ---
 
-## 2. ModelRegistry and AIProfileStore
+## 5. ModelRegistry and AIProfileStore
 
 ### A profile bundles what goes with a model
 
-**Decision.** `IAIProfile` holds the model, the cheap helper model, the allowed tools, the tools that need approval, the prompt addendum and the limits (daily tokens, steps per run, output tokens). The models themselves are entries of the registry with provider, capabilities, cost and an `enabled` flag.
+**Decision.** `IAIProfile` holds the model, the cheap helper model, the allowed tools, the tools that need approval, the prompt addendum and the limits (steps per run, output tokens). The models themselves are entries of the registry with provider, capabilities, cost and an `enabled` flag.
 
 **Why.** A model choice is never only a model: tools, limits and prompt go with it.
 
-**Consequence.** Models, profiles and templates are data with a cache; their write methods invalidate it, so a change is read by the next call. The table of what changes how is in [Live adjustment](50-live-adjustment-and-dependency-injection.md#3-live-adjustment).
+**Consequence.** Models, profiles and templates are data with a cache per gateway instance. When a change is read, and the table of what changes how, is in [Live adjustment](50-live-adjustment-and-dependency-injection.md#6-live-adjustment).
 
 ### A profile a paused run waits on cannot be removed
 
@@ -239,23 +251,23 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ---
 
-## 3. PromptTemplateStore
+## 6. PromptTemplateStore
 
-### D69: Templates are versioned, and the history is read only on request
+### D129: Templates are versioned, and the history is read only on request
 
-**Decision.** One active version per template key is cached and rendered. `listVersions({key, page})` pages the history, newest first, with the cursor paging of this library (`IPageArgs`: `limit`, `startingAfter`, `endingBefore`; `IPage`: `items`, `hasMore`). `setActive` switches versions in one operation. Old versions are kept.
+**Decision.** One active version per template key is cached and rendered. `listVersions({key, page})` pages the history, newest first, with the cursor paging of this library (`IPageArgs`: `limit`, `startingAfter`, `endingBefore`; `IPage`: `items`, `hasMore`). `activate` switches versions in one operation (the repository's `setActive`). Old versions are kept.
 
 **Why.** Loading a whole table to find five active rows is wrong once a key has hundreds of versions. The trace records the version of every answer, so an old version can be inspected and activated again.
 
-**Consequence.** The seed (version 0) answers when the repository has no active version, so a fresh database works at once. The host replaces the seed of a key with `promptTemplateStore.seedTemplates`; a key not given there keeps the shipped seed, and an active version in the repository always wins. The layers of the main template are in [System prompt layers](40-system-prompt-production-layers.md).
+**Consequence.** The seed (version 0) answers when the repository has no active version, so a fresh database works at once. The application replaces the seed of a key with `promptTemplateStore.seedTemplates`; a key not given there keeps the shipped seed, and an active version in the repository always wins. The layers of the main template are in [System prompt layers](40-system-prompt-production-layers.md).
 
 ---
 
-## 4. ThreadStore and FileStore
+## 7. ThreadStore and FileStore
 
 ### D30: A file is its pointer
 
-**Decision.** `uploadFile` stores the bytes under the key `<tenantId>/<path>/<userId>/<fileId>` and returns an `IFileRef`; the gateway keeps no list of files. `IFileStoreConfig.path` is required (any number of folders, may be empty). The allowed types default to PNG, JPEG, WebP, GIF and PDF, named one by one: an SVG can carry a script, so a host allows it only when files are never shown inline from an origin it trusts. A file name is at most 255 characters, on one line.
+**Decision.** `uploadFile` stores the bytes under the key `[<tenantId>]/<path>/<userId>/<fileId>` and returns an `IFileRef`; the gateway keeps no list of files. `IFileStoreConfig.path` is required (any number of folders, may be empty). The allowed types default to PNG, JPEG, WebP, GIF and PDF, named one by one: an SVG can carry a script, so an application allows it only when files are never shown inline from an origin it trusts. A file name is at most 255 characters, on one line.
 
 **Why.** The tenant is the first folder of every key, so everything of a tenant is under one prefix. The user's folder makes "remove the files of this user" one prefix delete. Where the files live is decided where the gateway is configured, like the table names of the stores.
 
@@ -267,7 +279,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 **Why.** Nothing was ever removed after a call, and the application deletes conversations in bulk: the user's "delete selected", a tenant's reset, a retention job. One method with one shape on the facade and on every seam keeps a real database to one query per store.
 
-**Consequence.** Hard delete, no tombstone: a deleted thread is a 404 like one that never existed, and a second call with the same ids returns 0. A thread with a call in flight ([its lease is live](#d77-one-call-at-a-time-on-a-thread)) is skipped and not counted; an unknown id, or one of another tenant or user, is ignored. The owners' [background memory updates](#d17-background-work-and-whenidle) are awaited first, so nothing is written after the delete. Only the thread owner's files are removed (a stored pointer of another user's file stays). User facts are not touched: they belong to the user, not to a thread. "Forget this user" stays [`deleteUserData` / `anonymizeUserData`](#d54-forgetting-a-user-is-two-methods), which also remove the files and facts. `delete` takes raw ids and checks no user: the host decides who may call it.
+**Consequence.** Hard delete, no tombstone: a deleted thread is a 404 like one that never existed, and a second call with the same ids returns 0. A thread with a call in flight ([its lease is live](#d77-one-call-at-a-time-on-a-thread)) is skipped and not counted; an unknown id, or one of another tenant or user, is ignored. The owners' [background memory updates](#d17-background-work-and-whenidle) are awaited first, so nothing is written after the delete. Only the thread owner's files are removed (a stored pointer of another user's file stays). User facts are not touched: they belong to the user, not to a thread. "Forget this user" stays [`deleteUserData` / `anonymizeUserData`](#d54-forgetting-a-user-is-two-methods), which also remove the files and facts. `delete` takes raw ids and checks no user: the application decides who may call it.
 
 ### D31: Only the files of the current question go to the model
 
@@ -287,7 +299,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ---
 
-## 5. WorkingMemory and UserMemoryStore
+## 8. WorkingMemory and UserMemoryStore
 
 ### D16, D19: Memory has a switch, and the switch is required
 
@@ -299,11 +311,11 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ### D122: The working memory owns the thread's window
 
-**Decision.** Which turns of a thread the model reads, how many, and whether a digest stands in for the older ones is decided by the working memory alone, behind one interface, `IWorkingMemory`: `load` gives the message window and the notes for one request, `saveContext` learns from one answered call, `getState` and `reset` serve the UI. The `ContextAssembler` renders the system prompt first, asks `load` with the tokens that are left (`contextTokens − reserveOutputTokens − system prompt`; `reserveOutputTokens` defaults to the call's `maxOutputTokens`), puts the notes into the `{memory}` layer and only trims an overflow. The built-in `WorkingMemory` has two strategies, `EWorkingMemoryStrategy`: `SLIDING_WINDOW` sends the newest turns that fit `chatHistoryRatio` (default 0.8) of that budget, verbatim, counted with the model's tokenizer, and stores nothing; `SUMMARY_BUFFER` sends a rolling summary and facts written by the cheap model plus the last `recentTurns` (default 20) turns. The strategy of a call is the profile's `workingMemory`, else the gateway's `workingMemory.strategy`, else `SUMMARY_BUFFER`. A host replaces the built-in memory with its own `IWorkingMemory` in the constructor's `overrides`.
+**Decision.** Which turns of a thread the model reads, how many, and whether a digest stands in for the older ones is decided by the working memory alone, behind one interface, `IWorkingMemory`: `load` gives the message window and the notes for one request, `saveContext` learns from one answered call, `getState` and `reset` serve the UI. The `ContextAssembler` renders the system prompt first, asks `load` with the tokens that are left (`contextTokens − reserveOutputTokens − system prompt`; `reserveOutputTokens` defaults to the call's `maxOutputTokens`), puts the notes into the `{memory}` layer and only trims an overflow. The built-in `WorkingMemory` has two strategies, `EWorkingMemoryStrategy`: `SLIDING_WINDOW` sends the newest turns that fit `chatHistoryRatio` (default 0.8) of that budget, verbatim, counted with the o200k tokenizer (exact for OpenAI, × 1.2 for the other providers), and stores nothing; `SUMMARY_BUFFER` sends a rolling summary and facts written by the cheap model plus the last `recentTurns` (default 20) turns. The strategy of a call is the profile's `workingMemory`, else the gateway's `workingMemory.strategy`, else `SUMMARY_BUFFER`. An application replaces the built-in memory with its own `IWorkingMemory` in the constructor's `overrides`.
 
-**Why.** A chat assistant and a long-running support agent need different memories, and a tenant often runs both. One raw interface (the idiom of LangChain's `saveContext` / `loadMemoryVariables`) lets each strategy, built-in or the host's, decide for itself, with the one number it needs: the budget. A ratio instead of a priority between history and knowledge base is what LlamaIndex does (`chat_history_token_ratio`); it is one knob and it reads as what it does.
+**Why.** A chat assistant and a long-running support agent need different memories, and a tenant often runs both. One raw interface (the idiom of LangChain's `saveContext` / `loadMemoryVariables`) lets each strategy, built-in or the application's, decide for itself, with the one number it needs: the budget. A ratio instead of a priority between history and knowledge base is what LlamaIndex does (`chat_history_token_ratio`); it is one knob and it reads as what it does.
 
-**Consequence.** `IContextAssemblerConfig.maxTurns` is gone; the window is sized in tokens, by the strategy. A stored summary survives a switch to `SLIDING_WINDOW` unused and is resumed after the switch back; `getThreadMemory` shows it meanwhile and returns the empty state for a thread that never ran `SUMMARY_BUFFER`. Every window opens on a user turn, so a tool result never arrives without its call. The token count is a real tokenizer (exact for OpenAI, a safety factor for the other providers; images and PDFs by size), the same count the usage adapter is asked with ([D121](#d121-the-application-decides-every-model-call)). How to choose and configure a strategy is in the [FAQ](../10-getting-started/90-faq.md#how-much-of-the-conversation-does-the-model-see-and-how-do-i-choose).
+**Consequence.** `IContextAssemblerConfig.maxTurns` is gone; the window is sized in tokens, by the strategy. A stored summary survives a switch to `SLIDING_WINDOW`, unused by the window (the query rewrite still reads it, a known gap), and is resumed after the switch back; `getThreadMemory` shows it meanwhile and returns the empty state for a thread that never ran `SUMMARY_BUFFER`. Every window the working memory returns opens on a user turn, so a tool result never arrives without its call; the assembler's own overflow trim drops messages one by one and can still open the window on a tool result (a known gap). The token count is a real tokenizer (exact for OpenAI, a safety factor for the other providers; images and PDFs by size), the same count the usage adapter is asked with ([D121](#d121-the-application-decides-every-model-call)). How to choose and configure a strategy is in the [FAQ](../10-getting-started/90-faq.md#how-much-of-the-conversation-does-the-model-see-and-how-do-i-choose).
 
 ### D56: The user-facts extractor returns operations
 
@@ -321,7 +333,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ---
 
-## 6. MdChunker, Embedder, VectorStore
+## 9. MdChunker, Embedder, VectorStore
 
 ### D21: The knowledge base is scoped by the caller, on every call
 
@@ -339,19 +351,19 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 **Decision.** Documents are Markdown, split by headings into chunks of `IMdChunkerConfig.maxTokens` with an overlap; token counts are estimated as characters divided by four.
 
-**Why.** No dependency for a splitter, and the same estimator as the context assembler, so the two estimates agree.
+**Why.** No dependency for a splitter; the chunk sizes are a characters / 4 estimate of their own, not the tokenizer of the context assembler.
 
 **Consequence.** Headings are ATX headings (`#` … `######`); a closing sequence of `#`s is stripped only after a space, as in CommonMark, so `## Using C#` keeps its `#`. Splitting a document takes time linear in its length, whatever its lines contain.
 
-### D27: Embeddings come from OpenAI
+### D27: Embeddings come from a provider that has embedding models
 
-**Decision.** The embedding model of `IEmbedderConfig` must be an OpenAI model. A provider without embeddings is refused with a 400.
+**Decision.** The embedding model of `IEmbedderConfig` is a registry model with `caps.embeddings` on OpenAI, Google, Mistral or Bedrock. A model without `caps.embeddings`, or on a provider without embeddings, is refused with a 400 at the first `embed` (the registry accepts the entry).
 
 **Why.** The Anthropic provider of the SDK has no embeddings.
 
 ---
 
-## 7. QueryRewriter and KbRetriever
+## 10. QueryRewriter and KbRetriever
 
 ### D24: The query rewrite has a required switch
 
@@ -365,7 +377,7 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ---
 
-## 8. ToolRegistry
+## 11. ToolRegistry
 
 ### D48: The tools are fixed at construction; a call can narrow them, never widen them
 
@@ -413,9 +425,9 @@ The composition of the classes is in [Architecture and trade-offs](10-architectu
 
 ### D100: What the model reads when a tool fails, and how the developer is told
 
-**Decision.** A tool that throws never ends the run: the error becomes the tool's result, and the model reads one line built from the fields of a `dynaError` that are safe for the end user — `code: 82758244, status: 404, userMessage: No order with id 4711; ask the customer for the number on the invoice` (an absent field is left out; `canRetry: false` appends "Do not retry this call."; a `userMessage` over 2 000 characters is cut and marked `[cut]`). The error's `message` and `data` never reach the model. A tool steers the model with `throw dynaError({code, status, userMessage})`. Any other error — a plain `Error`, a `dynaError` without a `userMessage` — gives the model a generic text instead (status 500, the gateway's code): the input was not the cause, do not retry it unchanged. The gateway's own refusals (invalid input, tool not offered, timeout, oversized output, a guarded tool called too early) carry a `userMessage` that says how to recover. The stored result carries the error's code as `IToolResultPart.errorCode`.
+**Decision.** A tool that throws never ends the run: the error becomes the tool's result, and the model reads one line built from the fields of a `dynaError` that are safe for the end user — `code: 82758244, status: 404, userMessage: No order with id 4711; ask the customer for the number on the invoice` (an absent field is left out; `canRetry: false` appends "Do not retry this call."; a `userMessage` over 2 000 characters is cut and marked `[cut]`). The error's `message` and `data` never reach the model. A tool steers the model with `throw dynaError({code, status, userMessage})`. A plain `Error` gives the model a generic text instead, with status 500 and the gateway's code; a `dynaError` without a `userMessage` keeps its own `code` and `status` with the generic text: the input was not the cause, do not retry it unchanged. The gateway's own refusals (invalid input, tool not offered, timeout, oversized output, a guarded tool called too early) carry a `userMessage` that says how to recover. The stored result carries the error's code as `IToolResultPart.errorCode`.
 
-Every failed call — the tool threw, timed out, returned too much, got an input its schema rejected, was not offered — is reported to `IToolRegistryConfig.onToolError` with everything the gateway knows (`IToolErrorReport`: tenant, user, thread, run when known, step, the model's `callId`, the tool, the input, the error as thrown, the text the model read, the duration). The handler is fire-and-forget: the run never waits for it, one that throws is logged and ignored. With or without a handler, a failure the tool did not describe with a `userMessage` is logged on the server. A call the caller aborted is not a failure of the tool and is not reported.
+Every failed call — the tool threw, timed out, returned too much, got an input its schema rejected, was not offered — is reported to `IToolRegistryConfig.onToolError` with everything the gateway knows (`IToolErrorReport`: tenant, user, thread, run when known, step, the model's `callId`, the tool, the input, the error as thrown (a plain `Error` arrives wrapped in the gateway's 500 `dynaError`, the original in `parentError`), the text the model read, the duration). The handler is fire-and-forget: the run never waits for it, one that throws is logged and ignored. With or without a handler, a failure the tool did not describe with a `userMessage` is logged on the server. A call the caller aborted is not a failure of the tool and is not reported.
 
 **Why.** The model is one step away from the end user: an error message with a host, a table name or a stack is repeated to them. `dyna-error` already separates the developer's `message` from the `userMessage` that is safe to show, so the tool decides at the throw site what the model may read, with a safe default for what it did not decide. The `status` tells the model the class of the failure, the `code` is what an end user quotes to support. One hook in the registry's config, rather than a callback on every tool, because the gateway has every datum of a failure in one place. Correlation needs no new id: `callId` is on the thread's call and result parts and in the request of the next step's trace entry.
 
@@ -423,15 +435,23 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 9. ToolPolicy
+## 12. ToolPolicy
 
 ### D87, D67, D50: One policy on the tool: allow, deny, needs approval
 
-**Decision.** `IToolDef.policy` decides what happens to a call of the tool before it runs. It is omitted (every call runs), a verdict of `EToolCallVerdict` that applies to every call (`NEEDS_APPROVAL`: a human first; `DENY`: refused, a kill switch for a tool that stays registered; `ALLOW`: the same as omitting it), or a predicate `({input, userContext})` on the parsed input, sync or async, that returns a `TToolCallPolicyResult`: `{verdict: ALLOW}`, `{verdict: DENY, reason}` or `{verdict: NEEDS_APPROVAL, rejectionText?, reasonCode?}`. `IAIProfile.approvals` lists the tools that wait for a human in this tenant, whatever the tool says. Nothing removes a pause the tool or the profile demands.
+**Decision.** `IToolDef.policy` decides what happens to a call of the tool before it runs. It is omitted (every call runs), a verdict of `EToolCallVerdict` that applies to every call (`NEEDS_APPROVAL`: a human first; `DENY`: refused, a kill switch for a tool that stays registered; `ALLOW`: the same as omitting it), or a predicate `({input, userContext})` on the parsed input, sync or async, that returns a `TToolCallPolicyResult`: `{verdict: ALLOW}`, `{verdict: DENY, reason}` or `{verdict: NEEDS_APPROVAL, rejectionText?, reasonCode?}`. `IAIProfile.approvals` lists the tools that wait for a human on this profile even when their policy allows the call; a `DENY` still wins. Nothing removes a pause the tool or the profile demands.
 
 **Why.** One rule on the tool, decided per call outside the tool's own code: two tool-level rules that disagree confuse every tool author, and a check that lives inside `execute` runs too late to spare the human an approval of a call that would be refused anyway. The AI SDK and the OpenAI Agents SDK have one field for the approval; the deny verdict is the third row of a policy table (allow, deny, needs approval) added to the same field.
 
-**Consequence.** The rules apply in this order: an input the schema rejects never reaches the policy (`execute` reports it to the model); then the tool's `policy`; then the profile's `approvals` as the floor, which turn an `ALLOW` into `NEEDS_APPROVAL`. `DENY` wins over everything. A denied call is a tool result the model reads (`DEFAULT_TOOL_DENIAL_TEXT` followed by the reason, the part flagged `denied`), like a tool that threw: the other calls of the same step still run, the run goes on, and the denied call counts as not executed for [`requires`](#d15-d76-guarded-workflows) and never ends the run ([D86](#d86-a-tool-can-end-the-run)). The `rejectionText` of a `NEEDS_APPROVAL` result is what the model reads if the human rejects the call, followed by the human's reason; without one, `DEFAULT_TOOL_REJECTION_TEXT`. It is kept with the pause (`IToolApprovalEnvelope.rejectionText`) so a rejection after a restart still sends it; a cancelled or expired pause closes its call with the same text. The `reasonCode` of a `NEEDS_APPROVAL` result tells the approval card why the call waits, as a key of the app's translations; it is kept with the pause as `IToolApprovalEnvelope.reasonCode` and never reaches the model.
+**Consequence.** The rules apply in this order: an input the schema rejects never reaches the policy (`execute` reports it to the model), for every tool; then the tool's `policy`; then the profile's `approvals` as the floor, which turn an `ALLOW` into `NEEDS_APPROVAL`. `DENY` wins over everything. Today only a predicate is skipped: a static `policy` and the `approvals` still apply to an input the schema rejects, so it can pause before `execute` reports the 400, and such an input of `dyna_aigw_ask_user_question` pauses as a `TOOL_APPROVAL` card (a known gap). A denied call is a tool result the model reads (`DEFAULT_TOOL_DENIAL_TEXT` followed by the reason, the part flagged `denied`), like a tool that threw: the other calls of the same step still run, the run goes on, and the denied call counts as not executed for [`requires`](#d15-d76-guarded-workflows) and never ends the run ([D86](#d86-a-tool-can-end-the-run)). The `rejectionText` of a `NEEDS_APPROVAL` result is what the model reads if the human rejects the call, followed by the human's reason; without one, `DEFAULT_TOOL_REJECTION_TEXT`. It is kept with the pause (`IToolApprovalEnvelope.rejectionText`) so a rejection after a restart still sends it; a cancelled or expired pause closes its call with the same text. The `reasonCode` of a `NEEDS_APPROVAL` result is for the approval card, not for the model: [D98](#d98-the-policy-tells-the-approval-card-why-the-call-waits).
+
+### D98: The policy tells the approval card why the call waits
+
+**Decision.** A `NEEDS_APPROVAL` result of a tool's policy may carry `reasonCode`, a string. The gateway copies it to the card of the call, `IToolApprovalEnvelope.reasonCode`: in the PAUSED response, in the cards `listPausedRuns` returns and in the stored run (`getPausedRun`). It is omitted when the policy gave none.
+
+**Why.** The approval card shows what the call does from `toolCall.toolName` and its input, but not why it waits when one tool pauses for more than one reason (an amount above a limit, a new customer). `rejectionText` cannot serve the card: it is text for the model.
+
+**Consequence.** `reasonCode` is a key of the application's translations, not text: the application owns the card and its language. It is not sent to the model.
 
 ### D109: An edited tool input goes through the policy again
 
@@ -443,13 +463,13 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ### D15, D76: Guarded workflows
 
-**Decision.** `IToolPolicyConfig.requires` maps a tool to the tools that must have run before it is offered (`refund` after `get_invoice`). A tool counts as run only when its execution returned: a refused, failed, timed-out or rejected call unlocks nothing. The set of executed tools survives a pause.
+**Decision.** `IToolPolicyConfig.requires` maps a tool to the tools that must have run before it is offered (`refund` after `get_invoice`). A tool counts as run only when its execution returned: a refused, failed, timed-out or rejected call unlocks nothing. The set of executed tools survives a pause. On a resume it is rebuilt from the run's stored messages, which also hold the thread history the run was sent with: a tool of an earlier run still in that window counts as run (a known gap).
 
 **Consequence.** The model sees the guarded tool only once its requirement ran, in this run.
 
 ### D86: A tool can end the run
 
-**Decision.** `IToolDef.endsRun` is omitted (the run goes on), `true` (every successful call ends the run) or a predicate `({input, output, userContext}) => boolean | Promise<boolean>` on the parsed input and the tool's output (ended only when the hand-over was accepted). It is evaluated after the tool returned, so a call that failed, timed out, was refused or was rejected by the human never ends the run; a predicate that throws counts as false. The other calls of the same step still run; when one of them pauses for approval, the run ends after the resume (the result of the terminal call carries `endedRun`, and the paused run keeps it). Then the model gets one last step without tools to phrase the answer, the stream carries `RUN_ENDED_BY_TOOL` before that text, and the answer carries `endedByTool` with the tool's name.
+**Decision.** `IToolDef.endsRun` is omitted (the run goes on), `true` (every successful call ends the run) or a predicate `({input, output, userContext}) => boolean | Promise<boolean>` on the parsed input and the tool's output (ended only when the hand-over was accepted). It is evaluated after the tool returned, so a call that failed, timed out, was refused or was rejected by the human never ends the run; a predicate that throws counts as false. The other calls of the same step still run; when one of them pauses for approval, the run ends after the resume (the result of the terminal call carries `endedRun`, and the paused run keeps it). On a resume the gateway looks for `endedRun` in all the stored messages, the thread history included, so a hand-over of an earlier run still in that window ends the resumed run (a known gap). Then the model gets one last step without tools to phrase the answer, the stream carries `RUN_ENDED_BY_TOOL` before that text, and the answer carries `endedByTool` with the tool's name.
 
 **Why.** A tool that is terminal by nature (a hand-over to a human agent, an escalation, a placed order) should not depend on the model choosing to stop afterwards. The rule belongs on the tool, like `policy`, not in application code around the loop: the loop stays the gateway's own. The final step keeps "the model answers" as the contract, so the output rules, the output schema and the trace are unchanged.
 
@@ -491,11 +511,11 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Why.** A built-in with a generic name took that name from the application: a tool of its own called `ask_user_question` was refused, and the only way around it was renaming the application's tool. A reserved prefix keeps every other name free, also for built-ins added later.
 
-**Consequence.** Any name without the prefix is the application's, the old built-in names included. A run paused by a version before the prefix, whose stored tools still use an old name that nothing offers, cannot be resumed: `resume` is a 400 naming those tools in `data.legacyTools` (code `5387318840411`), and the run stays paused. A host that renders tool parts compares with `BUILT_IN_TOOL_NAMES`, not with literals.
+**Consequence.** Any name without the prefix is the application's, the old built-in names included. A run paused by a version before the prefix, whose stored tools still use an old name that nothing offers, cannot be resumed: `resume` is a 400 naming those tools in `data.legacyTools` (code `5387318840411`), and the run stays paused. An application that renders tool parts compares with `BUILT_IN_TOOL_NAMES`, not with literals.
 
 ---
 
-## 10. RunStore and HumanGate
+## 13. RunStore and HumanGate
 
 ### D51, D52: The pause envelope is a discriminated union without text
 
@@ -525,7 +545,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Why.** The profile is chosen by the caller of `resume`. An application that passes on a client's `profileId` let the end user resume a reviewed run on a profile without review and get the answer unreviewed.
 
-**Consequence.** A switch can add guards, never remove them. To drop a review or an approval, change the profile the run started on, not the one the resume names.
+**Consequence.** A switch adds guards for that resume, never removes them. The run is then stored with the new profile, so a later pause resumed without `profileId` has only that profile's guards (a known gap): give the profiles a run may switch to the same review and approvals. To drop a review or an approval, change the profile the run started on, not the one the resume names.
 
 ### D115: Ids are random UUIDs
 
@@ -535,13 +555,13 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Consequence.** An id says nothing about its time or its order; nothing in the gateway sorts by id. Ids made before the change keep their old form.
 
-### D118: The gateway checks what a user could forge and trusts what the host sets
+### D118: The gateway checks what a user could forge and trusts what the application sets
 
-**Decision.** The gateway checks every value an end user could forge or replay: the tenant and the user on threads, files and memory, the pause a decision is for, the answer against its card, an edited tool input against its policy, the sizes of what enters a prompt. It trusts what only the host's code sets: `userContext`, the profile and the scope of a call, who may resume or review, and the admin methods that take raw ids. [What the gateway checks and what it trusts](10-architecture-and-trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts) lists both sides.
+**Decision.** The gateway checks every value an end user could forge or replay: the tenant and the user on threads, files and memory, the pause a decision is for, the answer against its card, an edited tool input against its policy, the sizes of what enters a prompt. It trusts what only the application's code sets: `userContext`, the profile and the scope of a call, who may resume or review, and the admin methods that take raw ids. [What the gateway checks and what it trusts](10-architecture-and-trade-offs.md#7-what-the-gateway-checks-and-what-it-trusts) lists both sides.
 
-**Why.** The gateway sees no session or token: authentication and the roles of the host's users are the host's. Within that boundary, every input that travels through the end user's client is treated as forged until checked.
+**Why.** The gateway sees no session or token: authentication and the roles of the application's users are the application's. Within that boundary, every input that travels through the end user's client is treated as forged until checked.
 
-**Consequence.** A host that forwards a value of the second list from the end user's request widens what that user can do. The admin methods are for the host's own back office.
+**Consequence.** An application that forwards a value of the second list from the end user's request widens what that user can do. The admin methods are for the application's own back office.
 
 ### D110: A decision names the pause it is for
 
@@ -621,7 +641,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 11. UsageGuard
+## 14. UsageGuard
 
 ### D121: The application decides every model call
 
@@ -633,7 +653,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 12. Guardrails
+## 15. Guardrails
 
 ### D47, D49: One class with rules, and the severity is the only verdict
 
@@ -667,7 +687,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 13. LLMClient
+## 16. LLMClient
 
 ### The AI SDK is sealed in one class
 
@@ -697,19 +717,19 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 **Why.** An enum member without an adapter is a promise the config cannot keep: a registry entry on it is accepted and fails at the first call.
 
-**Consequence.** `embed` works on OpenAI, Google, Mistral and Bedrock. Anthropic has no embedding models, so an Anthropic entry with `caps.embeddings` is refused with a 400.
+**Consequence.** `embed` works on OpenAI, Google, Mistral and Bedrock. Anthropic has no embedding models, so an Anthropic entry with `caps.embeddings` is accepted by the registry and refused with a 400 at the first `embed`.
 
 ### D123: The system prompt travels as blocks
 
-**Decision.** `IModelRequest.system` is an ordered list of `ISystemBlock` (`{text, cache?}`), not one string. The `ContextAssembler` builds the blocks; the `LLMClient` maps them per provider: Anthropic gets one system message per block with `cache_control: ephemeral` (the 5-minute cache) on the `cache` block, and the same marker on the last tool definition when `cacheTools` is set; Claude on Amazon Bedrock gets the same split with Bedrock's `cachePoint` on the `cache` block (the Bedrock provider takes no marker on a tool); every other provider gets the texts joined and plain tools; OpenAI caches a prefix on its own and gets `promptCacheKey`, the 16-hex SHA-256 of the `cache` block's text, so the calls that share the stable block are routed to one cache. `joinSystem({blocks})` is the one join (a blank line between the texts, the marks dropped); the token estimate and the `debug.system` of an answer, which stays a string, use it.
+**Decision.** `IModelRequest.system` is an ordered list of `ISystemBlock` (`{text, cache?}`), not one string. The `ContextAssembler` builds the blocks; the `LLMClient` maps them per provider: Anthropic gets one system message per block with `cache_control: ephemeral` (the 5-minute cache) on the `cache` block, and the same marker on the last tool definition when `cacheTools` is set; every Amazon Bedrock entry gets the same split with Bedrock's `cachePoint` on the `cache` block (the Bedrock provider takes no marker on a tool); every other provider gets the texts joined and plain tools; OpenAI caches a prefix on its own and gets `promptCacheKey`, the 16-hex SHA-256 of the `cache` block's text, so the calls that share the stable block are routed to one cache before GPT-5.6, and keep their own cache accounting from GPT-5.6 on (OpenAI then routes by itself, and breaks the cache at the end of a message, never of the system prompt, unless an explicit breakpoint is set, which the gateway does not do: a known gap). `joinSystem({blocks})` is the one join (a blank line between the texts, the marks dropped); the token estimate and the `debug.system` of an answer, which stays a string, use it.
 
 **Why.** A provider's prompt cache matches an exact prefix and has to be told where the stable part of the prompt ends. One string cannot carry that boundary; a list of blocks carries it without a second field that has to agree with the text.
 
-**Consequence.** The split is at the `{cacheBreakpoint}` placeholder of `CHAT_MAIN` (after `{addendum}` and `{skills}`): the `ContextAssembler` renders it as a sentinel and splits there; a stored template with a per-call slot before it is sent as one block with the WARNING `prompt_cache_off`, one without the placeholder as one block with no issue. Without sharing across tenants the stable block opens with `[cache scope <hash of the tenant id>]`; with sharing the tool definitions are marked too (`IModelRequest.cacheTools`). A host that overrides the `LLMClient` or the `ContextAssembler`, or builds an `IModelRequest` itself, builds or reads blocks (`[{text}]` for one unmarked block; `joinSystem` to get the text). The pseudonymised skeleton of a run has `system: []`. Whether the stable block is marked, and whether tenants may share a cache entry, is decided by two required switches, `contextAssembler.promptCaching` and `contextAssembler.sharePromptCacheAcrossTenants` (a switch is never optional in this library: whoever configures the gateway decides), so `IAIGatewayConfig.contextAssembler` is required. The `CHANGELOG.md` of the package carries both migrations. The cost follows the cache: `IUsage` reports `cachedInputTokens` and `cacheWriteInputTokens` next to the total `inputTokens`, and `ModelRegistry.estimateCostUsd` prices the read and written tokens at `IModelCaps.costCacheReadPerMTokUsd` / `costCacheWritePerMTokUsd`, by default 0.1× and 1.25× the input price on Anthropic and the plain input price elsewhere, the rest at the input price; a call without cache tokens costs what it cost before.
+**Consequence.** The split is at the `{cacheBreakpoint}` placeholder of `CHAT_MAIN` (after `{addendum}` and `{skills}`): the `ContextAssembler` renders it as a sentinel and splits there; a stored template with a per-call slot before it is sent as one block with the WARNING `prompt_cache_off`, one without the placeholder as one block with no issue. Without sharing across tenants the stable block opens with `[cache scope <hash of the tenant id>]`; with sharing the tool definitions are marked too (`IModelRequest.cacheTools`). An application that overrides the `LLMClient` or the `ContextAssembler`, or builds an `IModelRequest` itself, builds or reads blocks (`[{text}]` for one unmarked block; `joinSystem` to get the text). The pseudonymised skeleton of a run has `system: []`. Whether the stable block is marked, and whether tenants may share a cache entry, is decided by two required switches, `contextAssembler.promptCaching` and `contextAssembler.sharePromptCacheAcrossTenants` (the feature switches of the config have no default: whoever configures the gateway decides), so `IAIGatewayConfig.contextAssembler` is required. The `CHANGELOG.md` of the package carries both migrations. The cost follows the cache: `IUsage` reports `cachedInputTokens` and `cacheWriteInputTokens` next to the total `inputTokens`, and `ModelRegistry.estimateCostUsd` prices the read and written tokens at `IModelCaps.costCacheReadPerMTokUsd` / `costCacheWritePerMTokUsd`, by default 0.1× and 1.25× the input price on Anthropic and the plain input price elsewhere, the rest at the input price; a call without cache tokens costs what it cost before.
 
 ---
 
-## 14. ContextAssembler
+## 17. ContextAssembler
 
 ### D20, D42, D68: The system prompt is one template with layers
 
@@ -719,7 +739,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 15. Trace
+## 18. Trace
 
 ### Every model call leaves an entry
 
@@ -729,7 +749,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 16. Persistence
+## 19. Persistence
 
 ### D28, D29: Every store has a seam, and the names of its tables are configuration
 
@@ -738,6 +758,21 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 **Why.** The whole gateway runs and is tested without infrastructure. Where a tenant's data lives is what tenant isolation rests on, so the developer who wires the gateway decides it: one set of names with a tenant column, a set per tenant, or a schema per tenant.
 
 **Consequence.** The real adapters are planned, see the [Roadmap](../70-roadmap.md#planned).
+
+### D130: An empty tenant id is a tenant like any other
+
+**Decision.** `tenantId: ""` is a valid tenant id. A single-tenant application passes it on every call, and every store
+treats it as one more tenant. The file store keeps its empty first folder: the key of a file is
+`/<path>/<userId>/<fileId>`.
+
+**Why.** The gateway does not interpret a tenant id (the file store checks a non-empty one as a folder name); the repositories
+hold the data and decide how they key it.
+The leading `/` keeps the empty tenant's keys apart: without it, the folder of its user `acme` would be `acme/`, the
+prefix of the tenant `acme` when `path` is empty.
+
+**Consequence.** A single-tenant application needs no tenant of its own invention. A repository of the application must
+accept `""` as a tenant id, as the in-memory ones do, and an `IBlobAdapter` must keep a leading `/`
+([The blob adapter](../20-learn-the-gateway/092-chat-files.md#29-the-blob-adapter)).
 
 ### D120: The real adapters are packages of their own
 
@@ -757,7 +792,7 @@ Every failed call — the tool threw, timed out, returned too much, got an input
 
 ---
 
-## 17. AIGatewayVercelUi
+## 20. AIGatewayVercelUi
 
 The server-only module `dyna-ai-gateway/vercel-ui` that speaks the Vercel UI message protocol for a chat client on `useChat` (D40). How to use it: [Vercel chat client](../10-getting-started/50-vercel-chat-client.md).
 
@@ -765,14 +800,34 @@ The server-only module `dyna-ai-gateway/vercel-ui` that speaks the Vercel UI mes
 
 **Decision.** `history` folds the assistant and tool turns of one answer, up to the next user turn, into one assistant message with a `step-start` part before each model step. Tools are `dynamic-tool` parts, rendered by their name.
 
-**Why.** A chat screen shows one bubble per answer: "looked up invoice 4521" and the answer text together, not three bubbles for the tool request, its result and the text. The gateway's tools are registered at runtime, so a client cannot know their types at compile time.
+**Why.** A chat screen shows one bubble per answer: "looked up invoice 4521" and the answer text together, not three bubbles for the tool request, its result and the text. The tools are `dynamic-tool` parts because the gateway's tools are values, passed in the configuration (`toolRegistry.tools`) or on the call (`additionalTools`): the module has no compile-time type of them to give the client, which renders each by its name.
 
 **Consequence.** The id of a streamed answer and the id of the same answer read back from `history` differ (the first turn's id): reload the thread with `history` when you reopen it, never merge the two.
 
 ### D35: The approval card is the SDK's own
 
-**Decision.** A tool call that waits for a human is streamed as the SDK's `tool-approval-request` and drawn as a `dynamic-tool` part in state `approval-requested`; the approval id is the pause's `pauseId` (D110). The client's Approve / Reject comes back to the `chat` endpoint as an `approval-responded` part, and the module resumes the run with one decision per card. `EDIT`, `ANSWER` (the form of a user question) and a `REJECT` with the asker's own text go through `AIGatewayVercelUi.resume`.
+**Decision.** A tool call that waits for a human is streamed as the SDK's `tool-approval-request` and drawn as a `dynamic-tool` part in state `approval-requested`; the approval id is the pause's `pauseId` (D110). The client's Approve / Reject comes back to the `chat` endpoint as an `approval-responded` part, and the module resumes the run with one decision per card. Every card of one pause carries the same id, so through `useChat` one click decides all the cards of a parallel step; a pause with several cards goes through `AIGatewayVercelUi.resume` (a known gap). `EDIT`, `ANSWER` (the form of a user question) and a `REJECT` with the asker's own text go through `AIGatewayVercelUi.resume`.
 
 **Why.** `useChat` ships the approval flow (`addToolApprovalResponse`, `sendAutomaticallyWhen`); the module speaks it instead of inventing a second one. The pause id, not the run id, because a run can pause twice under the same run id and the same approval must not decide both.
 
 **Consequence.** The module finds the pause among the calling user's own paused runs: an approval id of nobody's pause, or of another user's, is a 404. Everything the SDK's card cannot show (the allowed actions, the question form, the expiry) is in the message's `metadata.pause`.
+
+---
+
+## 21. Summary
+
+- The entries are grouped by class; an entry is a decision, with its reason and its consequence for the application where
+  they are not evident.
+- An id such as `D46` in the docs or in a JSDoc is an entry of this page.
+- Where the gateway refuses something, the consequence of the entry often names what the application does instead.
+
+## 22. FAQ
+
+**Why are the ids not contiguous?** The numbers in between are implementation decisions that do not change what the
+application sees.
+
+**How do I find the decision behind a behaviour?** By the id the JSDoc of the method or the property cites, or by the
+chapter of the class the behaviour belongs to.
+
+**Does an entry without an id count less?** No. It is a design principle, not a single decision; the gateway follows it
+the same way.

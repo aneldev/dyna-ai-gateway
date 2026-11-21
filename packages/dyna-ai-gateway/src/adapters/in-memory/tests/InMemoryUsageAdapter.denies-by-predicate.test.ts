@@ -7,8 +7,8 @@ import {
 } from "../InMemoryUsageAdapter";
 
 /**
- * `deny` scripts the app's no per call: `true` denies with the double's own code, a result is returned as it is, and a call the
- * predicate lets through is approved — here user B and every guardrail judge are denied, user A's chat is not.
+ * `deny` scripts the application's no per call: `true` denies with the double's own code, a result is returned as it is, and a
+ * call the predicate lets through is approved — here user B and every guardrail judge are denied, user A's chat is not.
  */
 test("deny decides per call: true denies with the test code, a result is returned as given, otherwise approved", async () => {
   const adapter = new InMemoryUsageAdapter({

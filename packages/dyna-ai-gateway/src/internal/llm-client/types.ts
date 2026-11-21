@@ -45,9 +45,9 @@ export interface ILLMClientConfig {
 export interface ILLMClientDeps {
   /** Resolves a `modelId` to its provider and caps, and prices a call for the usage report and the trace. */
   modelRegistry: IModelRegistry;
-  /** Asked before every call and told after it, including helper calls; the app's adapter sits behind it. */
+  /** Asked before every call and told after it, including helper calls; the application's adapter sits behind it. */
   usageGuard: IUsageGuard;
-  /** Every call is recorded here; the gateway annotates the main one. */
+  /** Every call is recorded here; the gateway annotates the entries afterwards (the main one and the judges'). */
   trace: ITrace;
 }
 
@@ -59,7 +59,7 @@ export interface ILLMClientCallMeta {
   userId?: string;
   /** The profile the call runs on. Omitted for system jobs (e.g. KB ingestion). */
   profileId?: string;
-  /** The thread of the call; omitted for a call outside a thread (an embedding, a KB ingestion). */
+  /** The thread of the call; omitted for a call outside a thread (a KB ingestion). */
   threadId?: string;
   /** The run the call is a step of; omitted outside a run. */
   runId?: string;
@@ -256,7 +256,7 @@ export interface IRunOutcome {
   /** One trace entry per step; the gateway annotates all of them. */
   traceIds: string[];
   /**
-   * Present when the usage adapter refused a step after the first: the run is DONE with finishReason LENGTH and the text so far.
+   * Present when the usage adapter refused a step after the first: the run is DONE with finishReason LENGTH and the last completed step's text.
    *
    * > The steps before it stand, their tools have had their effects; the gateway reports the refusal as a WARNING issue.
    */
@@ -383,12 +383,12 @@ export interface ILLMClient {
    *
    * Resolves the model, refuses a temperature on a model without `caps.temperature` (400, D82), asks the `UsageGuard`
    * (a no rejects with the usage-denied error, 429, and the provider is not called), then makes the SDK call: streamed
-   * through `hooks.onEvent` (TEXT_DELTA, then DONE) when hooks are given, generated otherwise. Returns the text, the parsed
-   * structured output when the request had a schema, the tool requests as the model made them, the finish reason, the usage
-   * and the trace id. After the call the app is told what it used and the entry is recorded, also for a failed or aborted
-   * call (then with zero usage and no entry). A provider failure is a 502; an aborted signal rejects with its reason, the
-   * partial stream is neither returned nor traced (D90). An answer that does not parse against the schema is returned as
-   * text, for the `Guardrails` to report.
+   * through `hooks.onEvent` (TEXT_DELTA, then DONE) when hooks are given, generated otherwise. Returns the text, the
+   * parsed structured output when the request had a schema, the tool requests as the model made them, the finish
+   * reason, the usage and the trace id. After the call the application is told what it used and the entry is recorded,
+   * also for a failed or aborted call (then with zero usage and no entry). A provider failure is a 502; an aborted
+   * signal rejects with its reason, the partial stream is neither returned nor traced (D90). An answer that does not
+   * parse against the schema is returned as text, for the `Guardrails` to report.
    *
    * # Who needs it
    *
@@ -465,10 +465,10 @@ export interface ILLMClient {
    *
    * > One vector per text, in order; checked, reported and traced like a completion.
    *
-   * Refuses a model without `caps.embeddings` (400), asks the `UsageGuard` with the token count of the texts, embeds them in
-   * one SDK call under the client's timeout and retries, then reports the usage and records the entry (kind EMBED, no
-   * request and no result: the usage is what matters). A provider failure is a 502, after the app was told the call used
-   * nothing. An empty list returns an empty list without a call.
+   * Refuses a model without `caps.embeddings` (400), asks the `UsageGuard` with the token count of the texts, embeds
+   * them in one SDK call under the client's timeout and retries, then reports the usage and records the entry (kind
+   * EMBED, no request and no result: the usage is what matters). A provider failure is a 502, after the application was
+   * told the call used nothing. An empty list returns an empty list without a call.
    *
    * # Who needs it
    *
@@ -492,7 +492,7 @@ export interface ILLMClient {
    *
    * # Who needs it
    *
-   * The real-provider tests, to skip a provider without a key; a host that lists what its gateway can reach.
+   * The real-provider tests, to skip a provider without a key; an application that lists what its gateway can reach.
    */
   readonly providers: EModelProvider[];
 }

@@ -39,7 +39,8 @@ type TUiPart = TGatewayUiMessage["parts"][number];
  *
  * - One answer is one assistant message (D34): the assistant and tool turns up to the next user turn fold into it, a
  *   `step-start` part before each model step.
- * - Tools are `dynamic-tool` parts: the gateway's tools are registered at runtime, the client renders them by `toolName`.
+ * - Tools are `dynamic-tool` parts: the gateway's tools are values of the config or of the call, the client renders them
+ *   by `toolName`.
  * - The SDK's approval card speaks for a TOOL_APPROVAL pause (D35); the approval id is the `pauseId` (D110).
  *
  * `AIGatewayVercelUi` drives it for the HTTP case; an application on another transport (a WebSocket, a resumable stream)

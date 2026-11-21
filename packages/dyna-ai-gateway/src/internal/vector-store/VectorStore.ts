@@ -16,9 +16,9 @@ import {
  *
  * > One shared index, one tenant per query, one ruler for every vector.
  *
- * Implements `IVectorStore` over the host's `IVectorIndexAdapter`: it checks, the adapter stores. The data is grouped as
- * tenant → library → book → document → chunk, and every chunk carries the ids of all its ancestors, so a whole library
- * is searched with one filter value.
+ * Implements `IVectorStore` over the application's `IVectorIndexAdapter`: it checks, the adapter stores. The data is
+ * grouped as tenant → library → book → document → chunk, and every chunk carries the ids of all its ancestors, so a
+ * whole library is searched with one filter value.
  *
  * - `upsertChunks` refuses a record of another tenant, of another embedding model or of another vector length than the
  *   index; `search` refuses a query vector of another length and returns nothing for an empty library scope without
@@ -29,8 +29,8 @@ import {
  *
  * # Who needs it
  *
- * `KbIngestor` (`upsertChunks`, `deleteByDoc`, `moveBook`, `describeIndex`) and `KbRetriever.retrieve` (`search`). A host
- * replaces it with its own `IVectorStore` in `overrides.vectorStore`.
+ * `KbIngestor` (`upsertChunks`, `deleteByDoc`, `moveBook`, `describeIndex`) and `KbRetriever.retrieve` (`search`). An
+ * application replaces it with its own `IVectorStore` in `overrides.vectorStore`.
  *
  * # What needs
  *
@@ -40,12 +40,12 @@ import {
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.vectorStore`.
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.vectorStore`.
  *
  * ## When shouldn't use it
  *
- * A host whose vector database does the tenant and model checks itself may implement `IVectorStore` directly instead of
- * an adapter.
+ * An application whose vector database does the tenant and model checks itself may implement `IVectorStore` directly
+ * instead of an adapter.
  *
  * # Pitfalls
  *

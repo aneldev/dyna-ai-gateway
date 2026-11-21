@@ -18,8 +18,9 @@ import {
 } from "./usage.config";
 
 /**
- * The app is asked before and told after every model call the gateway makes, not only the answer: with the thread memory on,
- * an ask makes a CHAT call and a MEMORY_WORKING helper call, and both reach the adapter with the user, the profile and their kind.
+ * The application is asked before and told after every model call the gateway makes, not only the answer: with the thread
+ * memory on, an ask makes a CHAT call and a MEMORY_WORKING helper call, and both reach the adapter with the user, the profile
+ * and their kind.
  */
 test("the answer and the memory helper call of an ask are both checked and reported with their kind", async () => {
   const llmClient = new FakeLLMClient();

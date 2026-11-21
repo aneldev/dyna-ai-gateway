@@ -11,7 +11,7 @@ import {sampleProfile} from "../internal/samples/profiles";
 import {refundTool} from "../internal/samples/tools";
 import {gatewayConfigBase} from "../internal/utils/gatewayConfigBase";
 
-/** A tool the app passes on the call, not in the registry (D66): no `policy`, runs at once. */
+/** A tool the application passes on the call, not in the registry (D66): no `policy`, runs at once. */
 export const lookupOrderTool = defineTool({
   name: "lookup_order",
   description: "Returns the order of the given id.",

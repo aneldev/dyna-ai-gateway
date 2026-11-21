@@ -20,7 +20,7 @@ import {sampleProfile} from "../internal/samples/profiles";
 import {getCurrentTimeTool} from "../internal/samples/tools";
 import {gatewayConfigBase} from "../internal/utils/gatewayConfigBase";
 
-/** The app's no, as the adapter answers it: its own code and its own words for the user. */
+/** The application's no, as the adapter answers it: its own code and its own words for the user. */
 export const denial: IUsageCheckResult = {
   approved: false,
   denyCode: "plan_exhausted",
@@ -52,14 +52,14 @@ const aiProfileStoreWithTimeTool: IAIGatewayConfig["aiProfileStore"] = {
 };
 
 export const usageAdapterDenyingChat = denying(call => call.kind === ETraceKind.CHAT);
-/** The app refuses the answer's own model call. */
+/** The application refuses the answer's own model call. */
 export const gatewayConfigDenyChat: IAIGatewayConfig = {
   ...gatewayConfigBase,
   usageGuard: {adapter: usageAdapterDenyingChat},
 };
 
 export const usageAdapterDenyingInputJudge = denying(call => call.kind === ETraceKind.GUARDRAIL_JUDGE);
-/** One judge rule on the prompt; the app refuses the judge's model call. */
+/** One judge rule on the prompt; the application refuses the judge's model call. */
 export const gatewayConfigDenyInputJudge: IAIGatewayConfig = {
   ...gatewayConfigBase,
   guardrails: {inputRules: [scopeJudgeRule]},
@@ -67,7 +67,7 @@ export const gatewayConfigDenyInputJudge: IAIGatewayConfig = {
 };
 
 export const usageAdapterDenyingOutputJudge = denying(call => call.kind === ETraceKind.GUARDRAIL_JUDGE);
-/** One judge rule on the answer; the app refuses the judge's model call after the answer was made. */
+/** One judge rule on the answer; the application refuses the judge's model call after the answer was made. */
 export const gatewayConfigDenyOutputJudge: IAIGatewayConfig = {
   ...gatewayConfigBase,
   guardrails: {outputRules: [toneJudgeRule]},
@@ -75,7 +75,7 @@ export const gatewayConfigDenyOutputJudge: IAIGatewayConfig = {
 };
 
 export const usageAdapterDenyingFirstRunStep = denying(call => call.kind === ETraceKind.RUN_STEP);
-/** The time tool; the app refuses every run step, so the first one. */
+/** The time tool; the application refuses every run step, so the first one. */
 export const gatewayConfigDenyFirstRunStep: IAIGatewayConfig = {
   ...gatewayConfigBase,
   aiProfileStore: aiProfileStoreWithTimeTool,
@@ -85,7 +85,7 @@ export const gatewayConfigDenyFirstRunStep: IAIGatewayConfig = {
 
 let runStepsAsked = 0;
 export const usageAdapterDenyingSecondRunStep = denying(call => call.kind === ETraceKind.RUN_STEP && ++runStepsAsked === 2);
-/** The time tool; the app approves the first run step and refuses the second. */
+/** The time tool; the application approves the first run step and refuses the second. */
 export const gatewayConfigDenySecondRunStep: IAIGatewayConfig = {
   ...gatewayConfigBase,
   aiProfileStore: aiProfileStoreWithTimeTool,
@@ -94,7 +94,7 @@ export const gatewayConfigDenySecondRunStep: IAIGatewayConfig = {
 };
 
 export const usageAdapterDenyingMemory = denying(call => call.kind === ETraceKind.MEMORY_WORKING);
-/** The thread memory on; the app refuses the memory's helper call. */
+/** The thread memory on; the application refuses the memory's helper call. */
 export const gatewayConfigDenyMemory: IAIGatewayConfig = {
   ...gatewayConfigBase,
   workingMemory: {enabled: true},
@@ -105,7 +105,7 @@ const EMBED_DIMENSIONS = 3;
 /** The fake embedding of the KB scenario: any vector of the index's width. */
 export const toVector = (): number[] => Array.from({length: EMBED_DIMENSIONS}, () => 1);
 export const usageAdapterDenyingEmbed = denying(call => call.kind === ETraceKind.EMBED);
-/** A knowledge base on fake embeddings; the app refuses the embedding of an ingestion. */
+/** A knowledge base on fake embeddings; the application refuses the embedding of an ingestion. */
 export const gatewayConfigDenyEmbed: IAIGatewayConfig = {
   ...gatewayConfigBase,
   modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [openAiModel, openAiEmbeddingModel]})},

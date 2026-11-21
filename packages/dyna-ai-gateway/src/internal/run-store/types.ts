@@ -13,14 +13,14 @@ import {
 
 /** Configuration of the RunStore. Lands in IAIGatewayConfig.runStore. */
 export interface IRunStoreConfig {
-  /** Persistence of the runs: the host's adapter; `InMemoryRunRepository` ships with the gateway. */
+  /** Persistence of the runs: the application's adapter; `InMemoryRunRepository` ships with the gateway. */
   repository: IRunRepository;
 }
 
 /**
  * Tenant-scoped persistence of runs.
  *
- * Implemented by `RunStore`; the type of `IAIGatewayDeps.runStore`, so a host may pass its own in `overrides`.
+ * Implemented by `RunStore`; the type of `IAIGatewayDeps.runStore`, so an application may pass its own in `overrides`.
  */
 export interface IRunStore {
   /**
@@ -184,7 +184,10 @@ export interface IRunStore {
   }): Promise<number>;
 }
 
-/** Persistence seam of the runs: what a host implements over its database; the `RunStore` adds the 404 and the status helpers. */
+/**
+ * Persistence seam of the runs: what an application implements over its database; the `RunStore` adds the 404 and the
+ * status helpers.
+ */
 export interface IRunRepository {
   /**
    * save -- creates or replaces the run
@@ -296,7 +299,7 @@ export interface IRunRepository {
 
 /** The persisted state of one agent run. */
 export interface IRun {
-  /** The run's id (`IPausedResponse.runId`); kept across the pauses of one run. */
+  /** The run's id (each envelope's `runId` in `IPausedResponse.envelopes`); kept across the pauses of one run. */
   id: string;
   /** The owner; every read is filtered by it. */
   tenantId: string;
@@ -349,7 +352,13 @@ export interface IRun {
    * Cleared when the run leaves the review. The reviewer's copy is the envelope's `result`.
    */
   answer?: IStoredAnswer;
-  /** Model calls done so far; the profile's `maxStepsPerRun` caps it. */
+  /**
+   * Model calls done so far, over the `run()` and every `resume()` of the run.
+   *
+   * > A running total, for the trace and the admin; no limit reads it.
+   *
+   * The profile's `maxStepsPerRun` caps the steps of one invocation: the `run()`, then each `resume()` again from zero.
+   */
   steps: number;
   /** When the run was first stored. */
   createdAt: Date;

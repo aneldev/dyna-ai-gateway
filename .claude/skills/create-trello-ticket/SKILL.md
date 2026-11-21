@@ -130,6 +130,8 @@ All template checklists already exist on the new card (Step 3). This step only d
 | Dev | Exactly **one** item — Step 5a |
 | QA - Edge Cases & Test Scenarios | Fill **only if necessary**, very short items |
 
+**A filled checklist holds only this ticket's items.** The items it got from the template (Step 3) are DEMO hints, e.g. `_**Given** (an initial condition), **When** (something happens), **Then** (this is the accepted result)_` in `ACs - Given When Then`: delete them when you fill the checklist, never leave one next to the real items.
+
 **Nothing else.** Any other template checklist keeps exactly its copied template items — do not fill, rename, reorder, or remove it.
 
 Checklist item style: minimal wording, one idea per item. Example: `Given logged-out user, When opens /app, Then redirect to /login`.
@@ -153,7 +155,7 @@ Never add a second item, a second `Dev` checklist, or a task list anywhere on th
 
 ## Step 6 — Verify and report
 
-1. Re-read the new card; confirm: correct title/number, no DEMO text remains, **all** template checklists present in the same order and no other, the `Dev` checklist holds exactly the one plan item, only allowed checklists filled, labels match the template. **Bug ticket:** labels are the template's with `bug` in place of `dev`, and the `### Repro` section sits right before `### Background & Context`.
+1. Re-read the new card; confirm: correct title/number, no DEMO text remains, **all** template checklists present in the same order and no other, the `Dev` checklist holds exactly the one plan item, only allowed checklists filled and none of them still holds a template DEMO item, labels match the template. **Bug ticket:** labels are the template's with `bug` in place of `dev`, and the `### Repro` section sits right before `### Background & Context`.
 2. Confirm the template card now shows the bumped number, and that the new card sits at the bottom of the template's list.
 3. Report back: new card title, its list, and a link/ID. If custom fields could not be copied (Step 3), say so and ask the user to copy them manually.
 4. Update the plan / analysis files found in Step 00 (ticket number and URL, scope aligned with the approved content). Report which files were updated. If in Step 00 no files were found, check the repo again now and proceed if they exist.

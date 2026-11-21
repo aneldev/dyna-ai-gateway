@@ -1,12 +1,14 @@
-import apiSidebar from "./api-sidebar.mjs";
+import {buildApiSidebar} from "./api-sidebar.mjs";
+import rehypeSectionByHeading from "./plugins/rehype-section-by-heading.mjs";
 
 const GITHUB_URL = "https://github.com/aneldev/dyna-ai-gateway";
 const NPM_URL = "https://www.npmjs.com/package/dyna-ai-gateway";
 
+/** Replaces the folder-generated "API" category with the curated tree plus "All types" (`api-sidebar.mjs` says why). */
 const arrangeSidebar = async ({defaultSidebarItemsGenerator, ...args}) => {
   const items = await defaultSidebarItemsGenerator(args);
   return items.map((item) => (item.link?.id?.startsWith("api/")
-    ? {type: "category", label: "API", items: apiSidebar}
+    ? {type: "category", label: "API", items: buildApiSidebar(args.docs)}
     : item));
 };
 
@@ -24,6 +26,8 @@ const config = {
     hooks: {onBrokenMarkdownLinks: "throw"},
   },
   themes: ["@docusaurus/theme-mermaid"],
+  // Mermaid's node tooltips need d3-transition loaded first (the file says why)
+  clientModules: ["./src/clientModules/d3-transition.js", "./src/clientModules/fonts.js"],
   plugins: [
     [
       "docusaurus-plugin-typedoc",
@@ -49,6 +53,8 @@ const config = {
         routeBasePath: "/docs",
         sidebarPath: "./sidebars.mjs",
         sidebarItemsGenerator: arrangeSidebar,
+        // One <section> per heading, so custom.css can indent the body like the table of contents
+        rehypePlugins: [rehypeSectionByHeading],
         exclude: [
           "internal/**",
           "plans/**",
@@ -76,25 +82,34 @@ const config = {
     },
     footer: {
       style: "dark",
+      logo: {alt: "dyna AI Gateway logo", src: "img/logo.svg", width: 56, height: 56},
       links: [
         {
           title: "Docs",
           items: [
-            {label: "Getting started", to: "/docs/getting-started/README"},
-            {label: "Architecture", to: "/docs/architecture/decisions"},
-            {label: "API", to: "/docs/api/index/classes/AIGateway"},
+            {label: "Getting started", icon: "rocket", to: "/docs/getting-started/README"},
+            {label: "Architecture", icon: "architecture", to: "/docs/architecture"},
+            {label: "API", icon: "api", to: "/docs/api/index/classes/AIGateway"},
+          ],
+        },
+        {
+          title: "Learn",
+          items: [
+            {label: "Learn the gateway", icon: "school", to: "/docs/learn-the-gateway/intro"},
+            {label: "Learning paths", icon: "route", to: "/docs/learning-paths"},
+            {label: "AI best practices", icon: "sparkles", to: "/docs/ai-best-practices"},
           ],
         },
         {
           title: "Project",
           items: [
-            {label: "GitHub", href: GITHUB_URL},
-            {label: "npm", href: NPM_URL},
-            {label: "Changelog", href: `${GITHUB_URL}/blob/main/packages/dyna-ai-gateway/CHANGELOG.md`},
+            {label: "GitHub", icon: "github", href: GITHUB_URL},
+            {label: "npm", icon: "package", href: NPM_URL},
+            {label: "Changelog", icon: "history", href: `${GITHUB_URL}/blob/main/packages/dyna-ai-gateway/CHANGELOG.md`},
           ],
         },
       ],
-      copyright: `MIT License. © ${new Date().getFullYear()} Anel Invent`,
+      copyright: `MIT License. © ${new Date().getFullYear()} <a class="footer__company" href="https://anel.co" target="_blank" rel="noopener noreferrer">Anel Invent</a>`,
     },
   },
 };

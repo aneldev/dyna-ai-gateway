@@ -2,40 +2,43 @@ import {IUsage} from "../../contracts";
 
 import {ETraceKind} from "../trace";
 
-/** The `denyCode` of a call refused because the adapter's `check` threw: the app gave no answer, so the gateway gives its own. */
+/**
+ * The `denyCode` of a call refused because the adapter's `check` threw: the application gave no answer, so the gateway
+ * gives its own.
+ */
 export const USAGE_CHECK_FAILED_DENY_CODE = "usage_check_failed";
 
-/** The `code` of the `dynaError` a model call is refused with when the app said no (status 429). */
+/** The `code` of the `dynaError` a model call is refused with when the application said no (status 429). */
 export const USAGE_DENIED_ERROR_CODE = 5378215504021;
 
 /**
  * The `data` of the error a refused model call throws.
  *
- * Read by the orchestration to build the issue `usage_denied`; the app's code and message travel through unchanged.
+ * Read by the orchestration to build the issue `usage_denied`; the application's code and message travel through unchanged.
  */
 export interface IUsageDeniedErrorData {
   /** The trace id the refused call would have had; the adapter saw it in `check`. */
   traceId: string;
-  /** The app's `denyCode`, as `IUsageCheckResult` returned it; the gateway does not read it. */
+  /** The application's `denyCode`, as `IUsageCheckResult` returned it; the gateway does not read it. */
   denyCode?: string;
-  /** The app's `denyUserMessage`, in the user's language; it becomes the error's `userMessage`. */
+  /** The application's `denyUserMessage`, in the user's language; it becomes the error's `userMessage`. */
   denyUserMessage?: string;
 }
 
 /**
  * Configuration of the UsageGuard. Lands in `IAIGatewayConfig.usageGuard`.
  *
- * The app passes the one adapter that answers for its usage rules; the gateway constructs the guard around it.
+ * The application passes the one adapter that answers for its usage rules; the gateway constructs the guard around it.
  */
 export interface IUsageGuardConfig {
-  /** The app's answer to "may this model call run?" and the receiver of what every call used. */
+  /** The application's answer to "may this model call run?" and the receiver of what every call used. */
   adapter: IUsageAdapter;
 }
 
 /**
  * The gateway holds no token logic; it asks, it reports.
  *
- * Implemented by `UsageGuard`; the type of `IAIGatewayDeps.usageGuard`, so a host may pass its own in `overrides`.
+ * Implemented by `UsageGuard`; the type of `IAIGatewayDeps.usageGuard`, so an application may pass its own in `overrides`.
  */
 export interface IUsageGuard {
   /**
@@ -43,10 +46,10 @@ export interface IUsageGuard {
    *
    * # About
    *
-   * > One question to the app, fail closed.
+   * > One question to the application, fail closed.
    *
    * Passes the call's factors and its rough size to the adapter and returns its answer. When the adapter throws, the call is
-   * refused with `USAGE_CHECK_FAILED_DENY_CODE` and the error is logged: an app that cannot answer has not said yes.
+   * refused with `USAGE_CHECK_FAILED_DENY_CODE` and the error is logged: an application that cannot answer has not said yes.
    *
    * # Who needs it
    *
@@ -55,11 +58,11 @@ export interface IUsageGuard {
   check(args: IUsageCheckArgs): Promise<IUsageCheckResult>;
 
   /**
-   * addUsage -- tells the app what the call used
+   * addUsage -- tells the application what the call used
    *
    * # About
    *
-   * > One report to the app, never fatal.
+   * > One report to the application, never fatal.
    *
    * Passes the report to the adapter. When the adapter throws, the error is logged and nothing else happens: the call already
    * ran and its answer belongs to the user.
@@ -72,9 +75,9 @@ export interface IUsageGuard {
 }
 
 /**
- * The seam between the gateway and the app's usage rules: asked before every model call, told after it.
+ * The seam between the gateway and the application's usage rules: asked before every model call, told after it.
  *
- * Implemented by the app (plans, limits, ledgers, per-model access, credits — whatever it wants) and by
+ * Implemented by the application (plans, limits, ledgers, per-model access, credits — whatever it wants) and by
  * `InMemoryUsageAdapter` for tests. The `UsageGuard` is its only caller; the `LLMClient` goes through the guard.
  */
 export interface IUsageAdapter {
@@ -83,7 +86,7 @@ export interface IUsageAdapter {
    *
    * # About
    *
-   * > The app's answer, before every model call the gateway makes.
+   * > The application's answer, before every model call the gateway makes.
    *
    * Asked for the answer, every run step, every guardrail judge, query rewrite, memory update and embedding, with the call's
    * factors and its rough size. A throw is treated as a denial (fail closed) and logged.
@@ -118,7 +121,7 @@ export interface IUsageAdapter {
 export interface IUsageCall {
   /** The id of the call's trace entry: links a report to the trace and pairs a `check` with its `addUsage`. */
   traceId: string;
-  /** The tenant that pays: every limit of the app is at least per tenant. */
+  /** The tenant that pays: every limit of the application is at least per tenant. */
   tenantId: string;
   /** Absent for system jobs (e.g. KB ingestion). */
   userId?: string;
@@ -128,7 +131,7 @@ export interface IUsageCall {
   modelId: string;
   /** What the call is for: the answer, a run step, a guardrail judge, a query rewrite, an embedding, a memory update. */
   kind: ETraceKind;
-  /** The thread of the call; absent for a call outside a thread (an embedding, a KB ingestion). */
+  /** The thread of the call; absent for a call outside a thread (a KB ingestion). */
   threadId?: string;
   /** The run the call is a step of; absent outside a run. */
   runId?: string;
@@ -155,14 +158,14 @@ export interface IUsageCheckArgs extends IUsageCall {
 /**
  * The adapter's answer to a `check`.
  *
- * Read by the `UsageGuard`; on a denial the gateway refuses the call with the issue `usage_denied` and passes the app's
- * code and message through unchanged.
+ * Read by the `UsageGuard`; on a denial the gateway refuses the call with the issue `usage_denied` and passes the
+ * application's code and message through unchanged.
  */
 export interface IUsageCheckResult {
   /** True runs the call; false refuses it with the issue `usage_denied` and the two fields below. */
   approved: boolean;
   /**
-   * The app's own code of the denial, for its UI to branch on.
+   * The application's own code of the denial, for its UI to branch on.
    *
    * @example "daily_limit_reached" - the UI shows the plan upgrade
    */
@@ -184,7 +187,7 @@ export interface IUsageAddArgs extends IUsageCall {
   /**
    * Informative: list prices of the model times the tokens, in USD. No exchange rates, no discounts, no reservations.
    *
-   * > An app that bills in its own currency or credits computes from `usage`, not from this.
+   * > An application that bills in its own currency or credits computes from `usage`, not from this.
    */
   costUsd: number;
 }

@@ -51,27 +51,30 @@ if (paused.kind === EGatewayResponseKind.PAUSED) {
 1. The model reads the invoice with `get_invoice`, then asks for `post_credit_note` with `amount: 12400`.
 2. The policy returns `NEEDS_APPROVAL`. The run stops, is stored, and `response` settles as `PAUSED` with one envelope per
    waiting call: the tool call (name and input), the `runId`, the decisions allowed and when the pause expires.
-3. Your application shows the envelope as a card. The paused run is stored, so it survives a restart of the server.
-4. `resume()` with the approver's decision runs the tool (or not) and the loop goes on to the answer.
+3. Your application shows the envelope as a card. The paused run is stored in the `runStore`: with your database
+   repository it survives a restart; the `InMemoryRunRepository` of Installation keeps it only while the process runs.
+4. `resume()` with the approver's decision runs the tool (or not) and the loop goes on to the answer. The gateway does
+   not check who approves: any user of the tenant whose permissions unlock the tool can resume, so your endpoint decides
+   who may. The tool runs with the approver's `userContext`.
 
 ## The three decisions
 
-| Decision  | What happens                                                             |
-|-----------|--------------------------------------------------------------------------|
-| `APPROVE` | the tool runs with the input the model asked for                         |
-| `EDIT`    | the tool runs with the input the approver changed                        |
-| `REJECT`  | the tool does not run; the model reads the reason and answers without it |
+| Decision  | What happens                                                                                           |
+|-----------|--------------------------------------------------------------------------------------------------------|
+| `APPROVE` | the tool runs with the input the model asked for                                                       |
+| `EDIT`    | the tool runs with the input the approver changed, after the policy decides again: a `DENY` refuses it |
+| `REJECT`  | the tool does not run; the model reads the reason and answers without it                               |
 
 ## The verdicts of a policy
 
-| Verdict          | Effect                                      |
-|------------------|---------------------------------------------|
-| `ALLOW`          | the tool runs; the default without a policy |
-| `DENY`           | the tool does not run; the model reads why  |
-| `NEEDS_APPROVAL` | the run pauses until a human decides        |
+| Verdict          | Effect                                                                                       |
+|------------------|----------------------------------------------------------------------------------------------|
+| `ALLOW`          | the tool runs; the default without a policy, unless the profile's `approvals` lists the tool |
+| `DENY`           | the tool does not run; the model reads why                                                   |
+| `NEEDS_APPROVAL` | the run pauses until a human decides                                                         |
 
 A policy can also be a plain verdict (`policy: EToolCallVerdict.NEEDS_APPROVAL`) for a tool that always waits, and a
-profile can require approval per tenant (`IAIProfile.approvals`). More: the [FAQ](90-faq.md#how-do-i-control-whether-a-tool-call-runs),
+profile can require approval for its tools (`IAIProfile.approvals`). More: the [FAQ](90-faq.md#how-do-i-control-whether-a-tool-call-runs),
 [several cards at once](90-faq.md#the-run-paused-with-several-cards-how-do-i-answer-them),
 [a review of the answer](90-faq.md#how-do-i-have-a-human-review-the-answer-before-the-user-sees-it).
 

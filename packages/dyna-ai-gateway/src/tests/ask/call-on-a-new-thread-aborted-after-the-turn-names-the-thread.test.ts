@@ -17,7 +17,7 @@ import {
 
 /**
  * A call on a new thread is aborted right after its user turn was stored, before the search and the model: the FAILED response
- * names the thread the call created, so the host can find the turn, and the model is never called (nothing is enqueued).
+ * names the thread the call created, so the application can find the turn, and the model is never called (nothing is enqueued).
  */
 test("an ask on a new thread aborted after the user turn is FAILED and names the new thread", async () => {
   const llmClient = new FakeLLMClient();

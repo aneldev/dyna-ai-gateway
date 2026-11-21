@@ -46,7 +46,7 @@ interface IActiveCache {
  * - One active version per key, served from a cache and refreshed after `cacheTtlMs`.
  * - The history of a key stays in the repository for the admin UI and for rollback; it is read only on request, paged.
  * - The seed (version 0) answers when the repository has no active version, so a fresh database works at once;
- *   the host overrides it per key with `seedTemplates`.
+ *   the application overrides it per key with `seedTemplates`.
  *
  * Global: one copy for all tenants; tenant flavour comes only through the profile's addendum slot.
  * See docs/60-architecture/90-decisions.md § PromptTemplateStore.
@@ -54,7 +54,7 @@ interface IActiveCache {
  * # Who needs it
  *
  * `ContextAssembler` renders `CHAT_MAIN`; `WorkingMemory`, `UserMemoryStore` and `QueryRewriter` render their own key.
- * The admin methods (`listVersions`, `addVersion`, `activate`) are for the host's administration screen.
+ * The admin methods (`listVersions`, `addVersion`, `activate`) are for the application's administration screen.
  *
  * # What needs
  *
@@ -89,7 +89,7 @@ export class PromptTemplateStore implements IPromptTemplateStore {
    * > The wording in force for a job, with its version.
    *
    * Reads the cached active templates. Falls back to the seed (version 0) when the repository has no active version for the
-   * key: the host's `seedTemplates` entry, else the shipped one; a key with neither is a 404.
+   * key: the application's `seedTemplates` entry, else the shipped one; a key with neither is a 404.
    *
    * # Who needs it
    *
@@ -187,7 +187,7 @@ export class PromptTemplateStore implements IPromptTemplateStore {
    *
    * # Who needs it
    *
-   * The host's administration screen, before `activate` (pick a version) and after `addVersion` (see it listed).
+   * The application's administration screen, before `activate` (pick a version) and after `addVersion` (see it listed).
    */
   public async listVersions(
     {
@@ -239,7 +239,7 @@ export class PromptTemplateStore implements IPromptTemplateStore {
    *
    * # Who needs it
    *
-   * The host's administration screen.
+   * The application's administration screen.
    */
   public async addVersion(
     {
@@ -281,7 +281,7 @@ export class PromptTemplateStore implements IPromptTemplateStore {
    *
    * # Who needs it
    *
-   * The host's administration screen, for a new wording and for a rollback.
+   * The application's administration screen, for a new wording and for a rollback.
    *
    * # Pitfalls
    *
@@ -324,7 +324,7 @@ export class PromptTemplateStore implements IPromptTemplateStore {
    *
    * # About
    *
-   * > For a host that changed the repository behind the store's back.
+   * > For an application that changed the repository behind the store's back.
    *
    * The next renders use the reloaded versions; nothing else changes.
    */

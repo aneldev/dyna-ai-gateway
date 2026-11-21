@@ -38,7 +38,7 @@ const MAX_CATCH_UP_TURNS = 20;
  * profile's `workingMemory`, else the config's `strategy`, else `SUMMARY_BUFFER`:
  *
  * - `SLIDING_WINDOW`: `load` gives the newest turns that fit `chatHistoryRatio` of the history budget, counted with the
- *   model's tokenizer; `saveContext` does nothing, nothing is stored.
+ *   o200k tokenizer (× 1.2 off OpenAI); `saveContext` does nothing, nothing is stored.
  * - `SUMMARY_BUFFER`: `load` gives the stored summary + facts as the notes and the last `recentTurns` turns; `saveContext`
  *   has the cheap model rewrite the summary + facts once the thread grew by `updateEveryTurns` turns.
  * - Switched off (`enabled: false`): `load` gives the last 20 turns and no notes; `saveContext` does nothing.
@@ -51,8 +51,8 @@ const MAX_CATCH_UP_TURNS = 20;
  * # Who needs it
  *
  * `ContextAssembler.build` calls `load` for every request; the background memory update calls `saveContext` after every
- * answer; `AIGateway.getThreadMemory` and `AIGateway.resetThreadMemory` call `getState` and `reset`. A host replaces it
- * with its own `IWorkingMemory` in `overrides.workingMemory`.
+ * answer; `AIGateway.getThreadMemory` and `AIGateway.resetThreadMemory` call `getState` and `reset`. An application
+ * replaces it with its own `IWorkingMemory` in `overrides.workingMemory`.
  *
  * # What needs
  *
@@ -63,16 +63,16 @@ const MAX_CATCH_UP_TURNS = 20;
  *
  * ## When to use it
  *
- * Always, through the gateway: it is created by `createGatewayDeps` from `IAIGatewayConfig.workingMemory`.
+ * Always, through the gateway: it is created by the `AIGateway` constructor from `IAIGatewayConfig.workingMemory`.
  *
  * ## When shouldn't use it
  *
- * A host with its own memory model (a vector memory, a graph, a different summary) implements `IWorkingMemory` instead
- * and passes it in `overrides`.
+ * An application with its own memory model (a vector memory, a graph, a different summary) implements `IWorkingMemory`
+ * instead and passes it in `overrides`.
  *
  * # Pitfalls
  *
- * A thread keeps its stored summary when its profile switches to `SLIDING_WINDOW`: the summary is ignored, not wiped,
+ * A thread keeps its stored summary when its profile switches to `SLIDING_WINDOW`: the window ignores the summary (the query rewrite still reads it), it is not wiped,
  * so a switch back resumes from it. `getState` shows it meanwhile.
  */
 export class WorkingMemory implements IWorkingMemory {

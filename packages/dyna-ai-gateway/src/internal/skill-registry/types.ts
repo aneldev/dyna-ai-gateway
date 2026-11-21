@@ -41,8 +41,9 @@ export interface ISkillRegistryConfig {
 /**
  * The skills of a call: the merged list of the profile's and the call's skills, validated.
  *
- * Implemented by `SkillRegistry`; the type of `IAIGatewayDeps.skillRegistry`, so a host may pass its own in `overrides`.
- * Asked by `AIProfileStore.upsertProfile` (the profile alone) and by the call preparation (the profile and the call).
+ * Implemented by `SkillRegistry`; the type of `IAIGatewayDeps.skillRegistry`, so an application may pass its own in
+ * `overrides`. Asked by `AIProfileStore.upsertProfile` (the profile alone) and by the call preparation (the profile and
+ * the call).
  */
 export interface ISkillRegistry {
   /**

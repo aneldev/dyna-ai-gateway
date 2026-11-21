@@ -58,7 +58,7 @@ const factsSchema = z.object({
  * > The user says it once; every later thread knows it.
  *
  * Implements `IUserMemoryStore`: durable key/value facts about a user (`language`, `role`, `location`), scoped by tenant
- * + user, kept in the host's `IUserMemoryRepository`.
+ * + user, kept in the application's `IUserMemoryRepository`.
  *
  * - `getFacts` reads them for every call; they go into the `{memory}` slot of the system prompt.
  * - `extract` has the cheap model read the newest turns of a thread and answer with operations (`SET`, `DELETE`) that
@@ -77,7 +77,8 @@ const factsSchema = z.object({
  *
  * `prepareCall` and `AIGateway.getUserFacts` read; `updateMemory` runs `isExtractDue` and `extract` in the background
  * after every answer; `AIGateway.upsertUserFact`, `removeUserFact`, `clearUserFacts` and the two built-in tools edit;
- * `forgetUser` calls `deleteByUser`. A host replaces it with its own `IUserMemoryStore` in `overrides.userMemoryStore`.
+ * `forgetUser` calls `deleteByUser`. An application replaces it with its own `IUserMemoryStore` in
+ * `overrides.userMemoryStore`.
  *
  * # What needs
  *
@@ -87,11 +88,11 @@ const factsSchema = z.object({
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.userMemoryStore`.
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.userMemoryStore`.
  *
  * ## When shouldn't use it
  *
- * A host with its own user profile store implements `IUserMemoryStore` over it and passes it in `overrides`.
+ * An application with its own user profile store implements `IUserMemoryStore` over it and passes it in `overrides`.
  *
  * # Pitfalls
  *

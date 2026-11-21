@@ -51,7 +51,7 @@ const moderation: IInputRule = {
   }),
 };
 
-/** The cheap model is a reasoning model that takes no temperature (`caps.temperature` false, like gpt-5-mini). */
+/** The cheap model is a reasoning model that takes no temperature (`caps.temperature` false, like gpt-6.1-terra). */
 const cheapModel = makeModel("model-cheap", EModelProvider.OPENAI);
 
 /**

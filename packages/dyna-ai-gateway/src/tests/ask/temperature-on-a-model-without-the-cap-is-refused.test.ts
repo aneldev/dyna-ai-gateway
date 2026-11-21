@@ -33,7 +33,7 @@ test("ask with a temperature on a model without caps.temperature is a 400 before
     code: 5376006538702,
     status: 400,
     data: {
-      modelId: "gpt-5-mini",
+      modelId: "gpt-6.1-terra",
       profileId: "default",
       temperature: 0.2,
     },

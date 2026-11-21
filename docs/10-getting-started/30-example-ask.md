@@ -34,25 +34,28 @@ if (result.kind === EGatewayResponseKind.ANSWER) {
   result.structured; // {lines: [...]}, validated against the schema
   result.citations;  // the ids of the knowledge-base chunks the model was given
   result.threadId;   // pass it on the next call to continue the conversation
-  result.usage;      // the tokens of the call and their cost
+  result.usage;      // the tokens of the call; the cost is in the trace entry and the usage adapter's report
 }
 if (result.kind === EGatewayResponseKind.FAILED) {
-  result.issues;     // why: a usage adapter that refused, a guardrail, a timeout, the provider
+  result.issues;     // why: a usage adapter that refused, a guardrail or the `outputSchema`, an abort or a timeout
 }
 ```
+
+A provider failure (502) or a wrong input (400, 404) is not a `FAILED` response: `response` rejects with a `dynaError`,
+and `events` throws it. Wrap the call in `try`/`catch`.
 
 ## What happens in the call
 
 1. The gateway loads the profile `accounting`, its model and the thread (a new one, since no `threadId` was given).
-2. It asks the usage adapter whether the call may run.
-3. It assembles the system prompt (template, profile addendum, the call's `context`) and sends it with the question.
+2. It assembles the system prompt (template, profile addendum, the call's `context`) with the question.
+3. Right before the model call, it asks the usage adapter whether the call may run, then sends the request.
 4. The model's answer streams as `TEXT_DELTA` events, is validated against `outputSchema`, stored on the thread and traced.
 
 ## The parts of the call
 
 | Field          | Why                                                                                         |
 |----------------|---------------------------------------------------------------------------------------------|
-| `userContext`  | who calls, as your host authenticated them; every store is keyed by its `tenantId`          |
+| `userContext`  | who calls, as your application authenticated them; every store is keyed by its `tenantId`   |
 | `profileId`    | the model, the addendum and the limits of the use case                                      |
 | `prompt`       | what the user asked                                                                         |
 | `context`      | what the screen knows; the model reads it, the thread does not keep it                      |

@@ -44,12 +44,12 @@ interface ICatalogCache {
  *   the cache.
  * - A disabled model stays in the catalog: it is refused by every call that names it, and a call in flight is still priced.
  *
- * Created first by `createGatewayDeps`: the LLMClient, the AIProfileStore and the guardrails depend on it.
+ * Created first by the `AIGateway` constructor: the LLMClient, the AIProfileStore and the guardrails depend on it.
  *
  * # Who needs it
  *
  * `prepareCall` and `AIGateway.resume` (the profile's model), `AIProfileStore.upsertProfile` (validation), `LLMClient` (every
- * call), the guardrails' judge; the host's administration screen through `AIGateway.modelRegistry`.
+ * call), the guardrails' judge; the application's administration screen through `AIGateway.modelRegistry`.
  *
  * # What needs
  *
@@ -117,7 +117,7 @@ export class ModelRegistry implements IModelRegistry {
    *
    * # Who needs it
    *
-   * The host's administration screen and profile editor; the dev sandbox.
+   * The application's administration screen and profile editor; the dev sandbox.
    */
   public async listModels(
     {
@@ -197,11 +197,11 @@ export class ModelRegistry implements IModelRegistry {
    * > The administration write: the entry as given, whole, and the cache dropped.
    *
    * Saves through the repository and drops this instance's cache, so the next read sees the entry; other instances see it
-   * after their TTL. No validation of the entry beyond its type: the host's screen is the editor.
+   * after their TTL. No validation of the entry beyond its type: the application's screen is the editor.
    *
    * # Who needs it
    *
-   * The host's administration screen; the tests and the first run, to seed the catalog.
+   * The application's administration screen; the tests and the first run, to seed the catalog.
    */
   public async upsertModel(
     {model}: {model: IModelInfo},
@@ -266,7 +266,7 @@ export class ModelRegistry implements IModelRegistry {
    *
    * # About
    *
-   * > For a host that changed the repository behind the registry's back.
+   * > For an application that changed the repository behind the registry's back.
    *
    * The next reads are served from the reloaded catalog; nothing else changes.
    */

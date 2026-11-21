@@ -1,70 +1,70 @@
 # Live adjustment and dependency injection
 
-Status: 2026-10-27. Code: `../../packages/dyna-ai-gateway/src/AIGateway.ts`, `src/orchestration/createGatewayDeps.ts`, `src/types.ts`.
+Code: [`AIGateway.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/AIGateway.ts), [`types.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/types.ts).
 
-## 1. Two different things
+## 1. About
+
+What an application can change while the gateway runs, what is fixed when the gateway is constructed, and why. Not needed
+to use the library.
+
+## 2. Description
 
 | Term                 | Meaning here                                                          | When it takes effect |
 |----------------------|-----------------------------------------------------------------------|----------------------|
 | Dependency injection | A class receives the services it uses; it creates none of them        | At construction      |
 | Live adjustment      | Behaviour changes while the service runs, without restart or redeploy | On the next call     |
 
-The gateway does the first with a composition root and the second with data. It does **not** swap a service instance on a running gateway (section 4).
+The gateway does the first with a composition root and the second with data. It does **not** swap a service instance on a
+running gateway ([chapter 7](#7-what-is-deliberately-not-possible)).
 
-## 2. Dependency injection
+## 3. For whom is this chapter
 
-### 2.1 Construction
+A developer who changes a model, a profile, a prompt or a limit in production and wants to know when the change takes
+effect, or who asks whether a tool, a rule or a class can be added without a restart.
 
-```ts
-const gateway = new AIGateway(config, overrides?);
-```
+## 4. How it works
 
-- `config: IAIGatewayConfig` — settings and persistence seams only: for every store a `repository` or `adapter` interface, the provider credentials, the app's tools and guardrail rules, feature switches. No class instance is in the config.
-- `overrides?: IAIGatewayOverrides` — one factory per child the host builds itself. The gateway calls it with that child's config and deps, exactly as it would call its own class: `(config, deps) => new MyThreadStore(config, deps)`. The factory returns an object that implements the child's `I<Class>` interface (`IThreadStore`, `IWorkingMemory`, …); every child has one.
-
-### 2.2 The composition root
-
-`createGatewayDeps({config, overrides})` creates the 23 children once, in dependency order, and hands each the ones it needs:
+### 4.1 Construction
 
 ```ts
-const modelRegistry = make(overrides.modelRegistry, config.modelRegistry, undefined, config => new ModelRegistry(config));
-const trace         = make(overrides.trace,         config.trace,         undefined, config => new Trace(config));
-const usageGuard    = make(overrides.usageGuard,    config.usageGuard,    undefined, config => new UsageGuard(config));
-const llmClient     = make(overrides.llmClient,     config.llmClient,     {modelRegistry, usageGuard, trace}, (config, deps) => new LLMClient(config, deps));
-const guardrails    = make(overrides.guardrails,    config.guardrails ?? {}, {llmClient, modelRegistry},     (config, deps) => new Guardrails(config, deps));
-// … `make` calls the host's factory when there is one, the gateway's class otherwise; both get the same config and deps
+const gateway = new AIGateway(config, overrides);
 ```
 
-An override builds the instance for everyone that depends on it: the `llmClient` a factory returns is the one the guardrails' judge, the memory helpers, the query rewriter and the embedder call.
+- `config: IAIGatewayConfig` — settings and persistence seams only: for every store a `repository` or `adapter` interface, the provider credentials, the application's tools and guardrail rules, feature switches. No class of the gateway is in the config; the classes are built from it.
+- `overrides?: IAIGatewayOverrides` — one factory per class the application builds itself: [Class replacement](30-class-replacement.md).
 
-A child takes its config and, when it uses other children, its deps: `constructor(private readonly config, private readonly deps)`. A child without dependencies takes the config only (`ModelRegistry`, `ToolPolicy`, …); `TurnBuilder` takes nothing. No child creates another child; no child has an `addXxx()` or `register()` mutator.
+### 4.2 The composition root
 
-### 2.3 What can be injected
+The constructor builds the classes of the gateway once, in dependency order, each from its own config and the classes it
+uses; a factory in `overrides` takes the place of a class ([Class replacement](30-class-replacement.md)).
 
-| Seam                   | How                                             | Used for                                                                                                  |
-|------------------------|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| A whole child class    | `overrides.<name>: (config, deps) => I<Class>`  | A host's own `IWorkingMemory` or `IThreadStore`; tests: `FakeLLMClient` (scripted model, real agent loop) |
-| Persistence of a store | `config.<store>.repository` / `.adapter`        | In-memory adapters today; Mongo, PostgreSQL, S3, vector search later                                      |
-| Usage rules            | `config.usageGuard.adapter`                     | The app's usage adapter: asked before every model call, told after it                                     |
-| Provider credentials   | `config.llmClient.providers`                    | Which providers the one `LLMClient` can reach                                                             |
-| Tools                  | `config.toolRegistry.tools`                     | The app's tools, next to the built-in ones                                                                |
-| Guardrail rules        | `config.guardrails.inputRules` / `.outputRules` | The app's checks; each rule receives a `judge`                                                            |
+A class takes its config and, when it uses other classes, its deps: `constructor(config, deps)`. A class without
+dependencies takes the config only (`ModelRegistry`, `ToolPolicy`, …); `TurnBuilder` takes nothing. None of the 24
+classes creates another one, and none keeps a class, a tool or a rule it was not constructed with (there is no `register()`); the tools
+of one call travel with that call.
 
-Example from the tests:
+### 4.3 What is set at construction
 
-```ts
-const llmClient = new FakeLLMClient();
-const gateway = new AIGateway(gatewayConfigResumeOnAnotherProfile, {llmClient: () => llmClient});
-llmClient.accountTo({trace: gateway.trace, usageGuard: gateway.usageGuard}); // the fake asks, reports and traces as the real client does
-llmClient.enqueueRunStep({toolCall: {kind: EPartKind.TOOL_CALL, callId: "call-1", toolName: "refund", input: {amount: 500}}});
-llmClient.enqueueRunStep({text: "Refunded."});
-```
+| What is set            | How                                             | Used for                                                                                                             |
+|------------------------|-------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
+| A whole class          | `overrides.<name>: (config, deps) => I<Class>`  | The application's own class in place of the gateway's: [Class replacement](30-class-replacement.md)                  |
+| Persistence of a store | `config.<store>.repository` / `.adapter`        | The application's database: [Storage adapters](20-adapters.md)                                                       |
+| Usage rules            | `config.usageGuard.adapter`                     | The application's usage adapter, asked before every model call and told after it: [Storage adapters](20-adapters.md) |
+| Provider credentials   | `config.llmClient.providers`                    | Which providers the one `LLMClient` can reach                                                                        |
+| Tools                  | `config.toolRegistry.tools`                     | The application's tools, next to the built-in ones                                                                   |
+| Guardrail rules        | `config.guardrails.inputRules` / `.outputRules` | The application's checks; each rule receives a `judge`                                                               |
 
-Pauses, approvals and resume run through the real code; only the model is scripted (`../../packages/dyna-ai-gateway/src/tests/human-gate/resume-on-another-profile-swaps-the-model.test.ts`).
+## 5. How it can be extended
 
-## 3. Live adjustment
+- Another database: a [storage adapter](20-adapters.md).
+- The application's usage rules: the usage adapter (`config.usageGuard.adapter`), on [the same page](20-adapters.md#the-ten-seams).
+- Another behaviour of a part of the gateway: a [class replacement](30-class-replacement.md).
+- A tool or a guardrail rule: in the config, at construction. A tool that exists for one request is passed on that
+  `run()` (`additionalTools`), and again on its `resume()`.
 
-The model, the tools, the limits and the prompts are data. A change is read on the next call. The model catalog, the profiles and the templates are cached; their write methods invalidate the cache, and `refresh()` on the catalog and the templates drops it by hand.
+## 6. Live adjustment
+
+The model, the tools, the limits and the prompts are data. A change is read on the next call of the instance that wrote it; other instances read it once their cache TTL runs out (profiles 30 s, models and templates 60 s by default, `cacheTtlMs`). The model catalog, the profiles and the templates are cached; their write methods invalidate the local cache, and `refresh()` on the catalog and the templates drops it by hand.
 
 | What changes                                          | How                                                                                                                                                                                      | Effective                            |
 |-------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------|
@@ -79,32 +79,55 @@ The model, the tools, the limits and the prompts are data. A change is read on t
 | Sampling                                              | `temperature` on the call                                                                                                                                                                | That call                            |
 | Stopping a call, or how long it may take              | `abortSignal` and `timeoutMs` on `ask()` / `run()` / `resume()` ([decision](90-decisions.md#d90-a-call-can-be-stopped-abortsignal-and-timeoutms))                                        | That call                            |
 
-### 3.1 Why a model change is safe mid-conversation
+### 6.1 Why a model change is safe mid-conversation
 
 Stored turns, memory and run messages are in the gateway's own provider-neutral shape ([the SDK is sealed in one class](90-decisions.md#the-ai-sdk-is-sealed-in-one-class)). A different model receives the same history; the `LLMClient` maps it to the provider at call time. The trace entry of each call carries the `modelId` it ran on.
 
-### 3.2 Resume on another profile
+### 6.2 Resume on another profile
 
-`resume({profileId})` takes from the new profile what `run()` takes from its profile: the model (`request.modelId`), the output cap (`min(profile.limits.maxOutputTokens, caps.maxOutputTokens)`), the tools (`ToolPolicy.resolve` over the run's tool names) and the limits. The system prompt and the messages so far stay. `reviewAnswers` and `approvals` are those of both profiles together ([decision](90-decisions.md#d113-a-profile-switch-on-resume-keeps-the-review-and-the-approvals)): a switch adds guards, never removes them.
+`resume({profileId})` takes from the new profile what `run()` takes from its profile: the model (`request.modelId`), the output cap (`min(profile.limits.maxOutputTokens, caps.maxOutputTokens)`), the tools (`ToolPolicy.resolve` over the run's tool names) and the limits. The system prompt and the messages so far stay. `reviewAnswers` and `approvals` are those of both profiles together ([decision](90-decisions.md#d113-a-profile-switch-on-resume-keeps-the-review-and-the-approvals)) for that resume: the switch adds guards. The run is then stored with the new profile, so a later pause of it, resumed without `profileId`, has only the new profile's guards.
 
 Checked before the run leaves PAUSED: a pending tool the new profile does not allow is a 400 and nothing changes. The run is stored with the profile and model it continued on.
 
-Tests: `../../packages/dyna-ai-gateway/src/tests/human-gate/resume-on-another-profile-swaps-the-model.test.ts` (scripted model), `…/resume-on-another-profile-swaps-the-model.real.test.ts` (OpenAI to Anthropic, both keys needed), `…/resume-on-a-profile-without-the-tool-is-refused.test.ts`.
+Tests: [`resume-on-another-profile-swaps-the-model.test.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/tests/human-gate/resume-on-another-profile-swaps-the-model.test.ts) (scripted model), [`resume-on-another-profile-swaps-the-model.real.test.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/tests/human-gate/resume-on-another-profile-swaps-the-model.real.test.ts) (OpenAI to Anthropic, both keys needed), [`resume-on-a-profile-without-the-tool-is-refused.test.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/tests/human-gate/resume-on-a-profile-without-the-tool-is-refused.test.ts).
 
-## 4. What is deliberately not possible
+## 7. What is deliberately not possible
 
-| Not possible                                                                                                                                                             | Reason                                                                                                                                                                                                                                         |
-|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Replace a child instance on a running gateway (`setLlmClient(...)`)                                                                                                      | A running call holds references to the old instance; usage reports, traces and paused runs would split across two clients. The gateway holds no state outside its adapters, so the standard is: construct a new gateway with the new override. |
-| Register a tool or a guardrail rule on the running gateway ([decision](90-decisions.md#d48-the-tools-are-fixed-at-construction-a-call-can-narrow-them-never-widen-them)) | It would exist on one server instance and not the others, and what a call does would depend on earlier calls instead of configuration. A tool that exists for one request is passed on that call (`additionalTools`).                          |
-| Store the profile on the thread                                                                                                                                          | It was written once and never read; the caller decides per call.                                                                                                                                                                               |
+| Not possible                                                                                                                                                             | Reason                                                                                                                                                                                                                                                 |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Replace a class instance on a running gateway (`setLlmClient(...)`)                                                                                                      | A running call holds references to the old instance; usage reports, traces and paused runs would split across two clients. What the gateway keeps between calls is in its adapters, so the standard is: construct a new gateway with the new override. |
+| Register a tool or a guardrail rule on the running gateway ([decision](90-decisions.md#d48-the-tools-are-fixed-at-construction-a-call-can-narrow-them-never-widen-them)) | It would exist on one server instance and not the others, and what a call does would depend on earlier calls instead of configuration. A tool that exists for one request is passed on that call (`additionalTools`).                                  |
+| Store the profile on the thread                                                                                                                                          | No call reads it: the caller names the profile on every call.                                                                                                                                                                                          |
 
-## 5. Demonstration
+## 8. Demonstration
 
-Deterministic: the test above (`gatewayConfigResumeOnAnotherProfile`: two models, the `refund` tool, a scripted model). On real providers: its `.real.test.ts` twin, with both keys in `.env`.
+For a developer who has cloned the repository.
 
-Live, on real models, in the debugger (`pnpm sandbox-debug` with `sandbox.config.ts` pointed at that config, both provider keys in `.env`). The chat (`pnpm sandbox-cli run`) resumes a pause on the profile the run started with, so the resume is typed by hand:
+Deterministic: [`resume-on-another-profile-swaps-the-model.test.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/tests/human-gate/resume-on-another-profile-swaps-the-model.test.ts) (two models, the `refund` tool, a scripted model). On real providers: [`resume-on-another-profile-swaps-the-model.real.test.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/tests/human-gate/resume-on-another-profile-swaps-the-model.real.test.ts), with both keys in `.env`.
+
+Live, on real models, in the debugger (`pnpm sandbox-debug` with [`sandbox.config.ts`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/dev-sandbox/sandbox.config.ts) pointed at that test's config, both provider keys in `.env`). The chat (`pnpm sandbox-cli run`) resumes a pause on the profile the run started with, so the resume is typed by hand. Paste [`dev-tools-helper-methods.js`](https://github.com/aneldev/dyna-ai-gateway/blob/main/packages/dyna-ai-gateway/src/dev-sandbox/dev-tools-helper-methods.js) into the dev-tools console first: it defines `start`, `lastResponse` and the resume helpers.
 
 1. `await start("Refund 500 to the customer")` — the run starts on the OpenAI profile; the `refund` tool pauses it.
 2. `await dynaEnv.aiGateway.resume({userContext: dynaEnv.userContext, runId: lastResponse.envelopes[0].runId, pauseId: lastResponse.pauseId, decisions: [{action: "APPROVE"}], profileId: "anthropic-refund"}).response`.
-3. The trace shows one `RUN_STEP` on `gpt-5-mini` and one on `claude-haiku-4-5`; the run is stored with the Anthropic profile; the answer is on the one thread.
+3. The trace shows one `RUN_STEP` on the OpenAI profile's model and one on `claude-haiku-4-5`; the run is stored with the Anthropic profile; the answer is on the one thread.
+
+## 9. Summary
+
+- The classes, the registry's tools and the guardrail rules are fixed when the gateway is constructed.
+- The models, the profiles (model, tools, limits) and the templates are data: the instance that writes a change reads it on
+  its next call. A call picks its profile and, on `run()`, its tools.
+- Another server instance reads a changed model, profile or template once its cache runs out.
+- A new class or a new registry tool means a new gateway. What the gateway keeps between calls is in its adapters, so the
+  new one continues from the same data; the old one finishes its calls first (`shutdown()`).
+
+## 10. FAQ
+
+**Do I restart the service to change the model of a conversation?** No. Pass another `profileId` on the next call, or
+change the profile; see the table in [chapter 6](#6-live-adjustment).
+
+**Can I add a tool without a restart?** Not to the registry. A tool for one request is passed on `run()` as
+`additionalTools`; a registered tool is switched on for a profile with `allowedTools` (`upsertProfile`), which needs no
+restart.
+
+**Can I swap the LLM client on a running gateway?** No. Construct a new gateway with the new override
+([chapter 7](#7-what-is-deliberately-not-possible)).

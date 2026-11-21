@@ -3,12 +3,13 @@ import {ZodType} from "zod";
 /**
  * Who is asking: the tenant, the user, the permissions, the locale, the time zone and the clock of one call.
  *
- * Supplied by the host application on every gateway call and never stored by the gateway. `AIGateway` hands it to every
- * child: the `ToolPolicy` filters tools by `permissions`, the `ContextAssembler` renders `locale`, `timezone` and `now`
- * into the system prompt, a tool's `execute` and `policy` receive it, every store scopes its reads by `tenantId`.
+ * Supplied by the application on every gateway call and never stored by the gateway. `AIGateway` hands it to the
+ * classes that need it: the `ToolPolicy` filters tools by `permissions`, the `ContextAssembler` renders `locale`,
+ * `timezone` and `now` into the system prompt, a tool's `execute` and `policy` receive it, the stores scope their reads
+ * by `tenantId`.
  */
 export interface IUserContext {
-  /** Tenant scope of this call. */
+  /** Tenant scope of this call; a single-tenant application passes "" (D130). */
   tenantId: string;
   /** Acting user. */
   userId: string;
@@ -18,7 +19,7 @@ export interface IUserContext {
   locale: string;
   /** IANA zone, e.g. "Europe/Vienna". */
   timezone: string;
-  /** "Now" as the app sees it; injected as today's date. */
+  /** "Now" as the application sees it; injected as today's date. */
   now: Date;
 }
 
@@ -219,7 +220,7 @@ export const BUILT_IN_TOOL_NAME_PREFIX = "dyna_aigw_";
 /**
  * Names of the gateway's built-in tools, as the model and the thread see them.
  *
- * > A host that renders tool calls or reads the stored tool results tells the built-ins apart by these names.
+ * > An application that renders tool calls or reads the stored tool results tells the built-ins apart by these names.
  *
  * `ASK_USER_QUESTION` when `humanGate.userQuestions` is enabled, `REMEMBER_USER_FACT` / `FORGET_USER_FACT` when the user
  * memory is, `LOAD_SKILL` in a `run()` whose profile or call has skills.
@@ -252,7 +253,7 @@ export enum EToolCallVerdict {
    */
   DENY = "DENY",
   /**
-   * The app's policy accepts the call, but a human must approve it before it runs.
+   * The application's policy accepts the call, but a human must approve it before it runs.
    *
    * > The policy's job is done; the decision is now the user's, through the human gate.
    *
@@ -287,12 +288,14 @@ export type TToolCallPolicyResult =
      */
     rejectionText?: string;
     /**
-     * Why this call waits for a human, as a code the app translates; carried by the pause as `IToolApprovalEnvelope.reasonCode`.
+     * Why this call waits for a human, as a code the application translates; carried by the pause as
+     * `IToolApprovalEnvelope.reasonCode`.
      *
      * > Tells the approval card why the call waits, in the user's language.
      *
-     * The card renders what the call does from `toolCall.toolName` and its input; this says why it needs a human, when one tool
-     * pauses for more than one reason. A key of the app's translations, not text: the app owns the card and its language. Never sent to the model.
+     * The card renders what the call does from `toolCall.toolName` and its input; this says why it needs a human, when
+     * one tool pauses for more than one reason. A key of the application's translations, not text: the application owns
+     * the card and its language. Never sent to the model.
      *
      * @example "amountOverLimit" - the refund of 500 waits because it is above the limit of 100
      * @example "newCustomer" - the same tool pauses a first refund of any amount
@@ -334,9 +337,9 @@ export type TToolEndsRunHandler<TInput, TOutput> = {
  * Sync: it runs on every step, on data the loop already has; a look-up belongs in `execute` or in a `policy` predicate.
  */
 export type TToolVisibleWhenHandler = (args: {
-  /** 0 for the first model call of the run. */
+  /** 0 for the first model call of the `run()`, and again of each `resume()`. */
   stepIndex: number;
-  /** Names of the tools executed so far in this run: a result that was neither rejected nor failed (D76). */
+  /** Names of the tools executed so far in this run: a result that was neither rejected nor failed (D76); after a resume, also those of earlier runs in the stored history (a known gap). */
   executed: string[];
 }) => boolean;
 
@@ -393,7 +396,7 @@ export interface IToolDef<TInput = unknown, TOutput = unknown> {
   description: string;
   /** Zod schema of the input; ToolRegistry parses the model's input with it before execute. */
   inputSchema: ZodType<TInput>;
-  /** Free tags for policy filtering, e.g. "billing". */
+  /** Free tags for the application's own code (grouping, an admin list), e.g. "billing"; the gateway does not read them. */
   tags: string[];
   /**
    * What happens to a call of this tool before it runs (D87): it runs, it is refused, or a human must approve it.
@@ -403,7 +406,9 @@ export interface IToolDef<TInput = unknown, TOutput = unknown> {
    * A verdict applies to every call: `NEEDS_APPROVAL` (a refund, an email), `DENY` (a kill switch for a tool that stays
    * registered), `ALLOW` (the same as omitting the field). A predicate decides per call on the parsed input and the user
    * context, sync or async (it may look something up), and returns a `TToolCallPolicyResult`. The rules apply in this order:
-   * an input the schema rejects never reaches the policy (`execute` reports it to the model); then this field; then the
+   * an input the schema rejects never reaches a predicate (it counts as `ALLOW`), but this field and the `approvals` still
+   * apply to it, so it can pause before `execute` reports the 400 to the model (a known gap: D87 refuses it first); then
+   * this field; then the
    * profile's `approvals` as the floor, which turns an `ALLOW` into `NEEDS_APPROVAL`. `DENY` wins over everything: a human is
    * never asked to approve a call that would be refused. In a parallel step a predicate decides each call after the earlier
    * calls of the step ran (D112), so it may read state they change. An input a human edited on approval is decided again (D109): a
@@ -446,7 +451,7 @@ export interface IToolDef<TInput = unknown, TOutput = unknown> {
    * is not in the model's tool list and cannot be called by name in it (D72). `requires` of `IToolPolicyConfig` is the same
    * rule as config; a tool must pass both. Visibility is not a forced call: the model may still answer without calling it.
    *
-   * @example ({stepIndex}) => stepIndex === 0 - `classify_intent` is offered only on the first step
+   * @example ({stepIndex}) => stepIndex === 0 - `classify_intent` is offered only on the first step of a `run()` or a `resume()`
    * @example ({executed}) => executed.includes("lookup_order") - offered once the order was looked up, like `requires: {refund: ["lookup_order"]}`
    */
   visibleWhen?: TToolVisibleWhenHandler;
@@ -522,7 +527,7 @@ export interface IToolErrorReport {
   toolName: string;
   /** The model's input: parsed when the tool's schema accepted it, raw when the rejected input is the failure. */
   input: unknown;
-  /** The error as it was thrown, untouched: the tool's own, or the gateway's `dynaError` (`code`, `status`, `data`). */
+  /** The error as thrown: a `dynaError` untouched; anything else wrapped in the gateway's 500 `dynaError` (original in `parentError`). */
   error: unknown;
   /** The text the model reads as the result of the call. */
   modelText: string;
@@ -596,7 +601,8 @@ export interface IIssue {
    *
    * > The application's own words, already in the user's language.
    *
-   * Set on `usage_denied` from the usage adapter's `denyUserMessage`; a host shows it as it is and never shows `message`.
+   * Set by a Guardrails rule that has a text for the user (a judge's issues have none), and on `usage_denied` from the
+   * usage adapter's `denyUserMessage`. The application shows it as it is and never shows `message`.
    */
   userMessage?: string;
   /**

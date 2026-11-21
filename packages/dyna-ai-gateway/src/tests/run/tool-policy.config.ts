@@ -17,15 +17,15 @@ export const CHARGE_AMOUNT = 1_000;
 /** Above this a refund waits for a human. */
 export const REFUND_APPROVAL_THRESHOLD = 100;
 
-/** Why a refund above the threshold waits for a human; the app's translation key. */
+/** Why a refund above the threshold waits for a human; the application's translation key. */
 export const REFUND_REASON_CODE = "amountOverLimit";
 
 /** Every refund the tool executed, in order: the proof of what the policy let through. */
 export const refunds: number[] = [];
 
 /**
- * A refund with the three verdicts (D87): below the threshold it runs, above it a human approves, above the charge it is refused.
- * A call that waits for approval tells the approval card why, as a code the app translates.
+ * A refund with the three verdicts (D87): below the threshold it runs, above it a human approves, above the charge it is
+ * refused. A call that waits for approval tells the approval card why, as a code the application translates.
  */
 export const refundTool = defineTool({
   name: "refund",

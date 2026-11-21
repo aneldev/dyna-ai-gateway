@@ -1,0 +1,448 @@
+# Generate content
+
+**This path is complete for its goal.** Its chapters, its examples and the pages it links are all you need; no other page
+of the documentation is required. It starts from four pages of Getting started:
+[What is the AI gateway](../10-getting-started/10-what-is-the-ai-gateway.md),
+[Installation](../10-getting-started/20-installation.md), [Example: ask](../10-getting-started/30-example-ask.md),
+[Example: run](../10-getting-started/40-example-run.md).
+
+**Prerequisites:** the setup of [Installation](../10-getting-started/20-installation.md) and an OpenAI API key in
+`OPENAI_API_KEY`: the configuration of [8.0](#80-the-configuration) reads it for the two OpenAI models of
+Installation, `gpt-6.1-terra` and `text-embedding-3-small`. Example [8.7](#87-three-subject-lines-with-a-higher-temperature) also calls a Claude model: an Anthropic API key in
+`ANTHROPIC_API_KEY`.
+
+## 1. About
+
+One `ask()` that writes for the user: a reply to an email, a product description, a follow-up message. The data comes
+from the screen as `context`; the tone and the conventions come from the profile and the call's `instructions`.
+
+## 2. Description
+
+For text the user edits and sends: the draft of a customer reply, the description of a product from its attributes, a
+reminder from the data of an overdue invoice. The tenant's voice lives in the profile's `promptAddendum`, the task of the
+screen in `instructions`, the record in `context`. The output format follows the field the text goes into.
+
+## 3. What you will be able to do
+
+- Pass the record of the screen as `context` and the task as `instructions`. Example: [8.3](#83-the-agent-asks-for-a-reply-to-a-customer-email).
+- Keep a tenant's tone in its profile. Example: [8.2](#82-the-tenants-admin-sets-the-voice-of-every-draft).
+- Get Markdown for a rich editor or plain text for an SMS or a plain field. Examples: [8.3](#83-the-agent-asks-for-a-reply-to-a-customer-email), [8.6](#86-a-payment-reminder-as-plain-text-for-an-sms).
+- Stream the draft into the editor as it is written. Example: [8.4](#84-the-draft-streams-into-the-editor-as-the-model-writes-it).
+- Check the draft with an output rule before the user sees it. Example: [8.1](#81-an-output-rule-blocks-a-draft-that-promises-a-discount).
+
+## 4. The parts
+
+| # | Read                                                                                                                                         | For                                                        |
+|---|----------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------|
+| 1 | [Example: ask](../10-getting-started/30-example-ask.md)                                                                                      | `context`, streaming                                       |
+| 2 | [System prompt layers](../60-architecture/40-system-prompt-production-layers.md)                                                             | addendum, `instructions`, `context`: which text goes where |
+| 3 | [D68: Per-call instructions and context](../60-architecture/90-decisions.md#d68-per-call-instructions-and-context)                           | what is kept and what is not                               |
+| 4 | [D42: The caller decides the format of a text answer](../60-architecture/90-decisions.md#d42-the-caller-decides-the-format-of-a-text-answer) | `outputFormat`                                             |
+| 5 | [D58: Sampling temperature per call](../60-architecture/90-decisions.md#d58-sampling-temperature-per-call)                                   | more or less varied drafts                                 |
+| 6 | [Guardrails: The output check](../20-learn-the-gateway/050-guardrails.md#22-the-output-check)                                                | a rule on the draft                                        |
+
+## 5. How the parts connect
+
+```mermaid
+flowchart LR
+  P["the tenant's voice and conventions: the profile's promptAddendum"] --> M["The model"]
+  I["what this screen asks: the call's instructions"] --> M
+  C["the record on screen: the call's context, as data"] --> M
+  U["the user's own words: prompt"] --> M
+  M --> R{"your output rules"}
+  R -->|pass| D(["the draft"])
+  R -->|block| W(["withdrawn from the stream"])
+```
+
+| Text                                  | Layer                          | Kept                  |
+|---------------------------------------|--------------------------------|-----------------------|
+| the tenant's voice and conventions    | the profile's `promptAddendum` | stored on the profile |
+| what this screen asks the model to do | the call's `instructions`      | this call only        |
+| the record the user is looking at     | the call's `context`, as data  | this call only        |
+| the user's own words, if any          | `prompt`                       | the thread            |
+
+[Which layer to use](../60-architecture/40-system-prompt-production-layers.md#which-layer-to-use) has the rule. A draft
+that an output rule blocks is withdrawn from the stream
+([A streamed answer that is blocked](../20-learn-the-gateway/050-guardrails.md#27-a-streamed-answer-that-is-blocked)).
+
+## 6. API you should know
+
+Grouped by the step of your code where you meet them, in the order of the examples.
+
+### 6.1 Set up the voice and the check
+
+Examples: [8.0](#80-the-configuration), [8.1](#81-an-output-rule-blocks-a-draft-that-promises-a-discount), [8.2](#82-the-tenants-admin-sets-the-voice-of-every-draft).
+
+| Symbol                                                                                                                                                | What you use it for                                     |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|
+| [`IAIProfile`](../30-api/index/interfaces/IAIProfile.md)                                                                                              | `promptAddendum`                                        |
+| [`AIGateway.aiProfileStore`](../30-api/index/classes/AIGateway.md#aiprofilestore), [`IAIProfileStore`](../30-api/index/interfaces/IAIProfileStore.md) | `upsertProfile`: the admin changes the voice at runtime |
+| [`IOutputRule`](../30-api/index/interfaces/IOutputRule.md)                                                                                            | a check on the draft                                    |
+
+### 6.2 Make the call
+
+Examples: [8.3](#83-the-agent-asks-for-a-reply-to-a-customer-email), [8.4](#84-the-draft-streams-into-the-editor-as-the-model-writes-it), [8.5](#85-a-product-description-written-from-structured-data), [8.6](#86-a-payment-reminder-as-plain-text-for-an-sms), [8.7](#87-three-subject-lines-with-a-higher-temperature).
+
+| Symbol                                                                                                                            | What you use it for                                      |
+|-----------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
+| [`AIGateway.ask`](../30-api/index/classes/AIGateway.md#ask), [`IGatewayAskInput`](../30-api/index/interfaces/IGatewayAskInput.md) | `context`, `instructions`, `outputFormat`, `temperature` |
+| [`EOutputFormat`](../30-api/index/enumerations/EOutputFormat.md)                                                                  | `MARKDOWN` or `PLAIN`                                    |
+
+### 6.3 Read the draft
+
+Examples: [8.3](#83-the-agent-asks-for-a-reply-to-a-customer-email), [8.4](#84-the-draft-streams-into-the-editor-as-the-model-writes-it).
+
+| Symbol                                                                       | What you use it for              |
+|------------------------------------------------------------------------------|----------------------------------|
+| [`ELLMClientEventKind`](../30-api/index/enumerations/ELLMClientEventKind.md) | `TEXT_DELTA`, `ANSWER_WITHDRAWN` |
+| [`IAnswerResponse`](../30-api/index/interfaces/IAnswerResponse.md)           | `text`                           |
+
+## 7. Advanced API
+
+Grouped by the part of the gateway you replace.
+
+### 7.1 The system prompt
+
+| Symbol                                                                                                                                                   | Replace it when                                                                                                                                       |
+|----------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`IPromptTemplateStore`](../30-api/index/interfaces/IPromptTemplateStore.md), [`EPromptTemplateKey`](../30-api/index/enumerations/EPromptTemplateKey.md) | the system prompt's template itself changes ([Changing the template](../60-architecture/40-system-prompt-production-layers.md#changing-the-template)) |
+| [`IContextAssembler`](../30-api/index/interfaces/IContextAssembler.md)                                                                                   | the prompt is assembled your way                                                                                                                      |
+
+### 7.2 Plugging your class in
+
+| Symbol                                                                     | What it is                                                                                                 |
+|----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| [`IAIGatewayOverrides`](../30-api/index/interfaces/IAIGatewayOverrides.md) | the second argument of `AIGateway`; the keys of the parts above: `promptTemplateStore`, `contextAssembler` |
+
+## 8. Examples
+
+Each example runs on the `gateway` and the `userContext` of 8.0: paste 8.0 and the example into one file. What comes from your application, such as `invoices` or `ledger`, is a `declare` line at the top of the example.
+
+### 8.0 The configuration
+
+The profiles carry the tenant's voice; `support-claude` runs on a model that takes a temperature (8.7); 8.1 builds it with an output rule, which 8.4 needs to show a withdrawn draft. The keys this path uses come with why. The others are required by `IAIGatewayConfig` and keep the values of [Installation](../10-getting-started/20-installation.md), with the features this path does not need switched off: they are `baseConfig`, collapsed above the configuration, which spreads it first: a key the path sets wins over it. `gpt61Terra` and `textEmbedding3Small` are the models of Installation, in the same collapsed block.
+
+> **The bigger picture:** Your server builds this gateway once at startup. The voice of each tenant lives in its profiles; an output rule, registered once at startup, checks the draft of every call (8.1).
+
+<details>
+<summary>The models of Installation, and <code>baseConfig</code>: the keys <code>IAIGatewayConfig</code> requires that this path does not use</summary>
+
+```ts
+import {
+  IAIGatewayConfig,
+  IModelInfo,
+  EModelProvider,
+  InMemoryBlobAdapter,
+  InMemoryPromptTemplateRepository,
+  InMemoryRunRepository,
+  InMemoryThreadRepository,
+  InMemoryTraceRepository,
+  InMemoryUsageAdapter,
+  InMemoryUserMemoryRepository,
+  InMemoryVectorIndexAdapter,
+} from "dyna-ai-gateway";
+
+// The two models of Installation
+const gpt61Terra: IModelInfo = {
+  id: "gpt-6.1-terra",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "gpt-6.1-terra",
+  label: "GPT-6.1 Terra",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: false, embeddings: false,
+    contextTokens: 922_000, maxOutputTokens: 128_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5, // one price: OpenAI bills more above 272 000 input tokens
+    costCacheReadPerMTokUsd: 0.05, costCacheWritePerMTokUsd: 1.25,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const textEmbedding3Small: IModelInfo = {
+  id: "text-embedding-3-small",
+  provider: EModelProvider.OPENAI,
+  providerModelId: "text-embedding-3-small",
+  label: "text-embedding-3-small",
+  caps: {
+    tools: false, images: false, pdf: false, structuredOutput: false, reasoning: false, temperature: false, embeddings: true,
+    contextTokens: 8_192, maxOutputTokens: 0, costInPerMTokUsd: 0.02, costOutPerMTokUsd: 0,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+// Required by IAIGatewayConfig, nothing specific to this path: the in-memory stores of Installation,
+// and the features this path does not need switched off
+const baseConfig = {
+  promptTemplateStore: {repository: new InMemoryPromptTemplateRepository()},
+  threadStore: {repository: new InMemoryThreadRepository()},
+  fileStore: {adapter: new InMemoryBlobAdapter(), path: "ai-files"},
+  workingMemory: {enabled: true},
+  userMemoryStore: {repository: new InMemoryUserMemoryRepository(), enabled: false}, // user facts off
+  embedder: {embeddingModelId: "text-embedding-3-small", dimensions: 1536},
+  vectorStore: {adapter: new InMemoryVectorIndexAdapter({embeddingModelId: "text-embedding-3-small", dimensions: 1536})},
+  queryRewriter: {enabled: false}, // no follow-up rewrite
+  runStore: {repository: new InMemoryRunRepository()},
+  humanGate: {userQuestions: {enabled: false}}, // the model asks no questions
+  usageGuard: {adapter: new InMemoryUsageAdapter()},
+  contextAssembler: {promptCaching: true, sharePromptCacheAcrossTenants: false},
+  trace: {repository: new InMemoryTraceRepository()},
+  defaultCheapModelId: "gpt-6.1-terra",
+} satisfies Partial<IAIGatewayConfig>;
+```
+
+</details>
+
+```ts
+import {
+  AIGateway,
+  IAIProfile,
+  IUserContext,
+  InMemoryAIProfileRepository,
+  InMemoryModelRegistryRepository,
+} from "dyna-ai-gateway";
+
+const claudeHaiku: IModelInfo = {
+  id: "claude-haiku-4-5",
+  provider: EModelProvider.ANTHROPIC,
+  providerModelId: "claude-haiku-4-5-20251001",
+  label: "Claude Haiku 4.5",
+  caps: {
+    tools: true, images: true, pdf: true, structuredOutput: true, reasoning: true, temperature: true, embeddings: false,
+    contextTokens: 200_000, maxOutputTokens: 64_000, costInPerMTokUsd: 1, costOutPerMTokUsd: 5,
+  },
+  enabled: true,
+  deprecatedAt: null,
+};
+
+const support: IAIProfile = {
+  id: "support",
+  tenantId: "acme",
+  name: "Customer support writer",
+  modelId: "gpt-6.1-terra",
+  promptAddendum: "You write for Acme, a family-run shop. Warm, short sentences, no exclamation marks.",
+  allowedTools: [],
+  approvals: [],
+  limits: {maxStepsPerRun: 1, maxOutputTokens: 4_000}, // a reasoning model thinks within this cap
+};
+
+const supportClaude: IAIProfile = {
+  id: "support-claude",
+  tenantId: "acme",
+  name: "Customer support writer on Claude",
+  modelId: "claude-haiku-4-5",
+  promptAddendum: "You write for Acme, a family-run shop. Warm, short sentences, no exclamation marks.",
+  allowedTools: [],
+  approvals: [],
+  limits: {maxStepsPerRun: 1, maxOutputTokens: 4_000}, // a reasoning model thinks within this cap
+};
+
+const config: IAIGatewayConfig = {
+  ...baseConfig, // the required keys this path does not use, collapsed above; a key below wins over it
+
+  // What this path uses
+  // the credentials of both providers
+  llmClient: {providers: {
+    [EModelProvider.OPENAI]: {apiKey: process.env.OPENAI_API_KEY ?? ""},
+    [EModelProvider.ANTHROPIC]: {apiKey: process.env.ANTHROPIC_API_KEY ?? ""},
+  }},
+  // caps.temperature is read here
+  modelRegistry: {repository: new InMemoryModelRegistryRepository({models: [gpt61Terra, textEmbedding3Small, claudeHaiku]})},
+  // the promptAddendum of each profile is the tenant's voice
+  aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [support, supportClaude]})},
+};
+
+const gateway = new AIGateway(config);
+
+// Per request, from your authentication: who asks, in which tenant (Example: ask)
+const userContext: IUserContext = {
+  tenantId: "acme",
+  userId: "u-17",
+  permissions: [],
+  locale: "en-GB",
+  timezone: "Europe/Oslo",
+  now: new Date(),
+};
+```
+
+### 8.1 An output rule blocks a draft that promises a discount
+
+An `IOutputRule` in `guardrails.outputRules` runs on the answer after the model call. This one returns an `ERROR` issue when a draft of the `support` profile promises a discount, so the response is `FAILED` instead of `ANSWER` and the draft never reaches the editor.
+
+> **The bigger picture:** A rule of the business, written by your developers and registered at startup: whatever the model writes, support never promises a discount the shop did not decide.
+
+```ts
+import {EGatewayResponseKind, EIssueSeverity, IIssue, IOutputRule} from "dyna-ai-gateway";
+
+const noDiscountPromises: IOutputRule = {
+  name: "no_discount_promises",
+  check: async ({evidence}): Promise<IIssue[]> =>
+    evidence.profile.id === "support" && /\b\d+ ?% (off|discount)\b/i.test(String(evidence.output))
+      ? [{code: "discount_promise", message: "The draft promises a discount", severity: EIssueSeverity.ERROR}]
+      : [],
+};
+
+// the gateway of 8.0 with this rule, in place of the gateway line of 8.0
+const gateway = new AIGateway({...config, guardrails: {...config.guardrails, outputRules: [noDiscountPromises]}});
+
+const result = await gateway.ask({
+  userContext,
+  profileId: "support",
+  prompt: "The customer threatens to cancel. Write a reply that keeps them.",
+  kbFilters: {libraryIds: [], bookIds: []},
+}).response;
+if (result.kind === EGatewayResponseKind.FAILED && result.issues.some(issue => issue.code === "discount_promise")) {
+  // the draft promised a discount: it is not stored, and the editor shows nothing of it
+}
+```
+
+### 8.2 The tenant's admin sets the voice of every draft
+
+`promptAddendum` on the profile is the tenant's voice, part of the system prompt of every call on `support`. `upsertProfile` validates the profile and stores it whole; the calls use the new text from then on, other server instances after their cache TTL.
+
+> **The bigger picture:** The settings screen of one tenant: its admin adds a sign-off to the voice once, and every draft written afterwards for that tenant carries it.
+
+```ts
+await gateway.aiProfileStore.upsertProfile({
+  tenantId: "acme",
+  profile: {...support, promptAddendum: `${support.promptAddendum} Sign as 'The Acme team'.`}, // the profile of 8.0, stored whole
+});
+```
+
+### 8.3 The agent asks for a reply to a customer email
+
+`ask()` gets the email as `context` and the conventions of this screen as `instructions`; the request itself is the `prompt`. An `ANSWER` response carries the draft in `text`, which goes into the editor.
+
+> **The bigger picture:** The "Draft reply" button of the support inbox: the agent opens an email, clicks, and edits the draft before sending it. The gateway sends nothing.
+
+```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
+declare const email: {from: string; subject: string; body: string; order: string}; // the email on screen
+declare const editor: {setDraft(text: string): void; append(text: string): void}; // your editor
+
+const result = await gateway.ask({
+  userContext,
+  profileId: "support",
+  prompt: "Write the reply.",
+  context: JSON.stringify({from: email.from, subject: email.subject, body: email.body, order: email.order}),
+  instructions: "Answer in the language of the email. Thank the customer once. End with the order number.",
+  kbFilters: {libraryIds: [], bookIds: []},
+}).response;
+if (result.kind === EGatewayResponseKind.ANSWER) editor.setDraft(result.text);
+```
+
+### 8.4 The draft streams into the editor as the model writes it
+
+The same call, read through `events`: each `TEXT_DELTA` appends to the editor. When an output rule blocks the finished draft, `ANSWER_WITHDRAWN` arrives last and the editor clears what it showed. On the gateway of 8.0, which has no rule, a call without an `outputSchema` gets it only when it is stopped during the output check (a stop while the model writes sends none, the response is `FAILED`); build it with the rule of 8.1 to see it.
+
+> **The bigger picture:** The same "Draft reply" button, with the text appearing as it is written instead of after a wait; the withdrawn event is the moment the rule of 8.1 says no.
+
+```ts
+import {EGatewayResponseKind, ELLMClientEventKind} from "dyna-ai-gateway";
+
+declare const email: {from: string; subject: string; body: string; order: string}; // the email on screen
+declare const editor: {setDraft(text: string): void; append(text: string): void}; // your editor
+
+const {events, response} = gateway.ask({
+  userContext,
+  profileId: "support",
+  prompt: "Write the reply.",
+  context: JSON.stringify(email),
+  kbFilters: {libraryIds: [], bookIds: []},
+});
+for await (const event of events) {
+  if (event.kind === ELLMClientEventKind.TEXT_DELTA) editor.append(event.text ?? "");
+  if (event.kind === ELLMClientEventKind.ANSWER_WITHDRAWN) editor.setDraft(""); // an output rule blocked the draft, or the call was stopped during the check
+}
+if ((await response).kind === EGatewayResponseKind.FAILED) editor.setDraft(""); // a stop while the model writes sends no withdrawal
+```
+
+### 8.5 A product description written from structured data
+
+The product's data is the `context`, and `instructions` forbid any fact that is not in it. The same profile and voice write a different kind of text.
+
+> **The bigger picture:** The product editor of the shop's back office: a merchant fills the fields of a product and asks for the description of the shop page.
+
+```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
+declare const product: object; // the product record: name, material, sizes, care
+
+const {response} = gateway.ask({
+  userContext,
+  profileId: "support",
+  prompt: "Write the product description for the shop page.",
+  context: JSON.stringify(product), // name, material, sizes, care
+  instructions: "Two short paragraphs, then a bullet list of the facts. Never invent a fact that is not in the data.",
+  kbFilters: {libraryIds: [], bookIds: []},
+});
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // Markdown, for the shop page
+```
+
+### 8.6 A payment reminder as plain text for an SMS
+
+`outputFormat: EOutputFormat.PLAIN` asks the model for text without Markdown, for a channel that renders none. The length limit is in the `prompt`; the gateway does not count the characters.
+
+> **The bigger picture:** The invoice screen or the reminder job of the back office: the reminder goes out by SMS, where Markdown would show as raw symbols.
+
+```ts
+import {EGatewayResponseKind, EOutputFormat} from "dyna-ai-gateway";
+
+declare const invoice: {invoiceNo: string; totalCents: number; currency: string}; // the invoice on screen
+
+const {response} = gateway.ask({
+  userContext,
+  profileId: "support",
+  prompt: "Write a payment reminder of at most 160 characters.",
+  context: JSON.stringify({invoiceNo: invoice.invoiceNo, totalCents: invoice.totalCents, currency: invoice.currency}),
+  outputFormat: EOutputFormat.PLAIN,
+  kbFilters: {libraryIds: [], bookIds: []},
+});
+
+const result = await response;
+if (result.kind === EGatewayResponseKind.ANSWER) console.log(result.text); // plain text, for the SMS
+```
+
+### 8.7 Three subject lines with a higher temperature
+
+Three calls in parallel with `temperature: 1` give more varied variants. `temperature` is accepted only on a model whose registry entry has `caps.temperature`, so the calls run on `support-claude`; on `support` (GPT-6.1 Terra) the call is refused with a 400.
+
+> **The bigger picture:** The newsletter editor: the marketer asks for suggestions and picks one of the three, or asks again.
+
+```ts
+import {EGatewayResponseKind} from "dyna-ai-gateway";
+
+const variants = await Promise.all([1, 2, 3].map(() => gateway.ask({
+  userContext,
+  profileId: "support-claude", // its model has caps.temperature: true
+  prompt: "Suggest one subject line for the spring newsletter.",
+  temperature: 1,
+  kbFilters: {libraryIds: [], bookIds: []},
+}).response));
+
+const subjectLines = variants.flatMap(result => (result.kind === EGatewayResponseKind.ANSWER ? [result.text] : []));
+```
+
+## 9. Pitfalls
+
+- The format is Markdown or plain text; there is no HTML. Convert and sanitise Markdown where it is rendered
+  ([D42](../60-architecture/90-decisions.md#d42-the-caller-decides-the-format-of-a-text-answer)).
+- `context` and `instructions` are not stored; a second draft on the same thread passes them again
+  ([D68](../60-architecture/90-decisions.md#d68-per-call-instructions-and-context)).
+- A `temperature` on a model without the cap is a 400
+  ([Models and profiles: Pitfalls](../20-learn-the-gateway/010-models-and-profiles.md#4-pitfalls)).
+- On a reasoning model the thinking counts against `limits.maxOutputTokens`: a low cap ends the draft early or empty, with
+  the WARNING `output_truncated` ([Classify and route requests: Pitfalls](090-classify-and-route-requests.md#9-pitfalls)).
+
+## 10. Summary
+
+- The profile carries the voice, `instructions` the task, `context` the data.
+- `outputFormat` matches the field the text goes into.
+- `events` stream the draft; an output rule can withdraw it.
+
+## 11. FAQ
+
+- [Is the system prompt cached, and what does it cost?](../10-getting-started/90-faq.md#is-the-system-prompt-cached-and-what-does-it-cost)
+- [How do I add moderation or other safety checks?](../10-getting-started/90-faq.md#how-do-i-add-moderation-or-other-safety-checks)

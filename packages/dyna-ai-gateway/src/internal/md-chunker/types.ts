@@ -34,7 +34,7 @@ export interface IMdChunkerConfig {
 /**
  * Markdown → IChunk[]. Stateless.
  *
- * Implemented by `MdChunker`; the type of `IAIGatewayDeps.mdChunker`, so a host may pass its own in `overrides`.
+ * Implemented by `MdChunker`; the type of `IAIGatewayDeps.mdChunker`, so an application may pass its own in `overrides`.
  */
 export interface IMdChunker {
   /**

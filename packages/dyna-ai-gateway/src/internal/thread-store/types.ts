@@ -9,7 +9,10 @@ import {IWorkingMemoryState} from "../working-memory";
 
 /** Configuration of the ThreadStore. Lands in IAIGatewayConfig.threadStore. */
 export interface IThreadStoreConfig {
-  /** Persistence of the threads and turns: the host's adapter (in memory for the tests and the first run, a database in production). */
+  /**
+   * Persistence of the threads and turns: the application's adapter (in memory for the tests and the first run, a
+   * database in production).
+   */
   repository: IThreadRepository;
   /**
    * How long a call holds a thread before its lease expires by itself (D77).
@@ -28,7 +31,7 @@ export interface IThreadStoreConfig {
 /**
  * Tenant-scoped storage of threads and turns.
  *
- * Implemented by `ThreadStore`; the type of `IAIGatewayDeps.threadStore`, so a host may pass its own in `overrides`.
+ * Implemented by `ThreadStore`; the type of `IAIGatewayDeps.threadStore`, so an application may pass its own in `overrides`.
  */
 export interface IThreadStore {
   /**
@@ -528,7 +531,10 @@ export interface IThread {
   createdAt: Date;
   /** The last turn appended or the last title/status change; a memory write does not move it. */
   updatedAt: Date;
-  /** Set by a host repository that soft-deletes; the gateway reads such a thread as gone and never sets it itself (D119 deletes hard). */
+  /**
+   * Set by an application's repository that soft-deletes; the gateway reads such a thread as gone and never sets it
+   * itself (D119 deletes hard).
+   */
   deletedAt: Date | null;
 }
 

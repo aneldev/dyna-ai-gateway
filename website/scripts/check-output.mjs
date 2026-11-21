@@ -107,9 +107,33 @@ const brokenDiagrams = async () => {
   return results.filter(Boolean);
 };
 
-const problems = [...pagesWithManyH1s(), ...excludedUrls(), ...excludedTitles(), ...await brokenDiagrams()];
+// The "The paths" table of the learning-paths README lists every path file once, in file order, titled with its h1.
+const PATHS_DIR = join(DOCS_DIR, "24-learning-paths");
+const pathFiles = readdirSync(PATHS_DIR).filter((name) => /^\d+-.+\.md$/.test(name)).sort();
+
+const pathIndexProblems = () => {
+  const section = readFileSync(join(PATHS_DIR, "README.md"), "utf8").split(/^## The paths$/m)[1]?.split(/^## /m)[0];
+  if (!section) return ["learning paths: README.md has no \"## The paths\" chapter"];
+  const rows = [...section.matchAll(/^\| \[([^\]]+)\]\(([^)#]+)\)/gm)].map(([, title, file]) => ({title, file}));
+  const listed = rows.map(({file}) => file);
+  return [
+    ...pathFiles.filter((file) => !listed.includes(file)).map((file) => `learning paths: ${file} is not in the README table`),
+    ...listed.filter((file) => !pathFiles.includes(file)).map((file) => `learning paths: the README table lists ${file}, which does not exist`),
+    ...listed.filter((file, index) => listed.indexOf(file) !== index).map((file) => `learning paths: the README table lists ${file} twice`),
+    ...(listed.join() !== pathFiles.join() && listed.length === pathFiles.length && listed.every((file) => pathFiles.includes(file))
+      ? [`learning paths: the README table is not in file order: ${listed.join(", ")}`]
+      : []),
+    ...rows
+      .filter(({file}) => pathFiles.includes(file))
+      .map(({title, file}) => ({title, file, h1: h1OfMarkdown(readFileSync(join(PATHS_DIR, file), "utf8"))}))
+      .filter(({title, h1}) => title !== h1)
+      .map(({title, file, h1}) => `learning paths: the README table titles ${file} "${title}", its h1 is "${h1}"`),
+  ];
+};
+
+const problems = [...pagesWithManyH1s(), ...excludedUrls(), ...excludedTitles(), ...pathIndexProblems(), ...await brokenDiagrams()];
 if (problems.length) {
   console.error(`check-output: ${problems.length} problem(s)\n${problems.join("\n")}`);
   process.exit(1);
 }
-console.log(`check-output: ${filesUnder(API_BUILD_DIR, ".html").length} API pages with one h1, no excluded document, ${mermaidBlocks.length} Mermaid diagrams parse`);
+console.log(`check-output: ${filesUnder(API_BUILD_DIR, ".html").length} API pages with one h1, no excluded document, ${mermaidBlocks.length} Mermaid diagrams parse, ${pathFiles.length} learning paths listed in the README in order`);

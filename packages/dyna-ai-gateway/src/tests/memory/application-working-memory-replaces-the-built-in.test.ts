@@ -10,9 +10,11 @@ import {
 import {FakeLLMClient} from "../internal/fakes/FakeLLMClient";
 import {askOnThread} from "../internal/utils/askOnThread";
 
-import {gatewayConfigHostWorkingMemory} from "./host-working-memory.config";
+import {gatewayConfigApplicationWorkingMemory} from "./application-working-memory.config";
 
-/** A host memory: the window is one fixed user message, the notes a fixed line; it records what the gateway hands it. */
+/**
+ * An application memory: the window is one fixed user message, the notes a fixed line; it records what the gateway hands it.
+ */
 class EchoMemory implements IWorkingMemory {
   public readonly loads: Array<{threadId: string; budgetTokens: number}> = [];
   public readonly saves: Array<{threadId: string; resultText?: string}> = [];
@@ -53,13 +55,13 @@ class EchoMemory implements IWorkingMemory {
 }
 
 /**
- * `overrides.workingMemory` replaces the built-in memory: the assembler takes the host's window and notes, the background update
- * hands the host the answer, the facade reads the host's state.
+ * `overrides.workingMemory` replaces the built-in memory: the assembler takes the application's window and notes, the
+ * background update hands the application the answer, the facade reads the application's state.
  */
-test("a host IWorkingMemory in overrides is asked for the window and handed the answer", async () => {
+test("an application IWorkingMemory in overrides is asked for the window and handed the answer", async () => {
   const llmClient = new FakeLLMClient();
   const echo = new EchoMemory();
-  const gateway = new AIGateway(gatewayConfigHostWorkingMemory, {
+  const gateway = new AIGateway(gatewayConfigApplicationWorkingMemory, {
     llmClient: () => llmClient,
     workingMemory: () => echo,
   });

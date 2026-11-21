@@ -61,23 +61,23 @@ describe("PromptTemplateStore", () => {
       expect([template.version, template.isActive, template.body.includes("{addendum}")]).toEqual([0, true, true]);
     });
 
-    test("get serves the host's seedTemplates entry as version 0 and keeps the shipped seed for the other keys", async () => {
+    test("get serves the application's seedTemplates entry as version 0 and keeps the shipped seed for the other keys", async () => {
       const store = new PromptTemplateStore({
         repository: new InMemoryPromptTemplateRepository(),
-        seedTemplates: {[EPromptTemplateKey.CHAT_MAIN]: "Host seed {addendum}"},
+        seedTemplates: {[EPromptTemplateKey.CHAT_MAIN]: "Application seed {addendum}"},
       });
       const chatMain = await store.get({key: EPromptTemplateKey.CHAT_MAIN});
       const memoryUser = await store.get({key: EPromptTemplateKey.MEMORY_USER});
       expect([chatMain.version, chatMain.body, memoryUser.version, memoryUser.body.includes("{facts}")])
-        .toEqual([0, "Host seed {addendum}", 0, true]);
+        .toEqual([0, "Application seed {addendum}", 0, true]);
     });
 
-    test("get prefers the active version of the repository over the host's seedTemplates entry", async () => {
+    test("get prefers the active version of the repository over the application's seedTemplates entry", async () => {
       const repository = new InMemoryPromptTemplateRepository();
       await repository.save({template: makeTemplate(EPromptTemplateKey.CHAT_MAIN, 1, "Active")});
       const store = new PromptTemplateStore({
         repository,
-        seedTemplates: {[EPromptTemplateKey.CHAT_MAIN]: "Host seed"},
+        seedTemplates: {[EPromptTemplateKey.CHAT_MAIN]: "Application seed"},
       });
       expect((await store.get({key: EPromptTemplateKey.CHAT_MAIN})).body).toBe("Active");
     });

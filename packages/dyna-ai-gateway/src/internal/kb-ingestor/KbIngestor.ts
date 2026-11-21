@@ -21,7 +21,7 @@ const DEFAULT_CONCURRENCY = 2;
  *
  * > Save a document in the editor; the knowledge base knows it.
  *
- * Implements `IKbIngestor`, the gateway's second root (`AIGateway.kbIngestor`), used by the application's knowledge-base
+ * Implements `IKbIngestor`, the gateway's second entry point (`AIGateway.kbIngestor`), used by the application's knowledge-base
  * write endpoints and never during a prompt:
  *
  * - `ingestDocument`: chunk (`MdChunker`) → embed heading path + text (`Embedder`) → delete the document's old chunks →
@@ -34,8 +34,8 @@ const DEFAULT_CONCURRENCY = 2;
  *
  * # Who needs it
  *
- * The application, through `AIGateway.kbIngestor`, from its document save, delete and move endpoints. A host replaces
- * it with its own `IKbIngestor` in `overrides.kbIngestor`.
+ * The application, through `AIGateway.kbIngestor`, from its document save, delete and move endpoints. It can
+ * replace the ingestor with its own `IKbIngestor` in `overrides.kbIngestor`.
  *
  * # What needs
  *
@@ -45,7 +45,7 @@ const DEFAULT_CONCURRENCY = 2;
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.kbIngestor` (optional, all
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.kbIngestor` (optional, all
  * defaults).
  *
  * ## When shouldn't use it
@@ -56,7 +56,8 @@ const DEFAULT_CONCURRENCY = 2;
  * # Pitfalls
  *
  * The usage adapter may refuse the embedding (a 429 with `code` `USAGE_DENIED_ERROR_CODE`): `ingestDocument` throws
- * it before anything is written, `reindexBook` stops the book at it. A failed embedding leaves the index as it was: the
+ * it before anything is written, `reindexBook` throws at it (with `concurrency`
+ * above 1 the other workers go on with their documents). A failed embedding leaves the index as it was: the
  * delete comes after the embedding.
  */
 export class KbIngestor implements IKbIngestor {
@@ -78,7 +79,7 @@ export class KbIngestor implements IKbIngestor {
    *
    * Throws a 400 before any model call when the `Embedder` and the index do not use the same embedding model and
    * dimensions (error 5372774697006), and the usage adapter's refusal of the embedding (a 429 whose `code` is
-   * `USAGE_DENIED_ERROR_CODE`, `data.denyCode` the app's code) before anything is written.
+   * `USAGE_DENIED_ERROR_CODE`, `data.denyCode` the application's code) before anything is written.
    *
    * # Who needs it
    *
@@ -208,11 +209,12 @@ export class KbIngestor implements IKbIngestor {
    *
    * `ingestDocument` for every document of `docs`, `concurrency` at a time; one report per document, in the order of
    * `docs`, each also given to `onProgress` as it completes. A document that fails does not stop the book: its report
-   * carries the error (logged as 5372774696808) and its old chunks stay in the index.
+   * carries the error (logged as 5372774696808). A failed embedding keeps its old chunks; a failed write to the index,
+   * after the delete, leaves the document without its chunks (or with part of them, per adapter) until it is ingested again.
    *
    * Throws a 400 before anything is ingested when a document is not of the book (error 5372774696616), and the usage
-   * adapter's refusal (429) as `ingestDocument` does: the documents ingested before it are in the index, the rest are
-   * not.
+   * adapter's refusal (429) as `ingestDocument` does: the documents already ingested stay in the index; with `concurrency`
+   * above 1 the other workers go on with their documents after the throw.
    *
    * # Who needs it
    *
@@ -293,7 +295,7 @@ export class KbIngestor implements IKbIngestor {
       });
     }
     catch (error) {
-      // The app refused the embedding: the next documents would be refused too, the book stops here
+      // The application refused the embedding: the next documents would be refused too, the book stops here
       if (isUsageDeniedError(error)) throw error;
       console.error(`Internal error 5372774696808: KbIngestor: document [${doc.id}] of book [${doc.bookId}] was not ingested`, error);
       return {

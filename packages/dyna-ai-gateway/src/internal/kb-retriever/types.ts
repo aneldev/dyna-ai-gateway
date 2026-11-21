@@ -48,7 +48,7 @@ export interface IKbRetrieverDeps {
 /**
  * Prompt → grounded chunks.
  *
- * Implemented by `KbRetriever`; the type of `IAIGatewayDeps.kbRetriever`, so a host may pass its own in `overrides`.
+ * Implemented by `KbRetriever`; the type of `IAIGatewayDeps.kbRetriever`, so an application may pass its own in `overrides`.
  */
 export interface IKbRetriever {
   /**

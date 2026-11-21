@@ -1,6 +1,9 @@
 /** Configuration of the ModelRegistry. Lands in IAIGatewayConfig.modelRegistry. */
 export interface IModelRegistryConfig {
-  /** Persistence of the model entries: the host's adapter (in memory for the tests and the first run, a database in production). */
+  /**
+   * Persistence of the model entries: the application's adapter (in memory for the tests and the first run, a database
+   * in production).
+   */
   repository: IModelRegistryRepository;
   /**
    * How long the catalog stays cached in memory, in milliseconds.
@@ -19,7 +22,8 @@ export interface IModelRegistryConfig {
 /**
  * Global catalog of usable models: facts, not tenant choices. Global by design; no tenantId.
  *
- * Implemented by `ModelRegistry`; the type of `IAIGatewayDeps.modelRegistry`, so a host may pass its own in `overrides`.
+ * Implemented by `ModelRegistry`; the type of `IAIGatewayDeps.modelRegistry`, so an application may pass its own in
+ * `overrides`.
  */
 export interface IModelRegistry {
   /**
@@ -50,7 +54,7 @@ export interface IModelRegistry {
    *
    * # Who needs it
    *
-   * The host's administration screen and profile editor; the dev sandbox.
+   * The application's administration screen and profile editor; the dev sandbox.
    */
   listModels(args?: {
     /** Skip disabled entries. Default true. */
@@ -96,11 +100,11 @@ export interface IModelRegistry {
    * > The administration write: the entry as given, whole, and the cache dropped.
    *
    * Saves through the repository and drops this instance's cache, so the next read sees the entry; other instances see it
-   * after their TTL. No validation of the entry beyond its type: the host's screen is the editor.
+   * after their TTL. No validation of the entry beyond its type: the application's screen is the editor.
    *
    * # Who needs it
    *
-   * The host's administration screen; the tests and the first run, to seed the catalog.
+   * The application's administration screen; the tests and the first run, to seed the catalog.
    */
   upsertModel(args: {model: IModelInfo}): Promise<void>;
 
@@ -142,7 +146,7 @@ export interface IModelRegistry {
    *
    * # About
    *
-   * > For a host that changed the repository behind the registry's back.
+   * > For an application that changed the repository behind the registry's back.
    *
    * The next reads are served from the reloaded catalog; nothing else changes.
    */
@@ -197,11 +201,11 @@ export interface IModelRegistryRepository {
 
 /** One model entry. Use wherever a model is referenced by id and its facts are needed. */
 export interface IModelInfo {
-  /** Our stable id, e.g. "gpt-5-mini". Referenced by AIProfile. */
+  /** Our stable id, e.g. "gpt-6.1-terra". Referenced by AIProfile. */
   id: string;
   /** Which SDK provider the LLMClient must use. */
   provider: EModelProvider;
-  /** The provider's own id, e.g. "gpt-5-mini-2026-06". */
+  /** The provider's own id, e.g. "gpt-6.1-terra". */
   providerModelId: string;
   /** Human label for admin UI. */
   label: string;
@@ -236,7 +240,12 @@ export interface IModelCaps {
   temperature: boolean;
   /** True only for embedding models. */
   embeddings: boolean;
-  /** Context window in tokens. */
+  /**
+   * Context window in tokens: the room the request and its answer share.
+   *
+   * A model whose provider takes less input than the window minus the answer gets its input limit here
+   * (`gpt-6.1-terra`: 922 000 of 1 050 000), or the provider refuses an overlong request.
+   */
   contextTokens: number;
   /** Max output tokens per call. */
   maxOutputTokens: number;
@@ -251,7 +260,7 @@ export interface IModelCaps {
    *
    * @example 0.1 - claude-haiku-4-5 (0.1 × its 1.00 input price)
    *
-   * @default Anthropic: 0.1 × costInPerMTokUsd; any other provider: costInPerMTokUsd (the rate differs per OpenAI model: set it)
+   * @default Anthropic: 0.1 × costInPerMTokUsd (Opus 5.5 and Sonnet 5.5 read at 0.05 ×, Fable 5.1+ and Mythos 5.1+ at 0.025 ×: set it); any other provider: costInPerMTokUsd (the rate differs per OpenAI model: set it)
    */
   costCacheReadPerMTokUsd?: number;
   /**
@@ -261,7 +270,7 @@ export interface IModelCaps {
    *
    * @example 1.25 - claude-haiku-4-5, 5-minute cache (1.25 × its 1.00 input price)
    *
-   * @default Anthropic: 1.25 × costInPerMTokUsd; any other provider: costInPerMTokUsd (OpenAI bills no write)
+   * @default Anthropic: 1.25 × costInPerMTokUsd; any other provider: costInPerMTokUsd (OpenAI bills a write on GPT-5.6 and later, at 1.25 ×: set it there)
    */
   costCacheWritePerMTokUsd?: number;
 }

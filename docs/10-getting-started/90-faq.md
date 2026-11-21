@@ -47,14 +47,16 @@ profile it is given.
 **Good to know**
 
 - Switch between calls, not during one. A call that is still answering keeps its model.
-- A model with a smaller context window gets fewer of the older turns; the thread's memory still carries their gist.
+- A model with a smaller context window gets fewer of the older turns; under `SUMMARY_BUFFER` the summary still carries
+  their gist.
 - A model without tool support simply gets no tools (`run` behaves like `ask`).
 - A paused run resumes on the profile it started with, unless `resume({profileId})` names [another one](../60-architecture/90-decisions.md#d65-resume-continues-a-paused-run-on-another-profile): the
   continuation then runs on that profile's model, tools and limits; the system prompt and the messages so far stay. The
-  review of the answer and the approvals stay those of both profiles together, so a switch cannot skip a reviewer or an
-  approval the run started under. The [skills](../60-architecture/90-decisions.md#d124-skills-instructions-the-model-loads-on-demand)
+  review of the answer and the approvals stay those of both profiles together, for that resume, so the switch cannot skip a reviewer
+  or an approval the run started under. A later pause of the run is stored with the new profile, and a resume of it
+  without `profileId` has only that profile's guards. The [skills](../60-architecture/90-decisions.md#d124-skills-instructions-the-model-loads-on-demand)
   the model can load are the new profile's and the ones the call brought; the list in the system prompt stays the one of the start.
-- `profileId` is required on every call, also on an existing thread. The gateway has no default profile: when the user has
+- `profileId` is required on every `ask` and `run`, also on an existing thread (`resume` takes it only to switch). The gateway has no default profile: when the user has
   not picked a model, the application passes the profile it chose as its fallback ([D103](../60-architecture/90-decisions.md#d103-a-call-always-names-its-profile)).
 
 ## How do I add moderation or other safety checks?
@@ -127,8 +129,9 @@ The `profile` lets one rule act per use case, e.g. stricter moderation for a "ki
   },
   ```
 
-- **`message` may be shown to the end user** (`response.issues` goes back to the application, and UIs often display it).
-  Keep vendor errors, ids and stack traces out of it — throw them instead, and they reach `onRuleError`, not the user.
+- **`message` is the developer's text; the end user's text goes in `userMessage`**, which an application shows as it is (a
+  judge's issues have none). Issues go back to the application and into the trace, so keep vendor errors, ids and stack
+  traces out of both — throw them instead, and they reach `onRuleError`, not the user.
 - Rule names are unique (also against the built-in ones); a duplicate throws when the gateway is constructed.
 
 **Being told that a rule failed.** Register one handler for all rules, in the guardrails' config:
@@ -224,7 +227,8 @@ export const refundTool = defineTool({
 - A human who approves with `EDIT` changes the input, and the edited input goes through the policy again: a `DENY` gives the
   model the refusal and the tool does not run, so an edit cannot push through what the policy refuses. `NEEDS_APPROVAL` on
   the edited input does not pause again: the human just approved that input.
-- An input the schema rejects never reaches the policy; `execute` reports the mismatch to the model.
+- An input the schema rejects never reaches a policy predicate. A static verdict and the profile's `approvals` still
+  apply to it (an approval card can show an invalid input, a known gap: [D87](../60-architecture/90-decisions.md#d87-d67-d50-one-policy-on-the-tool-allow-deny-needs-approval)); on `ALLOW`, `execute` reports the mismatch to the model.
 
 ## Do the tools of a step run in parallel? How do I switch it off?
 
@@ -314,7 +318,7 @@ export const lookupOrderTool = defineTool({
   inputSchema: z.object({orderId: z.string()}),
   tags: ["orders"],
   execute: async ({input: {orderId}, userContext}): Promise<{orderId: string; total: number}> => {
-    const order = await ordersDb.find({tenantId: userContext.tenantId, orderId}); // the app's own data access
+    const order = await ordersDb.find({tenantId: userContext.tenantId, orderId}); // the application's own data access
     if (!order) {
       throw dynaError({
         code: 82758244,
@@ -336,7 +340,8 @@ invoice.` — the `status` tells it the class of the failure, the `code` is what
 
 - A tool that lets a plain `Error` through (its HTTP client's `ECONNREFUSED 10.0.4.12:5432`) leaks nothing: the model reads a
   generic text — the input was not the cause, do not retry it unchanged — with the gateway's code and status 500; the real
-  error is logged on the server and reported to you. The same for a `dynaError` without a `userMessage`.
+  error is logged on the server and reported to you. A `dynaError` without a `userMessage` keeps its own `code` and
+  `status`, with the same generic text.
 - `canRetry: false` on the error appends "Do not retry this call." for a failure that repeats with the same input.
 - A `userMessage` over 2 000 characters is cut there and marked `[cut]`: the model reads a recovery hint, not a document.
 - The gateway's own refusals (an input the schema rejects, a tool the model was not offered, a timeout, an oversized output,
@@ -348,7 +353,7 @@ To be told, register one handler for all tools, in the registry's config:
 
 ```ts
 const config: IAIGatewayConfig = {
-  ...,
+  // …
   toolRegistry: {
     tools: [lookupOrderTool],
     onToolError: (report): void => {
@@ -433,12 +438,12 @@ await gateway.resume({userContext, runId, pauseId, decisions: [{action: EResumeA
 
 ## How much of the conversation does the model see, and how do I choose?
 
-The thread's history reaches the model through the working memory, with one of two strategies ([D122](../60-architecture/90-decisions.md#d122-the-working-memory-owns-the-threads-window)):
+The thread's history reaches the model through the thread memory (`workingMemory`), with one of two strategies ([D122](../60-architecture/90-decisions.md#d122-the-working-memory-owns-the-threads-window)):
 
-| Strategy                                | What the model gets                                                                                              | Pick it for                                                                                                                  |
-|-----------------------------------------|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| `EWorkingMemoryStrategy.SLIDING_WINDOW` | The newest turns that fit the model's window, word for word; nothing stored, no helper model call.               | Exact wording (code, documents, quoting the user), short-lived threads, large windows, no "what do you remember" UI.         |
-| `EWorkingMemoryStrategy.SUMMARY_BUFFER` | A rolling summary and facts written by the cheap model, then the last `recentTurns` turns verbatim. The default. | Long-lived threads at a flat cost per call, a visible and resettable memory, a thread context for the knowledge-base search. |
+| Strategy                                | What the model gets                                                                                                                        | Pick it for                                                                                                                  |
+|-----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `EWorkingMemoryStrategy.SLIDING_WINDOW` | The newest turns that fit the model's window (at most `maxLoadedTurns`, default 200), word for word; nothing stored, no helper model call. | Exact wording (code, documents, quoting the user), short-lived threads, large windows, no "what do you remember" UI.         |
+| `EWorkingMemoryStrategy.SUMMARY_BUFFER` | A rolling summary and facts written by the cheap model, then the last `recentTurns` turns verbatim. The default.                           | Long-lived threads at a flat cost per call, a visible and resettable memory, a thread context for the knowledge-base search. |
 
 The gateway's default strategy is `workingMemory.strategy`; a profile overrides it with `workingMemory`, so one tenant runs a precise chat bot and a cheap long-thread agent side by side:
 
@@ -451,7 +456,7 @@ const config: IAIGatewayConfig = {
     enabled: true,
     strategy: {
       type: EWorkingMemoryStrategy.SLIDING_WINDOW,
-      chatHistoryRatio: 0.5, // half of the room stays for the knowledge-base chunks (default 0.8)
+      chatHistoryRatio: 0.5, // the turns fill at most half of the free room (default 0.8)
     },
   },
 };
@@ -469,11 +474,11 @@ await gateway.aiProfileStore.upsertProfile({
 });
 ```
 
-The window is sized in tokens, from what the rendered system prompt leaves of the model's context after the answer's reserve (`contextAssembler.reserveOutputTokens`, default: the call's `maxOutputTokens`). Under `SLIDING_WINDOW` the turns take at most `chatHistoryRatio` of it; the rest is for the knowledge-base chunks. Turns that were left out are reported as the WARNING issue `turns_trimmed` on the response.
+The window is sized in tokens, from what the rendered system prompt leaves of the model's context after the answer's reserve (`contextAssembler.reserveOutputTokens`, default: the call's `maxOutputTokens`). The knowledge-base chunks and the user's facts are part of that system prompt, so they are counted first and the history never pushes them out. Under `SLIDING_WINDOW` the turns take at most `chatHistoryRatio` of what is left; the rest stays unused. Turns that were left out are reported as the WARNING issue `turns_trimmed` on the response.
 
 - `workingMemory: {enabled: false}` sends the last 20 turns and remembers nothing; no helper model is ever called.
 - `getThreadMemory` shows the stored summary and facts; under `SLIDING_WINDOW` it is the empty state, or the summary an earlier `SUMMARY_BUFFER` period left: a switch never wipes it, a switch back resumes from it. `resetThreadMemory` clears it.
-- Your own memory model: implement `IWorkingMemory` (`load`, `saveContext`, `getState`, `reset`) and pass it in the constructor's `overrides`; it receives the gateway's `workingMemory` config and the shared children (`threadStore`, `turnBuilder`, `llmClient`, `promptTemplateStore`). See [Dependency injection](../60-architecture/50-live-adjustment-and-dependency-injection.md#23-what-can-be-injected).
+- Your own memory model: implement `IWorkingMemory` (`load`, `saveContext`, `getState`, `reset`) and pass it in the constructor's `overrides`; it receives the gateway's `workingMemory` config and the classes it uses (`threadStore`, `turnBuilder`, `llmClient`, `promptTemplateStore`). See [Class replacement](../60-architecture/30-class-replacement.md).
 
 ```ts
 import {IWorkingMemory, IWorkingMemoryConfig, IWorkingMemoryDeps, AIGateway} from "dyna-ai-gateway";
@@ -503,24 +508,30 @@ The system prompt is sent as two blocks, split at the `{cacheBreakpoint}` placeh
 | Per-call | the date, locale and timezone, the call's `instructions` and `context`, the memory, the knowledge base | this call                 |
 
 The stable block is marked for the provider's cache; the `LLMClient` puts the provider's marker on it (Anthropic:
-`cache_control`). The first call of a profile writes the entry, the next ones within the cache's lifetime (5 minutes) read
-it at the cache-read rate (Anthropic: 0.1× the input price; the write costs 1.25×) and their answer starts sooner. The
+`cache_control`). The first call of a profile writes the entry, the next ones within the cache's lifetime (Anthropic: 5 minutes; OpenAI GPT-5.6 and later: 30 minutes) read
+it at the cache-read rate (Anthropic: 0.1× the input price on most models, 0.05× on Opus 5.5 and Sonnet 5.5, 0.025× on
+Fable and Mythos 5.1 and later; a 5-minute write costs 1.25×) and their answer starts sooner. The
 history, the question and the answer are never cached. A model caches only a prefix above its minimum (Anthropic: 512
 tokens on the Opus 5.5 / Sonnet 5.5 / Haiku 5.5 family, 1 024–4 096 on older ones, e.g. 4 096 on `claude-haiku-4-5`), so a
 short stable block is sent with the marker and simply not cached; a long addendum and many tools make it pay.
 
-Claude on Amazon Bedrock gets the same split with Bedrock's cache point on the stable block; Bedrock takes no marker on the
+Every Amazon Bedrock entry gets the same split with Bedrock's cache point on the stable block; Bedrock takes no marker on the
 tool definitions. Set `costCacheReadPerMTokUsd` and `costCacheWritePerMTokUsd` on a Bedrock model entry: Bedrock serves
-several model families, so the gateway assumes no cache discount there. OpenAI caches a prefix of 1 024 tokens or more on
-its own, without a marker; the gateway sends `promptCacheKey`, a hash of the stable block's text, so the calls that share
-the block land on the same cache. The other providers get the blocks as one plain string.
+several model families, so the gateway assumes no cache discount there. OpenAI caches on its own, without a marker
+(from 1 024 tokens on GPT-5.6 and later); the gateway sends `promptCacheKey`, a hash of the stable block's text. Before GPT-5.6 OpenAI caches the longest shared prefix
+and the key helps it route the calls that share the block to one cache. From GPT-5.6 on it sets the breakpoint at the end of the latest user message or tool result and can
+fall back to the end of an earlier message, never to the end of the system prompt; only an explicit breakpoint, which the gateway does not set (a known gap),
+marks the stable block, so calls that share only that block rarely share an entry, and the key only keeps their cache accounting apart. The other providers get the blocks as one plain string.
 
-- **The cost follows the cache.** `IUsage` of every call reports `inputTokens` (the whole prompt), `cachedInputTokens`
-  (read from the cache) and `cacheWriteInputTokens` (written by this call); the usage adapter and the trace get them. The
+- **The cost follows the cache.** `IUsage` of every call reports `inputTokens` (the whole prompt), and
+  `cachedInputTokens` (read from the cache) and `cacheWriteInputTokens` (written by this call) when the provider reports
+  them; the usage adapter and the trace get them. The
   cost estimate prices the read tokens at `IModelCaps.costCacheReadPerMTokUsd` and the written ones at
   `costCacheWritePerMTokUsd`, the rest at `costInPerMTokUsd`. Both are optional: on an Anthropic model they default to
-  0.1× and 1.25× the input price; on any other provider to the input price itself, so set `costCacheReadPerMTokUsd` on an
-  OpenAI model entry if its cached rate should show in the estimate.
+  0.1× and 1.25× the input price; on any other provider to the input price itself. Set them where the provider's rate
+  differs: `costCacheReadPerMTokUsd` on an OpenAI entry and on the Anthropic models that read cheaper (Opus 5.5, Sonnet
+  5.5, Fable and Mythos 5.1 and later), `costCacheWritePerMTokUsd` on GPT-5.6 and later (OpenAI bills a write at 1.25×
+  there).
 - **Skills are in the stable block** ([D124](../60-architecture/90-decisions.md#d124-skills-instructions-the-model-loads-on-demand)):
   a profile's `skills` are the same on every call, so they are cached with the addendum. A call that passes its own `skills`
   changes the block: calls with the same skill set read one entry, a different set writes another.
@@ -540,7 +551,8 @@ the block land on the same cache. The other providers get the blocks as one plai
 ## How does a run end, and can a tool end it?
 
 A run (`run()`) ends when the model answers without asking for a tool, when the profile's `maxStepsPerRun` is reached or
-your usage adapter refuses a step (the answer then carries the truncation warning), or when a tool that
+your usage adapter refuses a later step (the answer then carries the warnings `usage_denied` and `output_truncated`; a
+refused first step is `FAILED`), or when a tool that
 **ends the run** has run.
 
 Some tools are terminal by nature: a hand-over to a human agent, an escalation, a placed order. After them the assistant
@@ -586,6 +598,9 @@ before every model call. Made for agents with many tools: a classifier offered o
 stated intent, and the model picks the next tools from that result instead of guessing from the prompt:
 
 ```ts
+import {z} from "zod";
+import {defineTool} from "dyna-ai-gateway";
+
 export const classifyIntentTool = defineTool({
   name: "classify_intent",
   description: "Classifies the customer's request. Call it first.",
@@ -641,13 +656,14 @@ const {response: answer} = gateway.ask({
   user's thread are a 404, like an unknown one, and `listThreads` lists the calling user's threads only.
 - **A file** is its uploader's: a question can carry only the caller's own files, and `deleteFile` and `getFileUrl` reach
   only the caller's files.
-- **A paused run** can be resumed or cancelled by any user of the tenant, because the approver is often not the asker; your
+- **A paused run** can be resumed or cancelled by any user of the tenant (for a tool approval, a resume also needs
+  permissions that unlock the pending tool), because the approver is often not the asker; your
   application decides who may approve or review. The run stays the asker's: its memory and trace go to the user who
   started it. `listPausedRuns` shows the calling user's own runs as summaries, without the draft of a reviewed answer;
   the reviewer reads the draft with `getPausedRun`, which takes raw ids like the other admin methods.
 
 The full list of what the gateway checks and what it leaves to your application is in
-[What the gateway checks and what it trusts](../60-architecture/10-architecture-and-trade-offs.md#5-what-the-gateway-checks-and-what-it-trusts).
+[What the gateway checks and what it trusts](../60-architecture/10-architecture-and-trade-offs.md#7-what-the-gateway-checks-and-what-it-trusts).
 
 ## How do I show the user's conversations and open one?
 
@@ -662,21 +678,27 @@ const first = await gateway.listThreads({
   page: {limit: 20, startingAfter: null, endingBefore: null},
 });
 // Scrolling down: the 20 threads older than the last one shown, while `hasMore` is true
-const next = await gateway.listThreads({
-  userContext,
-  page: {limit: 20, startingAfter: null, endingBefore: first.items[first.items.length - 1].id},
-});
+const last = first.items.at(-1);
+if (first.hasMore && last) {
+  const next = await gateway.listThreads({
+    userContext,
+    page: {limit: 20, startingAfter: null, endingBefore: last.id},
+  });
+}
 // Opening a thread: every turn, oldest first
-const turns = await gateway.getTurns({userContext, threadId: first.items[0].id});
+const opened = first.items[0];
+if (opened) {
+  const turns = await gateway.getTurns({userContext, threadId: opened.id});
+}
 ```
 
 `startingAfter` reads the other way: the threads newer than the one given. Both cursors at once, or a `limit` outside 1–200,
 is a 400; a cursor that is not one of the user's threads is a 404. The list is ordered by creation, so a thread used again
-keeps its place; a title the working memory wrote is replaced by `renameThread`.
+keeps its place. A thread has no title until `renameThread` sets one.
 
 ## How do I delete conversations?
 
-`delete` removes threads with everything they left in the stores: turns, working memory, files, runs and trace entries ([D119](../60-architecture/90-decisions.md#d119-threads-are-deleted-in-bulk-with-everything-they-left)). It takes raw ids and checks no user, so the host passes the `userId` of the user whose request it serves:
+`delete` removes threads with everything they left in the stores: turns, thread memory, files, runs and trace entries ([D119](../60-architecture/90-decisions.md#d119-threads-are-deleted-in-bulk-with-everything-they-left)). It takes raw ids and checks no user, so the application passes the `userId` of the user whose request it serves:
 
 ```ts
 // The user's "delete selected": only that user's threads among the ids go
@@ -710,15 +732,13 @@ In layers — no single check stops it:
 Yes, with two optional fields of the call ([decision](../60-architecture/90-decisions.md#d90-a-call-can-be-stopped-abortsignal-and-timeoutms)):
 
 ```ts
-const controller = new AbortController();
-stopButton.onclick = () => controller.abort();
-
 const response = await gateway.run({
   userContext,
+  profileId: "support",
   threadId,
   prompt,
   kbFilters,
-  abortSignal: controller.signal, // the "stop" button, or the signal of the incoming HTTP request
+  abortSignal: request.signal,    // the incoming HTTP request: the client's stop closes it
   timeoutMs: 60_000,              // a deadline for the whole call, tools included
 }).response;
 
@@ -766,24 +786,28 @@ process.on("SIGTERM", async () => {
 
 ## What happens to the runs a crashed server left behind?
 
-A server that dies inside a call leaves its run marked running and, after a `resume`, its thread waiting for a human: no call on that thread is accepted any more. Schedule `recoverStuckRuns({tenantId})` next to `expirePausedRuns` ([decision](../60-architecture/90-decisions.md#d97-stuck-runs-are-recovered-by-a-job)):
+A server that dies inside a `resume` leaves the run marked running and its thread waiting for a human: no call on that thread is accepted any more. A crash during an `ask` or a fresh `run` stores no run: the thread keeps the user's turn without an answer, and its lease, if the thread existed, expires after `leaseMs`. Schedule `recoverStuckRuns({tenantId})` next to `expirePausedRuns` ([decision](../60-architecture/90-decisions.md#d97-stuck-runs-are-recovered-by-a-job)):
 
 ```ts
 setInterval(async () => {
   for (const tenantId of tenantIds) {
-    await gateway.expirePausedRuns({tenantId});
-    await gateway.recoverStuckRuns({tenantId});
+    try {
+      await gateway.expirePausedRuns({tenantId});
+      await gateway.recoverStuckRuns({tenantId});
+    } catch (error) {
+      logger.error("recovery job failed", {tenantId, error}); // one tenant's failure must not stop the others
+    }
   }
 }, 60_000);
 ```
 
-- The job touches a run only when it can take the thread's lease, which every live call holds. A run it recovers is `FAILED`, its cut tool call is answered in the thread with the error "The call was cut off: the server stopped before it finished", and the thread takes calls again.
+- The job touches a run only when it can take the thread's lease, which every live call on a thread holds. A run it recovers is `FAILED`, its cut tool call is answered in the thread with the error "The call was cut off: the server stopped before it finished", and the thread takes calls again.
 - A busy thread, and a thread the job cannot close, are skipped and found again next time. The job returns how many runs it recovered.
-- Keep every call's `timeoutMs` at or under `IThreadStoreConfig.leaseMs`: a call that outlives its lease looks stuck to the job.
+- Keep every call's `timeoutMs` at or under `IThreadStoreConfig.leaseMs`: a `resume` that outlives its lease looks stuck to the job, and any call on an existing thread that outlives it lets a second call onto the thread.
 
 ## How do I connect a Vercel chat client (`useChat`)?
 
 Through the module `dyna-ai-gateway/vercel-ui`: one `AIGatewayVercelUi` per chat use case, built on your gateway instance,
 and three methods the endpoints call, `chat`, `history` and `resume`. The request body never names the tenant or the user; your
 `userContext` hook does. The whole recipe is in [Vercel chat client](50-vercel-chat-client.md); the decisions behind it in
-[Decisions, chapter 17](../60-architecture/90-decisions.md#17-aigatewayvercelui).
+[Decisions, chapter 20](../60-architecture/90-decisions.md#20-aigatewayvercelui).

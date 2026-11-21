@@ -15,8 +15,8 @@ import {
 } from "./call-tools.config";
 
 /**
- * A tool passed on the call (D66) is offered to the model and executed by the registry's pipeline, although it is in neither the
- * registry nor the profile's allowedTools: the app passed it, so it is allowed.
+ * A tool passed on the call (D66) is offered to the model and executed by the registry's pipeline, although it is in neither
+ * the registry nor the profile's allowedTools: the application passed it, so it is allowed.
  */
 test("a tool passed on the call is executed and its result is stored in the thread", async () => {
   const llmClient = new FakeLLMClient();

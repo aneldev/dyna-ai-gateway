@@ -30,7 +30,7 @@ export interface IKbIngestorDeps {
 /**
  * KB write path: MD → chunks → vectors → index.
  *
- * Implemented by `KbIngestor`; the type of `IAIGatewayDeps.kbIngestor`, so a host may pass its own in `overrides`.
+ * Implemented by `KbIngestor`; the type of `IAIGatewayDeps.kbIngestor`, so an application may pass its own in `overrides`.
  */
 export interface IKbIngestor {
   /**
@@ -46,7 +46,7 @@ export interface IKbIngestor {
    *
    * Throws a 400 before any model call when the `Embedder` and the index do not use the same embedding model and
    * dimensions (error 5372774697006), and the usage adapter's refusal of the embedding (a 429 whose `code` is
-   * `USAGE_DENIED_ERROR_CODE`, `data.denyCode` the app's code) before anything is written.
+   * `USAGE_DENIED_ERROR_CODE`, `data.denyCode` the application's code) before anything is written.
    *
    * # Who needs it
    *
@@ -128,11 +128,12 @@ export interface IKbIngestor {
    *
    * `ingestDocument` for every document of `docs`, `concurrency` at a time; one report per document, in the order of
    * `docs`, each also given to `onProgress` as it completes. A document that fails does not stop the book: its report
-   * carries the error (logged as 5372774696808) and its old chunks stay in the index.
+   * carries the error (logged as 5372774696808). A failed embedding keeps its old chunks; a failed write to the index,
+   * after the delete, leaves the document without its chunks (or with part of them, per adapter) until it is ingested again.
    *
    * Throws a 400 before anything is ingested when a document is not of the book (error 5372774696616), and the usage
-   * adapter's refusal (429) as `ingestDocument` does: the documents ingested before it are in the index, the rest are
-   * not.
+   * adapter's refusal (429) as `ingestDocument` does: the documents already ingested stay in the index; with `concurrency`
+   * above 1 the other workers go on with their documents after the throw.
    *
    * # Who needs it
    *
@@ -174,6 +175,6 @@ export interface IIngestReport {
   tokens: number;
   /** Wall time of the ingestion, check and embedding included. */
   durationMs: number;
-  /** Only in the reports of reindexBook: why this document was not ingested. Its old chunks are still in the index. */
+  /** Only in the reports of reindexBook: why this document was not ingested. Its old chunks stay when it failed before the delete (e.g. the embedding); a failed write after the delete leaves none or part of them, per adapter. */
   error?: string;
 }

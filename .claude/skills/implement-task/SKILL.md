@@ -1,6 +1,6 @@
 ---
 name: implement-task
-description: The implement → hand off → review → commit cycle of this repo, for ONE unit of work. Use it every time the developer asks to implement, build, make, change, fix or "proceed with" something — a step of a stepwise plan or an ad-hoc request — and whenever he answers a handoff with "commit", "commit and proceed" or "CAP". It covers what "done" means (tests, lint, JSDoc, docs), the handoff report with `temp/commit - <feature>.md` (one per unit: several sessions run in parallel in the same tree), the review round-trips, and the only way a commit is ever made (only the files of this unit, by path). Not for questions, reviews or explanations that change no file.
+description: The implement → hand off → review → commit cycle of this repo, for ONE unit of work. Use it every time the developer asks to implement, build, make, change, fix or "proceed with" something — a step of a stepwise plan or an ad-hoc request — and whenever he answers a handoff with "commit", "commit and proceed" or "CAP". It covers what "done" means (tests, lint, JSDoc, docs, the consistency pressure test, every claim backed by evidence or listed as not verified), the handoff report with `temp/commit - <feature>.md` (one per unit: several sessions run in parallel in the same tree), the review round-trips, and the only way a commit is ever made (only the files of this unit, by path). Not for questions, reviews or explanations that change no file.
 ---
 
 # Implement a task — one unit, one commit
@@ -54,6 +54,8 @@ a decision is not implemented quietly: say so first, and let the developer decid
 
 ## 2. Implement
 
+- **The evidence rule** (`consistency-pressure-test`, section 0): every behaviour of the code and every claim of a doc
+  handed off has evidence (a `file:line`, a test, a run), or is listed under **Not verified**; a doubt is asked at once.
 - Minimal diff; respect `CLAUDE.md` (naming, no `!`, declared return types, private methods last, no new deps).
 - Every JSDoc or comment written or touched goes through the `jsdoc-style` skill — load it before writing.
 - After any import edit, apply `sort-imports`.
@@ -64,12 +66,13 @@ a decision is not implemented quietly: say so first, and let the developer decid
 
 Run what proves the unit; the handoff lists only what was actually run.
 
-| Check | Command | Pass criterion |
-| --- | --- | --- |
-| Tests | `pnpm test-no-coverage [path]` for the touched area, then the full suite before handoff | no new failures vs. the baseline (plan Step 0.1, or the last green run) |
-| Types | `pnpm typecheck` (sources and tests; `tsc --noEmit` alone skips the tests) | clean |
-| Lint | `pnpm lint` | 0 errors; new warnings named in the handoff |
-| Build | `pnpm build` | only when the public API, exports or packaging changed |
+| Check       | Command                                                                                                                 | Pass criterion                                                          |
+|-------------|-------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| Tests       | `pnpm test-no-coverage [path]` for the touched area, then the full suite before handoff                                 | no new failures vs. the baseline (plan Step 0.1, or the last green run) |
+| Types       | `pnpm typecheck` (sources and tests; `tsc --noEmit` alone skips the tests)                                              | clean                                                                   |
+| Lint        | `pnpm lint`                                                                                                             | 0 errors; new warnings named in the handoff                             |
+| Build       | `pnpm build`                                                                                                            | only when the public API, exports or packaging changed                  |
+| Consistency | `consistency-pressure-test` skill over the unit: code, tests, JSDoc, docs, and every doc that states the same behaviour | a round by a fresh reviewer finds zero issues (at most 5 rounds)        |
 
 Something that cannot be verified here (needs a key, a browser, prod) is not verified — it becomes the developer's check.
 
@@ -98,7 +101,9 @@ The developer reviews docs as code. Update, in the same unit, whatever the chang
    - **Changed** — files, grouped by what they do.
    - **Docs relied on** — the decisions, contracts and rules the unit rests on or changed (section 1), and the backlog entries
      it closed (section 4), or "none".
-   - **Verified** — each command run and its result (counts, not "all green").
+   - **Verified** — each command run and its result (counts, not "all green"), and the pressure test line (its section 7). Then **Not verified**: every check that was
+     not made, named (e.g. "the abort case not checked", "the sample not run, only compiled", "the provider limit not
+     checked against a source"). Never left out because it is empty: write "nothing" then.
    - **Your check** — what only the developer can verify, or "nothing".
    - **Commit:** the subject line, and "`temp/commit - <feature>.md` is ready" (the real file name).
    - End with **Ready for review.**

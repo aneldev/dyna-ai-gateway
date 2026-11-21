@@ -30,7 +30,7 @@ export interface ICheckedOutput<TStructured> {
  *
  * # About
  *
- * > Step 8: the built-in checks, then the app's output rules, on what the model answered.
+ * > Step 8: the built-in checks, then the application's output rules, on what the model answered.
  *
  * Hands the model's result to `Guardrails.checkOutput` with its evidence (the question, the knowledge-base chunks of the
  * request, the tool results of the run) and returns the verdict with the call's earlier issues in front of the check's own.

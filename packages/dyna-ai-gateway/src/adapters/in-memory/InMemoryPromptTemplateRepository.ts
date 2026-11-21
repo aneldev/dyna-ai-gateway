@@ -24,7 +24,7 @@ import {
  *
  * # Who needs it
  *
- * The gateway tests (`gatewayConfigBase`) and the dev sandbox; a host app uses its own adapter.
+ * The gateway tests (`gatewayConfigBase`) and the dev sandbox; an application uses its own adapter.
  *
  * # Usage
  *

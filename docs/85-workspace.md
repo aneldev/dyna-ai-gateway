@@ -1,22 +1,23 @@
 # Workspace — building and testing the packages
 
 The pnpm workspace of the AI gateway and its storage adapters. Each package under `packages/` is built from
-[dyna-ts-module-boilerplate](https://github.com/aneldev/dyna-ts-module-boilerplate) and published on its own; the
+[dyna-ts-module-boilerplate](https://github.com/aneldev/dyna-ts-module-boilerplate) and released on its own; the
 tooling (TypeScript, ESLint, Jest, webpack) is installed and configured once, at the root, and every package extends it.
 
-| Package                                                                      | What                                                                                                                               | Status    |
-|------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| [`dyna-ai-gateway`](../packages/dyna-ai-gateway)                             | the gateway: `ask` / `run`, tools, human gate, KB, memory, usage control, traces, the Vercel UI entry; in-memory adapters included | published |
-| [`dyna-ai-gateway-mongodb`](../packages/dyna-ai-gateway-mongodb/README.md)   | MongoDB repositories and the Atlas Vector Search index                                                                             | planned   |
-| [`dyna-ai-gateway-postgres`](../packages/dyna-ai-gateway-postgres/README.md) | PostgreSQL repositories                                                                                                            | planned   |
-| [`dyna-ai-gateway-s3`](../packages/dyna-ai-gateway-s3/README.md)             | S3 blob store for the files                                                                                                        | planned   |
+| Package                                                                      | What                                                                                                                               | Status  |
+|------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|---------|
+| [`dyna-ai-gateway`](../packages/dyna-ai-gateway)                             | the gateway: `ask` / `run`, tools, human gate, KB, memory, usage control, traces, the Vercel UI entry; in-memory adapters included | beta    |
+| [`dyna-ai-gateway-mongodb`](../packages/dyna-ai-gateway-mongodb/README.md)   | MongoDB repositories and the Atlas Vector Search index                                                                             | planned |
+| [`dyna-ai-gateway-postgres`](../packages/dyna-ai-gateway-postgres/README.md) | PostgreSQL repositories                                                                                                            | planned |
+| [`dyna-ai-gateway-s3`](../packages/dyna-ai-gateway-s3/README.md)             | S3 blob store for the files                                                                                                        | planned |
 
 Documentation of the gateway: [Getting started](10-getting-started/00-README.md), and the site at
 [aneldev.github.io/dyna-ai-gateway](https://aneldev.github.io/dyna-ai-gateway/).
 
 ## Requirements
 
-- Node.js 24 or newer, pnpm 10
+- Node.js 24 or newer (`engines` in the root `package.json`)
+- pnpm 10 (`packageManager` pins the exact version)
 
 ## Private notes (`docs/internal/`)
 
@@ -25,7 +26,7 @@ the repo. The repo expects it at `docs/internal/`, a **symlink** that git ignore
 once per machine, with your own path to the notes:
 
 ```bash
-ln -s /path-to/docs/internal
+ln -s /path-to/your-notes/docs/internal docs/internal
 ls docs/internal/     # AI Gateway Roadmap.md, AI Gateway Classes.md, AI Gateway Blueprint.md, …
 ```
 
@@ -36,10 +37,11 @@ Never commit the link or write its target into a tracked file: the path names yo
 ```bash
 pnpm install
 pnpm test-no-coverage   # all packages; real-provider tests run only when their keys are in the repo-root .env (see .env.sample)
-pnpm lint
+pnpm lint               # pnpm lint-fix fixes what ESLint can fix
 pnpm typecheck          # tsc over sources and tests of every package
 pnpm build              # every package: lint + typecheck + dist (CJS, ESM, .d.ts)
-pnpm sandbox-cli <ask|run> / pnpm sandbox-debug   # the gateway's developer sandbox
+pnpm sandbox-cli <ask|run>   # the gateway's developer sandbox: a chat in the terminal
+pnpm sandbox-debug           # the same config, under the Node inspector (port 9229)
 ```
 
 One package: `pnpm --filter dyna-ai-gateway <script> [args]`, or run the script inside `packages/<name>/`.
@@ -59,22 +61,53 @@ a project outside the pnpm workspace with its own lockfile. It publishes `docs/`
 The landing page is `website/src/pages/index.tsx`; the docs are served under `/docs/`, the brand colors are in
 `website/src/css/custom.css`.
 
+Run `pnpm install` at the root first: TypeDoc reads the gateway's types and their dependencies.
+
 ```bash
-pnpm install         # once: TypeDoc reads the gateway's types and their dependencies
 pnpm docs:install    # once, and after a change to website/package.json
 pnpm docs:start      # the site on a local server, reloaded on every change
 pnpm docs:build      # the site into website/build, then the output check
+pnpm docs:check-samples [folder…]   # type-check the TypeScript samples (default: docs/24-learning-paths, docs/50-ai-best-practices)
 ```
 
 - **The API reference** (`docs/30-api/`) is generated by TypeDoc from the JSDoc of `packages/dyna-ai-gateway/src` and
   `src/entries/vercel-ui` on every build. It is gitignored and never edited by hand; the JSDoc is its source.
-- **What the API navigation shows** is the list in `website/api-sidebar.mjs`. A symbol that is not listed still has a
-  page, so links to it resolve.
-- **The output check** (`website/scripts/check-output.mjs`) fails the build on an API page without exactly one `h1`, on
-  any excluded document in the output, and on a Mermaid diagram of a published doc that does not parse. Mermaid renders in
-  the browser, so without this check a broken diagram only shows on the live page.
-- **Deploy:** `.github/workflows/docs.yml` builds and publishes the site to GitHub Pages on a push to `main` that touches
-  `docs/`, `website/` or the gateway's `src/`, and on demand from the Actions tab.
+- **What the API navigation shows** is the hand-picked list in `website/api-sidebar.mjs`, then a collapsed "All types"
+  category with every other API page, grouped by kind (classes, interfaces, …), the module pages last. Docusaurus
+  shows the sidebar only on a page that is in it, so "All types" is what gives every API page its sidebar. A symbol
+  added to the list leaves "All types" by itself.
+- **The build is the link check:** `onBrokenLinks`, `onBrokenAnchors` and `onBrokenMarkdownLinks` are `"throw"`, so
+  `pnpm docs:build` fails on a link to a missing page (it names the file and the line) and on a broken anchor (it names
+  the published page and the anchor). The documents the site does not publish are not checked.
+- **The output check** (`website/scripts/check-output.mjs`) fails the build on:
+  - an API page without exactly one `h1`;
+  - an excluded document in the output;
+  - a Mermaid diagram of a published doc that does not parse. Mermaid renders in the browser, so without this check a
+    broken diagram only shows on the live page;
+  - a learning-paths index that drifted from its files. The index is the "The paths" table of
+    `docs/24-learning-paths/README.md`: every `<number>-<name>.md` of the folder once, in file order, its link text the
+    page's `h1`. A new path is a file and a row.
+- **The sample check** (`scripts/check-doc-samples/check.mjs`) compiles each example as a developer pastes it and fails
+  on a type error:
+  - Per `### 8.N` it writes one `.ts` file under `temp/check-doc-samples/`: the samples of 8.0, then those of 8.N, at
+    the top level of one module.
+  - The samples are joined as they are, imports included. A name that 8.0 and the example both import fails, as it does
+    in the pasted file, so an example imports only what 8.0 does not.
+  - An example that declares its own `const gateway` replaces the `const gateway = new AIGateway(config);` line of 8.0.
+  - There is no prelude: a name an example takes from the application is a `declare` line of the example, and a name
+    several examples run on is defined in 8.0.
+  - A page without an `### 8.0` chapter (the best practices) is one module of all its samples, in page order.
+  - `tsc` runs on the files with a generated `tsconfig.json` that extends the root `tsconfig.base.json`.
+    `dyna-ai-gateway` resolves to the gateway's `src/`, so a sample is checked against the code as it is now.
+  - Folders outside the default list hold fragments; they are checked only when passed as arguments.
+- **Mermaid's node tooltips need d3-transition** (flowcharts, class and state diagrams):
+  `website/src/clientModules/d3-transition.js` (a `clientModules` entry of the config) imports it before any diagram
+  renders. Without it, leaving a node with the mouse throws
+  "tooltipElem.transition is not a function": `d3` declares no side effects, so webpack never runs the import that adds
+  `transition()`. Remove the module and the `d3-transition` dependency once Mermaid imports it itself.
+- **Deploy:** `.github/workflows/docs.yml` runs `pnpm docs:check-samples`, then builds and publishes the site to GitHub
+  Pages, on a push to `main` that touches `docs/`, `website/`, the gateway's `src/` or the sample check, and on demand from
+  the Actions tab. A sample that no longer compiles stops the deploy.
 
 ## Release
 
@@ -89,11 +122,13 @@ pnpm release [package-name]     # default: dyna-ai-gateway
 2. Bumps the version: the prerelease while the version has a prerelease suffix (`0.0.1-beta.4` → `0.0.1-beta.5`),
    the patch otherwise (`0.1.2` → `0.1.3`). A minor or major bump is done by hand in `package.json` before the release.
 3. Moves the `[Unreleased]` entries under the new version with today's date.
-4. Commits `Release <package> v<version>` and tags it `<package>@<version>`.
+4. Commits `package.json` and `CHANGELOG.md` as `Release <package> v<version>` and tags the commit
+   `<package>@<version>`.
 5. Publishes: the package's `prepublishOnly` builds it, its `publishConfig.tag` picks the npm dist-tag (`beta` while in beta).
 6. Pushes the branch and the tag.
 
-A failure after the commit leaves the commit and the tag local: `git reset --hard HEAD~1 && git tag -d <tag>` undoes them.
+When the publish fails, the commit and the tag are local: `git reset --hard HEAD~1 && git tag -d <tag>` undoes them.
+When only the push fails, the package is already published: push the branch and the tag by hand, and undo nothing.
 
 ## Shared configuration
 

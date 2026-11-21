@@ -33,7 +33,7 @@ export interface IContextAssemblerConfig {
   /**
    * Marks the stable part of the system prompt (template text, output format, addendum) for the provider's prompt cache.
    *
-   * > Calls of one profile then pay the cached rate for that part (Anthropic: a cache marker; OpenAI: a cache key, it caches the prefix on its own).
+   * > Calls of one profile then pay the cached rate for that part (Anthropic: a cache marker; OpenAI: a cache key; from GPT-5.6 on it caches up to a message end, never the system prompt's, a known gap).
    * > Pays off when the stable part is longer than the model's minimum (512–4096 tokens): a long addendum, many tools.
    *
    * Required: whoever configures the gateway decides it. `false` sends the system prompt as one block with no marker.
@@ -49,8 +49,8 @@ export interface IContextAssemblerConfig {
    * Only the stable block (template text, output format, addendum, tools) is shared, and only when it is identical to the
    * byte. What follows `{cacheBreakpoint}` (date, instructions, context, memory, knowledge base, history, the question) is
    * never shared, and answers are never cached. A call that reads another tenant's entry pays the cache-read price for
-   * that part (Anthropic: 0.1× the input price) and its answer starts sooner; the call that wrote the entry paid the
-   * cache-write price (Anthropic: 1.25×).
+   * that part (Anthropic: 0.1× the input price on most models, less on some, e.g. Opus 5.5) and its answer starts sooner; the
+   * call that wrote the entry paid the cache-write price (Anthropic: 1.25× for 5 minutes).
    * `false`: the stable block opens with a line that scopes it to the tenant (a hash of the tenant id, never the id
    * itself), so each tenant writes and reads its own entries; the tool definitions get no cache marker. Keep it `false`
    * when a faster or cheaper call must not reveal that another tenant sent the same profile text within the cache's
@@ -77,7 +77,8 @@ export interface IContextAssemblerDeps {
 /**
  * Ten inputs in, one request out.
  *
- * Implemented by `ContextAssembler`; the type of `IAIGatewayDeps.contextAssembler`, so a host may pass its own in `overrides`.
+ * Implemented by `ContextAssembler`; the type of `IAIGatewayDeps.contextAssembler`, so an application may pass its own
+ * in `overrides`.
  */
 export interface IContextAssembler {
   /**
@@ -135,7 +136,7 @@ export interface IContextInput {
   /**
    * Text of the `{instructions}` slot, from `IGatewayAskInput.instructions`.
    *
-   * > The app's rule for this call only, rendered as is after `{addendum}`.
+   * > The application's rule for this call only, rendered as is after `{addendum}`.
    *
    * @example "Summarise the invoice in three bullet points." - sent by the "Summarise" button of the invoice screen
    *

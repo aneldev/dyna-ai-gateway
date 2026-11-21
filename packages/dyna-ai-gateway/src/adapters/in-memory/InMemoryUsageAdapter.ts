@@ -14,7 +14,7 @@ export interface IInMemoryUsageAdapterConfig {
   /**
    * Decides a `check`: `true` or a result with `approved: false` denies, anything else approves.
    *
-   * > Scripts the app's "no" in a test: deny a user, a kind, a model, the second call.
+   * > Scripts the application's "no" in a test: deny a user, a kind, a model, the second call.
    *
    * @example ({userId}) => userId === "user-b" - user B is out, everyone else is in
    *
@@ -35,7 +35,7 @@ export const IN_MEMORY_USAGE_DENY_CODE = "denied_by_test";
  *
  * Records every `check` and every `addUsage` it receives, so a test can read what the gateway asked and reported, and denies
  * when its `deny` option says so. It keeps no totals and enforces nothing: a daily limit shipped by the gateway would be token
- * logic in the gateway, which is exactly what the app owns.
+ * logic in the gateway, which is exactly what the application owns.
  *
  * # Who needs it
  *
@@ -61,7 +61,7 @@ export class InMemoryUsageAdapter implements IUsageAdapter {
    *
    * # About
    *
-   * > The app's answer, before every model call the gateway makes.
+   * > The application's answer, before every model call the gateway makes.
    *
    * Asked for the answer, every run step, every guardrail judge, query rewrite, memory update and embedding, with the call's
    * factors and its rough size. A throw is treated as a denial (fail closed) and logged.

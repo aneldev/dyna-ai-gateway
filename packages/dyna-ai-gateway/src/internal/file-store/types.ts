@@ -6,9 +6,11 @@ export interface IFileStoreConfig {
   adapter: IBlobAdapter;
   /**
    * The folder, inside a tenant's folder, that the files of the gateway are stored under — like a file-system path with any
-   * number of folders: "apps/crm/ai-files". A file is stored at <tenantId>/<path>/<userId>/<fileId>.
+   * number of folders: "apps/crm/ai-files". A file is stored at [<tenantId>]/<path>/<userId>/<fileId>; the brackets mark the
+   * part that keeps its "/" when it is empty.
    * No default: where the files live is decided where the gateway is configured. It may be an empty string (the files
-   * are then at <tenantId>/<userId>/<fileId>) and may begin or end with "/": the key never gets a doubled "//".
+   * are then at [<tenantId>]/<userId>/<fileId>) and may begin or end with "/": the key never gets a doubled "//".
+   * An empty tenant id keeps its empty first folder: its files are at /<path>/<userId>/<fileId> (D130).
    */
   path: string;
   /**
@@ -27,7 +29,7 @@ export interface IFileStoreConfig {
    * > What the models can read, and nothing that runs where it is shown.
    *
    * `image/*` also allows `image/svg+xml`, which can carry a script: allow it only when the files are never shown inline from
-   * an origin the app trusts.
+   * an origin the application trusts.
    *
    * @example ["application/pdf"] - a document assistant that takes no images
    *
@@ -39,7 +41,7 @@ export interface IFileStoreConfig {
 /**
  * Tenant-scoped file storage; turns reference files by IFileRef.
  *
- * Implemented by `FileStore`; the type of `IAIGatewayDeps.fileStore`, so a host may pass its own in `overrides`.
+ * Implemented by `FileStore`; the type of `IAIGatewayDeps.fileStore`, so an application may pass its own in `overrides`.
  */
 export interface IFileStore {
   /**
@@ -47,7 +49,7 @@ export interface IFileStore {
    *
    * # About
    *
-   * > Bytes at `<tenantId>/<path>/<userId>/<fileId>`, an `IFileRef` for the turn; nothing else is kept.
+   * > Bytes at `[<tenantId>]/<path>/<userId>/<fileId>`, an `IFileRef` for the turn; nothing else is kept.
    *
    * Checks before the write: the type must be allowed (400), the name at most 255 characters without control characters
    * (400; it reaches the model and the memory transcript, so it stays short and on one line), the file not empty (400) and
@@ -97,7 +99,7 @@ export interface IFileStore {
    *
    * # Who needs it
    *
-   * `AIGateway.getFileUrl`, for the host's chat screen that shows an uploaded image or opens a PDF.
+   * `AIGateway.getFileUrl`, for the application's chat screen that shows an uploaded image or opens a PDF.
    */
   getSignedUrl(args: {
     tenantId: string;
@@ -151,7 +153,11 @@ export interface IFileStore {
   }): Promise<number>;
 }
 
-/** Blob storage seam. */
+/**
+ * Blob storage seam.
+ * A key, and a removeByPrefix prefix, may begin with "/" (the empty tenant, D130): use it unchanged, never trimmed or
+ * resolved as a path.
+ */
 export interface IBlobAdapter {
   /**
    * put -- stores the bytes under a key

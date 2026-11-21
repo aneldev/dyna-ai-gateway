@@ -41,7 +41,7 @@ behaviour it pins is its JSDoc and its name, and a second file would only repeat
 
 ## 3. The config is the test's sibling `.config.ts`
 
-Every test that instantiates the `AIGateway` has its `IAIGatewayConfig` in a sibling file, exported as **`gatewayConfig<Scenario>`**. It spreads `gatewayConfigBase` (`src/tests/internal/utils/gatewayConfigBase.ts`: OpenAI `gpt-5-mini`, in-memory adapters, silent trace, nothing switched on, the provider keys from `.env`) and overrides **only what the test is about**:
+Every test that instantiates the `AIGateway` has its `IAIGatewayConfig` in a sibling file, exported as **`gatewayConfig<Scenario>`**. It spreads `gatewayConfigBase` (`src/tests/internal/utils/gatewayConfigBase.ts`: OpenAI `gpt-6.1-terra`, in-memory adapters, silent trace, nothing switched on, the provider keys from `.env`) and overrides **only what the test is about**:
 
 ```ts
 // src/tests/run/tools.real.config.ts
@@ -86,7 +86,7 @@ A step with `toolCalls: [...]` scripts a model's parallel tool calls (handled in
   3. Only the tools the path needs are offered (`allowedTools`, `activeTools`).
   4. Assert structure, not wording: response kind, pause kind, the tool name in the stored tool results, a traced call kind (`ETraceKind.QUERY_REWRITE`), the planted token. Never assert a sentence.
 - Background work (working memory, user facts) runs after the answer: `await gateway.whenIdle()` before reading it — and before a follow-up that depends on it (the query rewriter needs the thread's memory).
-- Do not set `temperature` on `gpt-5-mini`: its entry has `caps.temperature` false (a reasoning model), so the gateway refuses the call (400, D82).
+- Do not set `temperature` on `gpt-6.1-terra`: its entry has `caps.temperature` false (a reasoning model), so the gateway refuses the call (400, D82).
 - One model call costs seconds; the jest timeout is 60 s (`jest.setup.ts`). A test with more than three calls states why in its JSDoc.
 - When a real test flakes, tighten the path (points 1–3) before touching the assertion.
 

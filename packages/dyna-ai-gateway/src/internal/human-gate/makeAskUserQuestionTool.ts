@@ -35,7 +35,7 @@ import {
  * # Pitfalls
  *
  * An input the schema rejects does not pause as a question: `makePauseEnvelopeDraft` makes it a TOOL_APPROVAL, so the
- * human sees what the model asked for. `ask()` has no tools: there the model cannot ask.
+ * human sees what the model asked for (a known gap: D87 lets the model read the 400 and ask again). `ask()` has no tools: there the model cannot ask.
  */
 export const makeAskUserQuestionTool = (): IToolDef<IUserQuestions, never> => defineTool({
   name: BUILT_IN_TOOL_NAMES.ASK_USER_QUESTION,

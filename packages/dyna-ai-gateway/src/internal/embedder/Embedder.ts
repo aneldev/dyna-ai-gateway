@@ -28,7 +28,7 @@ const DEFAULT_BATCH_SIZE = 64;
  * # Who needs it
  *
  * `KbIngestor.ingestDocument` (`embed`, write side) and `KbRetriever.retrieve` (`embedOne`, read side);
- * `KbIngestor.checkIndex` reads `embeddingModelId` and `dimensions`. A host replaces it with its own `IEmbedder` in
+ * `KbIngestor.checkIndex` reads `embeddingModelId` and `dimensions`. An application replaces it with its own `IEmbedder` in
  * `overrides.embedder`.
  *
  * # What needs
@@ -39,11 +39,11 @@ const DEFAULT_BATCH_SIZE = 64;
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.embedder`.
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.embedder`.
  *
  * ## When shouldn't use it
  *
- * A host with its own embedding service implements `IEmbedder` and passes it in `overrides`; it must report the same
+ * An application with its own embedding service implements `IEmbedder` and passes it in `overrides`; it must report the same
  * `dimensions` as its index.
  *
  * # Pitfalls

@@ -43,7 +43,7 @@ interface IRefundOutput {
   refunded: number;
 }
 
-/** The app's refund tool, as a fake: records every refund it performs. Pauses for a human from 100 on. */
+/** The application's refund tool, as a fake: records every refund it performs. Pauses for a human from 100 on. */
 interface IRefundTool {
   tool: IToolDef<IRefundInput, IRefundOutput>;
   refunds: IRefund[];

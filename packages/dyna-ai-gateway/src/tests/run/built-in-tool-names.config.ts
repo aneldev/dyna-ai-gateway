@@ -11,7 +11,7 @@ import {sampleProfile} from "../internal/samples/profiles";
 import {gatewayConfigBase} from "../internal/utils/gatewayConfigBase";
 
 /** An application tool named like the old, unprefixed built-in: the name is the application's now. */
-export const hostAskUserQuestionTool = defineTool({
+export const applicationAskUserQuestionTool = defineTool({
   name: "ask_user_question",
   description: "Asks the user through the application's own survey form.",
   inputSchema: z.object({question: z.string()}),
@@ -20,7 +20,7 @@ export const hostAskUserQuestionTool = defineTool({
 });
 
 /** An application tool that takes the prefix reserved for the built-in tools. */
-export const prefixedHostTool = defineTool({
+export const prefixedApplicationTool = defineTool({
   name: "dyna_aigw_lookup_order",
   description: "Looks up an order by its id.",
   inputSchema: z.object({orderId: z.string()}),
@@ -29,21 +29,21 @@ export const prefixedHostTool = defineTool({
 });
 
 /** The sample profile, allowing the application's `ask_user_question`. */
-const hostToolProfile: IAIProfile = {
+const applicationToolProfile: IAIProfile = {
   ...sampleProfile,
-  allowedTools: [hostAskUserQuestionTool.name],
+  allowedTools: [applicationAskUserQuestionTool.name],
 };
 
 /** The built-in user-question tool switched on, next to the application's `ask_user_question`, which the profile allows. */
-export const gatewayConfigHostToolWithAnOldBuiltInName: IAIGatewayConfig = {
+export const gatewayConfigApplicationToolWithAnOldBuiltInName: IAIGatewayConfig = {
   ...gatewayConfigBase,
-  aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [hostToolProfile]})},
-  toolRegistry: {tools: [hostAskUserQuestionTool]},
+  aiProfileStore: {repository: new InMemoryAIProfileRepository({profiles: [applicationToolProfile]})},
+  toolRegistry: {tools: [applicationAskUserQuestionTool]},
   humanGate: {userQuestions: {enabled: true}},
 };
 
 /** An application tool with the built-in prefix in the registry: the gateway refuses to start. */
-export const gatewayConfigHostToolWithTheBuiltInPrefix: IAIGatewayConfig = {
+export const gatewayConfigApplicationToolWithTheBuiltInPrefix: IAIGatewayConfig = {
   ...gatewayConfigBase,
-  toolRegistry: {tools: [prefixedHostTool]},
+  toolRegistry: {tools: [prefixedApplicationTool]},
 };

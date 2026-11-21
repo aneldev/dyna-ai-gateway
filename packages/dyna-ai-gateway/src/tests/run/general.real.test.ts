@@ -25,7 +25,7 @@ import {sumMatchesTotal} from "../internal/utils/sumMatchesTotal";
 // The M1 exit: ask() on a real model, with a structured answer that is schema-checked and validated.
 // Runs only when AIGATEWAY_TEST_OPENAI_API_KEY is in .env (see .env.sample); otherwise it is skipped.
 const openAiKey = process.env.AIGATEWAY_TEST_OPENAI_API_KEY || "";
-const openAiModel = process.env.AIGATEWAY_TEST_OPENAI_MODEL || "gpt-5-mini";
+const openAiModel = process.env.AIGATEWAY_TEST_OPENAI_MODEL || "gpt-6.1-terra";
 const openAiEmbeddingModel = process.env.AIGATEWAY_TEST_OPENAI_EMBEDDING_MODEL || "text-embedding-3-small";
 const EMBEDDING_DIMENSIONS = 1536;
 

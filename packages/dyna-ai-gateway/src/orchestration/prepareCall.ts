@@ -73,7 +73,7 @@ export const isFailedResponse = (prepared: IPreparedCall | IFailedResponse): pre
  *   after it the user turn is. An abort inside the input check is thrown as the signal's reason, as the rules do.
  * - Refuses, before anything is stored: an `ask` on a profile that reviews its answers (400, D99), a temperature the model
  *   does not take (400, D82), a tool name the profile does not allow (400, D48), a thread that waits for a human (409).
- * - Throws a model call the usage adapter refused (the query rewrite, the search's embedding) and a search that failed:
+ * - Throws a model call the usage adapter refused (the search's embedding) and a search that failed:
  *   the question is not answered without its knowledge base.
  *
  * Runs under the thread's lease, right after `withThreadLease` took it; `LLMClient.complete` or `LLMClient.run` comes next,

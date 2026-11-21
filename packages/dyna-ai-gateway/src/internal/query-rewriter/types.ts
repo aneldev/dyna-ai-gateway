@@ -21,7 +21,8 @@ export interface IQueryRewriterDeps {
 /**
  * Prompt + thread facts → one search query.
  *
- * Implemented by `QueryRewriter`; the type of `IAIGatewayDeps.queryRewriter`, so a host may pass its own in `overrides`.
+ * Implemented by `QueryRewriter`; the type of `IAIGatewayDeps.queryRewriter`, so an application may pass its own in
+ * `overrides`.
  */
 export interface IQueryRewriter {
   /**

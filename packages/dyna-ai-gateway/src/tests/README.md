@@ -24,7 +24,7 @@ src/tests/
    ├─ fakes/                        FakeLLMClient: the scripted model of the deterministic tests (its own tests in fakes/tests/)
    ├─ eval/                         the knowledge-base retrieval evaluation
    └─ utils/
-      ├─ gatewayConfigBase.ts       the config every scenario spreads: OpenAI gpt-5-mini, in-memory adapters, silent trace,
+      ├─ gatewayConfigBase.ts       the config every scenario spreads: OpenAI gpt-6.1-terra, in-memory adapters, silent trace,
       │                             nothing switched on; the only caller of loadProviderCredentials (.env → providers)
       ├─ describeWithProvider.ts    the gate of a real test: describe or describe.skip by the provider's key
       ├─ sampleUserContext.ts       sampleUser with `now`

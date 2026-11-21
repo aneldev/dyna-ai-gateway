@@ -16,10 +16,10 @@ import {
 } from "./denied.config";
 
 /**
- * The app says no before the first step of a run: nothing has happened yet, so the run is FAILED with `usage_denied` as an ask
- * would be; no run record exists, no tool ran, nothing is reported to the adapter.
+ * The application says no before the first step of a run: nothing has happened yet, so the run is FAILED with `usage_denied` as
+ * an ask would be; no run record exists, no tool ran, nothing is reported to the adapter.
  */
-test("a first run step the app refuses fails the run with usage_denied and leaves no run record", async () => {
+test("a first run step the application refuses fails the run with usage_denied and leaves no run record", async () => {
   const llmClient = new FakeLLMClient();
   const gateway = new AIGateway(gatewayConfigDenyFirstRunStep, {llmClient: () => llmClient});
   llmClient.accountTo({

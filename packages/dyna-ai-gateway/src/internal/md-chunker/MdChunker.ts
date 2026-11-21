@@ -51,8 +51,8 @@ interface IDraft {
  *
  * # Who needs it
  *
- * `KbIngestor.ingestDocument` (`chunk`, and `countTokens` for the report). A host replaces it with its own `IMdChunker`
- * in `overrides.mdChunker`.
+ * `KbIngestor.ingestDocument` (`chunk`, and `countTokens` for the report). An application replaces it with its own
+ * `IMdChunker` in `overrides.mdChunker`.
  *
  * # What needs
  *
@@ -62,11 +62,12 @@ interface IDraft {
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.mdChunker` (optional, all defaults).
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.mdChunker` (optional, all
+ * defaults).
  *
  * ## When shouldn't use it
  *
- * Documents that are not Markdown (HTML, PDF text) go through a host chunker that implements `IMdChunker`, or are
+ * Documents that are not Markdown (HTML, PDF text) go through an application's chunker that implements `IMdChunker`, or are
  * converted to Markdown first.
  *
  * # Pitfalls

@@ -35,20 +35,22 @@ import {
 } from "../types";
 
 /**
- * createGatewayDeps -- the composition root: builds the gateway's children once, in dependency order
+ * createGatewayDeps -- the composition root: builds one instance of each class of the gateway, in dependency order
  *
  * # About
  *
- * > One instance of each child, wired to the ones it depends on.
+ * > One instance of each class, wired to the ones it depends on.
  *
- * Creates every child of the gateway from its slice of the config and returns them as `IAIGatewayDeps`, the shared
- * instances the facade and the orchestration code read. A child is created once and handed to everyone that depends on it:
- * the LLMClient to the Guardrails, the memories, the Embedder and the QueryRewriter; the ToolRegistry to the AIProfileStore.
+ * Creates one instance of every class of the gateway from its slice of the config and returns them as `IAIGatewayDeps`,
+ * the shared instances the facade and the orchestration code read. An instance is created once and handed to everyone
+ * that depends on it: the LLMClient to the Guardrails, the memories, the Embedder and the QueryRewriter; the ToolRegistry
+ * to the AIProfileStore.
  *
  * - An override's factory (`IAIGatewayOverrides`) builds the instance in place of the gateway's class, with the same config
  *   and the same deps, and everyone that depends on it gets that instance.
- * - The gateway's own tools (the user-memory tools, `dyna_aigw_ask_user_question`; D61) are registered before the host's.
- *   Their names carry `BUILT_IN_TOOL_NAME_PREFIX`, which a host tool may not take (a 400), so the two never collide.
+ * - The gateway's own tools (the user-memory tools, `dyna_aigw_ask_user_question`; D61) are registered before the
+ *   application's. Their names carry `BUILT_IN_TOOL_NAME_PREFIX`, which an application's tool may not take (a 400), so
+ *   the two never collide.
  *
  * Runs once, in the constructor of `AIGateway`, before any call.
  *
@@ -58,12 +60,13 @@ import {
  *
  * # What needs
  *
- * A validated `IAIGatewayConfig`: a required slice that is missing fails inside the child's constructor, not here.
+ * An `IAIGatewayConfig` that satisfies its type. Only the names of the tools are checked here: a required slice that is
+ * missing fails as a `TypeError` where it is first read, here or in its class.
  *
  * # Pitfalls
  *
- * The order of the lines is the dependency order: a child is created after every child it takes. A new child goes below its
- * deps and above its dependants.
+ * The order of the lines is the dependency order: an instance is created after every instance it takes. A new class goes
+ * below its deps and above its dependants.
  */
 export const createGatewayDeps = (
   {
@@ -71,7 +74,7 @@ export const createGatewayDeps = (
     overrides,
   }: {
     config: IAIGatewayConfig;
-    /** Factories to use instead of the gateway's classes (a host's own dep; tests: `() => fakeLLMClient`). */
+    /** Factories to use instead of the gateway's classes (an application's own dep; tests: `() => fakeLLMClient`). */
     overrides: IAIGatewayOverrides;
   },
 ): IAIGatewayDeps => {
@@ -101,7 +104,8 @@ export const createGatewayDeps = (
     llmClient,
     promptTemplateStore,
   }, (config, deps) => new UserMemoryStore(config, deps));
-  // The built-in prefix is the gateway's: an app tool that takes it could collide with a built-in, present or future
+  // The built-in prefix is the gateway's.
+  // An application's tool that takes it could collide with a built-in, present or future.
   assertAppToolNames({
     tools: config.toolRegistry?.tools ?? [],
     source: "toolRegistry.tools",
@@ -182,7 +186,7 @@ export const createGatewayDeps = (
 };
 
 /**
- * The host's factory when there is one, the gateway's class otherwise.
+ * The application's factory when there is one, the gateway's class otherwise.
  * Both get the same config and deps.
  */
 const make = <TConfig, TDeps, TDep>(

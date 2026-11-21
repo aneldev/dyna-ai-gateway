@@ -41,7 +41,7 @@ import {
  * # Who needs it
  *
  * `prepareCall` and `AIGateway.resume` (`resolve`); `createRunHooks` for the loop's `prepareStep`, `executeTool`,
- * `decideToolCall` and `endsRun` hooks. A host replaces it with its own `IToolPolicy` in `overrides.toolPolicy`.
+ * `decideToolCall` and `endsRun` hooks. An application replaces it with its own `IToolPolicy` in `overrides.toolPolicy`.
  *
  * # What needs
  *
@@ -51,11 +51,12 @@ import {
  *
  * ## When to use it
  *
- * Always, through the gateway: `createGatewayDeps` creates it from `IAIGatewayConfig.toolPolicy`.
+ * Always, through the gateway: the `AIGateway` constructor creates it from `IAIGatewayConfig.toolPolicy`.
  *
  * ## When shouldn't use it
  *
- * A host with its own authorisation model (roles, ABAC) implements `IToolPolicy` over it and passes it in `overrides`.
+ * An application with its own authorisation model (roles, ABAC) implements `IToolPolicy` over it and passes it in
+ * `overrides`.
  *
  * # Pitfalls
  *
@@ -74,7 +75,7 @@ export class ToolPolicy implements IToolPolicy {
    * > Everything the profile allows and the user may use, cut to what the call asked for; the built-ins always.
    *
    * The tools of `allTools` the profile allows and the user's permissions unlock, plus the call's `additionalTools`
-   * (allowed because the app passed them, the permissions still apply, D66), narrowed to `activeTools` when the call
+   * (allowed because the application passed them, the permissions still apply, D66), narrowed to `activeTools` when the call
    * names them (D48); none when the model cannot call tools (`caps.tools`). The gateway's built-in tools (D61) are always
    * in the set, in the order of the registry: no profile, permission or `activeTools` filters them, and the profile's
    * `approvals` do not apply to them; a built-in's own `policy` still pauses (`dyna_aigw_ask_user_question`, D62).
@@ -175,7 +176,8 @@ export class ToolPolicy implements IToolPolicy {
    *
    * # Pitfalls
    *
-   * `executed` is the run's list: tools run in earlier runs of the thread do not count, and a rejected or failed call is
+   * `executed` is the run's list on a fresh run; on a resume it also holds the tool results of earlier runs in the stored
+   * history (a known gap, D76), and a rejected or failed call is
    * not an execution (D76).
    */
   public narrowForStep(
@@ -269,8 +271,9 @@ export class ToolPolicy implements IToolPolicy {
    *
    * # Pitfalls
    *
-   * A tool outside `resolved.tools` is ALLOW here: `ToolRegistry.execute` refuses it (D72). An input the schema rejects is ALLOW
-   * too: it never reaches the predicate, `ToolRegistry.execute` reports it to the model (D50).
+   * A tool outside `resolved.tools` is ALLOW here: `ToolRegistry.execute` refuses it (D72). An input the schema rejects never
+   * reaches the predicate (it counts as ALLOW); a static policy and the approvals still apply, so it can pause before
+   * `ToolRegistry.execute` reports the 400 to the model (D50; a known gap, D87 refuses it first).
    */
   public async decide(
     {

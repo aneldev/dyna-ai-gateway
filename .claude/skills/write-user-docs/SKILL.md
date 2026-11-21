@@ -22,8 +22,8 @@ The private docs leave the repo before the library is published. A user doc that
    the JSDoc of the changed symbols.
 3. **`../../../docs/60-architecture`** is derived from `docs/internal` **and** the codebase: the decision as it stands
    in the code, grouped by the class it concerns, in the user's words.
-4. **Consistency is part of "done".** All docs agree with each other and with the code. When the code and a doc
-   disagree, the code is the reality; fix `docs/internal` first, then the user doc.
+4. **Consistency is part of "done".** All docs agree with each other and with the code. The `consistency-pressure-test`
+   skill checks it and says which side of a contradiction is right (`docs/internal` is fixed first, then the user doc).
 
 ## Rules for a user doc
 
@@ -38,14 +38,26 @@ The private docs leave the repo before the library is published. A user doc that
 - **No fluff.** No praise of the design, no "simply", no "powerful", no restating the heading in the first sentence.
   One idea per sentence. Tables for parallel facts, prose for one line of argument.
 - **DRY, with Markdown links.** A fact lives in one document; every other document links it
-  (`[Resume on another profile](../architecture/50-live-adjustment-and-dependency-injection.md#32-resume-on-another-profile)`).
+  (`[Resume on another profile](../60-architecture/50-live-adjustment-and-dependency-injection.md#62-resume-on-another-profile)`).
   No copy of a paragraph that exists elsewhere.
 - **Names are the code's names.** Classes, config keys, methods and enum members exactly as exported; a backtick on
   each. Internal classes the user never constructs are named only where the user meets them (a config key, an error).
+- **Edge cases before the first sentence.** Before writing a page, list the cases of the pressure test's check 6 (a
+  continuation, each entry point, a stop or failure, several at once, another actor, left out or empty, order) that its
+  claims touch, read in the code what happens in each, and answer each in the page or narrow the claim to where it holds.
+- **No claim stronger than its source.** *Never*, *always*, *every*, *at worst*, *eliminates* only where the code or a
+  current primary source backs it word for word. A fact outside the library (a provider, a price, a standard) names
+  what is known for sure, checked now, never from memory. A title may attract; the body states the limit.
+- **A sample is code that runs.** It handles every kind of result it can get (several items, not only the first), catches
+  in a loop or a timer, and does what its comment says.
 - **Code samples compile.** Imports from `dyna-ai-gateway`, the config shape of `IAIGatewayConfig`, the real method
   signatures. A sample that would not type-check is wrong.
 - **Professional register.** Present tense, active voice, no first person, no jokes, no emoji.
-- **Headings are navigable.** Numbered `##` chapters when a doc is long enough to cross-link; a chapter per class only in
+- **Headings are navigable.** Folders and files always carry their number prefix (`20-learn-the-gateway/`, `010-…md`).
+  Inside a page, the chapters are numbered only when the page has `###` sub-chapters: then every `##` is numbered
+  (`## 2. Composition`) and its `###` follow it (`### 2.1 …`); a page with `##` only has no numbers. Docusaurus needs no
+  number: the anchor is the slug of the heading's text, so a number added or removed renames the anchor, and every link to
+  it is fixed in the same change (`pnpm docs:build` fails on a broken anchor). A chapter per class only in
   `90-decisions.md`, a chapter per task elsewhere.
 
 ## JSDoc is a user doc
@@ -60,3 +72,21 @@ audience rule: never link `docs/internal` or `docs/plans` from a JSDoc. Link a u
 - [ ] Every name in the doc exists in `src/` with that spelling.
 - [ ] Every fact appears once; the other mentions are links.
 - [ ] A reader who only has the npm package could follow the doc.
+- [ ] `pnpm docs:check-samples` passes when a ```ts sample of `docs/24-learning-paths` was written or touched: every
+      example compiles pasted after its 8.0, with no other code. What several examples run on is defined in 8.0; what an
+      example takes from the application is a `declare` line of the example, and it imports only the names 8.0 does not
+      import. It passes too when a sample of `docs/50-ai-best-practices` was written or touched: the samples of a page
+      compile as one module, in page order, each name imported once, and what the application owns is a `declare` line
+      (the other folders hold fragments that do not compile on their own).
+- [ ] `pnpm docs:build` passes. It is the link check: a link to a missing page fails it with the file and the line, a
+      broken anchor with the published page and the anchor (`onBrokenLinks`, `onBrokenAnchors`, `onBrokenMarkdownLinks: "throw"` in
+      `website/docusaurus.config.mjs`). The pages it does not publish (`internal/`, `plans/`, `implementation/`,
+      `80-backlog.md`, `85-workspace.md`, `docs-structure.txt`) are not checked.
+      The same build checks the learning-paths index: a path added, renamed or retitled without its row in the "The paths"
+      table of `docs/24-learning-paths/README.md` fails it.
+- [ ] Every edge case of the list made before writing is answered in the page, or the claim says where it holds.
+- [ ] `grep -nwiE "never|always|every|only|all|at worst|largest|eliminates|guarantees|cannot"` over the pages: each hit is
+      backed by the code or a named source, or narrowed.
+- [ ] Every fact outside the library is checked against a current primary source; the handoff names the source.
+- [ ] Last: the `consistency-pressure-test` skill over the pages written or touched and everything that states the same
+      facts, its rounds run by fresh reviewers (its section 3); its result goes into the handoff.

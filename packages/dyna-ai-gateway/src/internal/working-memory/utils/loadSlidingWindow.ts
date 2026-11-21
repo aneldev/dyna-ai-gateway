@@ -21,7 +21,7 @@ import {startOnUserTurn} from "./startOnUserTurn";
  *
  * > Newest first, until the share is full; at least the newest turn.
  *
- * Counts every turn with the model's tokenizer (`estimateMessagesTokens`), walks from the newest back and keeps the turns
+ * Counts every turn with o200k, × 1.2 off OpenAI (`estimateMessagesTokens`), walks from the newest back and keeps the turns
  * while they fit `chatHistoryRatio × budgetTokens`; the newest turn is always kept. The window is then opened on a user
  * turn (`startOnUserTurn`). The notes are "" (nothing is stored under this strategy). When fewer turns than the thread
  * holds (`turnCount`) are in the window, a `turns_trimmed` WARNING says how many made it.

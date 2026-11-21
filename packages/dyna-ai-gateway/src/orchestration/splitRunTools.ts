@@ -49,7 +49,7 @@ export const splitRunTools = (
 } => {
   const registryNames = new Set(deps.toolRegistry.list().map(tool => tool.name));
   const missing = toolNames.filter(name => name !== BUILT_IN_TOOL_NAMES.LOAD_SKILL && !registryNames.has(name) && !additionalTools.some(tool => tool.name === name));
-  // An old built-in name the app now uses for its own tool is found above, so only the stale ones are left here
+  // An old built-in name the application now uses for its own tool is found above, so only the stale ones are left here
   const legacyNames = missing.filter(name => LEGACY_BUILT_IN_TOOL_NAMES.includes(name));
   if (legacyNames.length > 0) {
     throw dynaError({

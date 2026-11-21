@@ -121,11 +121,12 @@ import {
 } from "./internal/kb-ingestor";
 
 /**
- * Everything the gateway needs: one config per child, settings and persistence seams only. No class instance is in it;
- * the gateway creates and injects its children itself.
+ * Everything the gateway needs: the config of each class, settings and persistence seams only. No class instance is in
+ * it; the gateway builds the instances from it and injects them itself.
  *
- * Written by the host application and passed to the `AIGateway` constructor; `createGatewayDeps` hands each member to the
- * child of the same name. A member that is optional has a runtime default of `{}`: the child runs with its own defaults.
+ * Written by the application and passed to the `AIGateway` constructor, which builds the instance of each class from
+ * the member of the same name (`defaultCheapModelId` belongs to no class; the `TurnBuilder` takes no config). A member that is
+ * optional has a runtime default of `{}`: the class runs with its own defaults.
  */
 export interface IAIGatewayConfig {
   /** The models a profile may name, with their caps and prices: the repository of the `ModelRegistry`. */
@@ -187,10 +188,10 @@ export interface IAIGatewayConfig {
   /** How long a pause waits for the human, and whether the model may ask the user a question (`HumanGate`). */
   humanGate: IHumanGateConfig;
   /**
-   * The app's usage adapter, asked before every model call and told after it.
+   * The application's usage adapter, asked before every model call and told after it.
    *
-   * > The gateway holds no token logic: who may spend what is the app's decision, made in `adapter.check`; what was spent is
-   * > reported to `adapter.addUsage`.
+   * > The gateway holds no token logic: who may spend what is the application's decision, made in `adapter.check`;
+   * > what was spent is reported to `adapter.addUsage`.
    *
    * @example {adapter: new InMemoryUsageAdapter()} - tests and the sandbox: approves everything, records every call
    */
@@ -218,15 +219,16 @@ export interface IAIGatewayConfig {
    * @default {}
    */
   kbIngestor?: IKbIngestorConfig;
-  /** Platform-wide cheap model for the helper calls (memory, query rewrite, judge) when a profile names none. */
+  /** Platform-wide cheap model for the helper calls (memory, query rewrite) when a profile names none; a judge falls back to the profile's own model. */
   defaultCheapModelId: string;
 }
 
 /**
- * Every child instance of the gateway, each as its `I<Class>` interface: what the orchestration functions receive as `deps`.
+ * The one instance of every class of the gateway, each as its `I<Class>` interface: what the orchestration functions
+ * receive as `deps`.
  *
- * Created once by `createGatewayDeps` from `IAIGatewayConfig` and the `IAIGatewayOverrides` factories, in dependency order,
- * and held by the `AIGateway` for its lifetime; the admin getters of the facade hand some of them out.
+ * Created once by the `AIGateway` constructor from `IAIGatewayConfig` and the `IAIGatewayOverrides` factories, in
+ * dependency order, and held by the `AIGateway` for its lifetime; the admin getters of the facade hand some of them out.
  */
 export interface IAIGatewayDeps {
   /** The models and their caps. */
@@ -243,7 +245,7 @@ export interface IAIGatewayDeps {
   turnBuilder: ITurnBuilder;
   /** The uploaded files. */
   fileStore: IFileStore;
-  /** The thread memory; the built-in `WorkingMemory` unless the host passes its own in `overrides`. */
+  /** The thread memory; the built-in `WorkingMemory` unless the application passes its own in `overrides`. */
   workingMemory: IWorkingMemory;
   /** The remembered facts of a user. */
   userMemoryStore: IUserMemoryStore;
@@ -257,7 +259,7 @@ export interface IAIGatewayDeps {
   queryRewriter: IQueryRewriter;
   /** Searches the knowledge base for a call. */
   kbRetriever: IKbRetriever;
-  /** Writes documents into the knowledge base; the second root the facade exposes. */
+  /** Writes documents into the knowledge base; the second entry point, which the facade exposes. */
   kbIngestor: IKbIngestor;
   /** The tools: parsing and execution. */
   toolRegistry: IToolRegistry;
@@ -280,14 +282,17 @@ export interface IAIGatewayDeps {
 }
 
 /**
- * A dep the host builds itself: the gateway hands it that dep's config and deps, exactly as it would to its own class.
+ * A dep the application builds itself: the gateway hands it that dep's config and deps, exactly as it would to its own
+ * class.
  *
- * The members of `IAIGatewayOverrides`; `createGatewayDeps` calls a factory where one is given and `new <Class>(config, deps)` otherwise.
+ * The members of `IAIGatewayOverrides`; the `AIGateway` constructor calls a factory where one is given and creates an
+ * instance of the gateway's own class otherwise.
  */
 export type TDepFactory<TConfig, TDeps, TDep> = (config: TConfig, deps: TDeps) => TDep;
 
 /**
- * What a host (or a test) replaces in the gateway: one factory per dep, each receiving the dep's own config and deps.
+ * What an application (or a test) replaces in the gateway: one factory per dep, each receiving the dep's own config and
+ * deps.
  *
  * The second argument of the `AIGateway` constructor. A factory must return an object that implements the dep's
  * `I<Class>` interface; the usual body is `(config, deps) => new MyClass(config, deps)`. A dep without a config or without
@@ -308,7 +313,7 @@ export interface IAIGatewayOverrides {
   turnBuilder?: TDepFactory<undefined, undefined, ITurnBuilder>;
   /** Replaces the `FileStore`; receives its config, no deps. */
   fileStore?: TDepFactory<IFileStoreConfig, undefined, IFileStore>;
-  /** Replaces the `WorkingMemory` (a host's own thread memory, D122); receives its config and `IWorkingMemoryDeps`. */
+  /** Replaces the `WorkingMemory` (an application's own thread memory, D122); receives its config and `IWorkingMemoryDeps`. */
   workingMemory?: TDepFactory<IWorkingMemoryConfig, IWorkingMemoryDeps, IWorkingMemory>;
   /** Replaces the `UserMemoryStore`; receives its config and `IUserMemoryStoreDeps`. */
   userMemoryStore?: TDepFactory<IUserMemoryStoreConfig, IUserMemoryStoreDeps, IUserMemoryStore>;
@@ -324,7 +329,7 @@ export interface IAIGatewayOverrides {
   kbRetriever?: TDepFactory<IKbRetrieverConfig, IKbRetrieverDeps, IKbRetriever>;
   /** Replaces the `KbIngestor`; receives its config and `IKbIngestorDeps`. */
   kbIngestor?: TDepFactory<IKbIngestorConfig, IKbIngestorDeps, IKbIngestor>;
-  /** Replaces the `ToolRegistry`; receives its config (the built-in tools already in front of the app's), no deps. */
+  /** Replaces the `ToolRegistry`; receives its config (the built-in tools already in front of the application's), no deps. */
   toolRegistry?: TDepFactory<IToolRegistryConfig, undefined, IToolRegistry>;
   /** Replaces the `ToolPolicy`; receives its config, no deps. */
   toolPolicy?: TDepFactory<IToolPolicyConfig, undefined, IToolPolicy>;
@@ -364,7 +369,10 @@ export interface IDeleteResult {
   threads: number;
 }
 
-/** What `deleteUserData` / `anonymizeUserData` did, place by place. The gateway keeps no usage of its own; what the app's usage adapter stored is the app's. */
+/**
+ * What `deleteUserData` / `anonymizeUserData` did, place by place. The gateway keeps no usage of its own; what the
+ * application's usage adapter stored is the application's.
+ */
 export interface IForgetUserResult {
   /** Files deleted from the user's folder. */
   files: number;
@@ -398,7 +406,7 @@ export interface IKbRetrievalOptions {
  * Input of `ask()`: one grounded answer, no tools. `TStructured` is inferred from `outputSchema` and types the answer's
  * `structured`.
  *
- * Written by the host application per call. The base of `IGatewayRunInput` too (D104): everything here applies to `run()`
+ * Written by the application per call. The base of `IGatewayRunInput` too (D104): everything here applies to `run()`
  * as well.
  */
 export interface IGatewayAskInput<TStructured = unknown> {
@@ -419,12 +427,12 @@ export interface IGatewayAskInput<TStructured = unknown> {
   /** The user's own words: the message of this turn, stored as the user turn and sent to the model. */
   prompt: string;
   /**
-   * Instructions of the app for this call, placed in the system prompt after the profile's `promptAddendum`.
+   * Instructions of the application for this call, placed in the system prompt after the profile's `promptAddendum`.
    *
    * > Lets one screen, button or user role steer the model without a profile per case.
    *
    * Use it for a rule that holds for this call only. A rule for every call of a tenant belongs in `IAIProfile.promptAddendum`;
-   * the user's own words belong in `prompt`. Given to the model as instructions: the app is trusted code.
+   * the user's own words belong in `prompt`. Given to the model as instructions: the application is trusted code.
    * Not stored: a paused run keeps its system prompt, so `resume()` takes none; pass it again on the next call that needs it.
    *
    * @example "Summarise the invoice in three bullet points." - the "Summarise" button of the invoice screen
@@ -434,7 +442,7 @@ export interface IGatewayAskInput<TStructured = unknown> {
    */
   instructions?: string;
   /**
-   * Data of the app about the situation of this call, placed in the system prompt after `instructions`.
+   * Data of the application about the situation of this call, placed in the system prompt after `instructions`.
    *
    * > Shows the model what the user is looking at, which it cannot see otherwise.
    *
@@ -474,7 +482,7 @@ export interface IGatewayAskInput<TStructured = unknown> {
   outputFormat?: EOutputFormat;
   /**
    * Sampling temperature of the main model call; omit for the provider's default.
-   * Scales the randomness of each token draw: 0 = the most likely token every time (repeatable, fewest inventions),
+   * Scales the randomness of each token draw: 0 = the most likely token (as repeatable as the model allows, fewest inventions),
    * higher = more varied and more creative. Not a knowledge knob: a wrong answer at 0 is still wrong, only consistent.
    * Valid range is the provider's (OpenAI 0–2, Anthropic 0–1); a value outside it fails the call at the provider.
    * Only on a model whose registry entry has `caps.temperature`: the call is refused (400) before anything is stored when the
@@ -506,7 +514,7 @@ export interface IGatewayAskInput<TStructured = unknown> {
    */
   kbRetrieval?: IKbRetrievalOptions;
   /**
-   * Stops the call when it is aborted: the user pressed "stop", the HTTP request closed, the app gave up.
+   * Stops the call when it is aborted: the user pressed "stop", the HTTP request closed, the application gave up.
    *
    * > One signal ends the model call in flight, the agent loop and the tools, and the tenant stops paying.
    *
@@ -555,7 +563,7 @@ export interface IGatewayRunInput<TStructured = unknown> extends IGatewayAskInpu
    */
   activeTools?: string[];
   /**
-   * Tools added for this call, on top of the registry's (D66). The app passes them, so they are allowed without the
+   * Tools added for this call, on top of the registry's (D66). The application passes them, so they are allowed without the
    * profile's `allowedTools`; permissions, the tool's `policy` (D87), the profile's `approvals`, timeout and output cap apply as
    * for every tool. A name that exists in the registry, or twice here, is a 400. A run that pauses stores their names only:
    * `resume()` must receive the same `additionalTools` again.
@@ -599,8 +607,8 @@ export enum EGatewayResponseKind {
  * A finished answer: the text, the structured value when a schema was given, what it was grounded on, its warnings and
  * its cost.
  *
- * The `response` of `ask()`, of a `run()` the model finished and of a `resume()` that finished the run; the host renders
- * it and keeps `threadId` for the next call.
+ * The `response` of `ask()`, of a `run()` the model finished and of a `resume()` that finished the run; the application
+ * renders it and keeps `threadId` for the next call.
  */
 export interface IAnswerResponse<TStructured = unknown> {
   /** The discriminant of `TGatewayResponse`. */
@@ -615,7 +623,7 @@ export interface IAnswerResponse<TStructured = unknown> {
   citations: string[];
   /** The WARNING issues of the call (guardrails, a refused later step, the assembler), for the UI to flag. */
   issues: IIssue[];
-  /** Tokens of the call; for a run, the sum over its steps. */
+  /** Tokens of the call; for a run, the input and output tokens summed over its steps since the call started (a `resume` after a tool pause counts its own steps only, a `resume` of an answer review returns the usage of the run that paused; the cache split is in each step's `addUsage` and trace entry). */
   usage: IUsage;
   /**
    * Name of the tool that ended the run (D86), when a tool did.
@@ -653,7 +661,7 @@ export interface IAnswerDebug {
  * The run stopped for a human: a tool call waits for an approval, the model asked the user a question, or the answer waits
  * for a review.
  *
- * The `response` of a `run()` or `resume()` that paused; the host shows the `envelopes` as cards and calls
+ * The `response` of a `run()` or `resume()` that paused; the application shows the `envelopes` as cards and calls
  * `AIGateway.resume` with one decision per envelope.
  */
 export interface IPausedResponse {
@@ -701,8 +709,8 @@ export interface IPausedRunSummary {
  * The call could not be completed: a check failed it, the usage adapter refused it, it was aborted or timed out, or the
  * reviewer rejected the answer.
  *
- * The `response` of any of the three calls; never thrown. The host shows `reason` or the issues' `userMessage` and decides
- * whether to retry. What the caller got wrong (a 400, a 404) rejects `response` instead.
+ * The `response` of any of the three calls; never thrown. The application shows `reason` or the issues' `userMessage`
+ * and decides whether to retry. What the caller got wrong (a 400, a 404) rejects `response` instead.
  */
 export interface IFailedResponse {
   /** The discriminant of `TGatewayResponse`. */
