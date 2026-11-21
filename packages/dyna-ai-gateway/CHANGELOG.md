@@ -6,6 +6,8 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+## [0.0.13-beta.10] - 2026-11-21
+
 ### Fixed
 
 - **A `run()` with `outputSchema` no longer fails when the model calls a tool before it answers.** The step's tool calls
