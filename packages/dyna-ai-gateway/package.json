@@ -32,7 +32,6 @@
       "import": "./dist/vercel-ui.mjs",
       "require": "./dist/vercel-ui.js"
     },
-    "./dist/*": "./dist/*",
     "./package.json": "./package.json"
   },
   "scripts": {
