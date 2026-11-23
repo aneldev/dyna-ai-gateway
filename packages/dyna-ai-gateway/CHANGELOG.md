@@ -6,8 +6,6 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
-## [0.0.13-beta.11] - 2026-11-23
-
 ### Breaking changes
 
 - **Only `dyna-ai-gateway` and `dyna-ai-gateway/vercel-ui` resolve; a deep import of a built file no longer does.** The
