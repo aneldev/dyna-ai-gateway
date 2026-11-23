@@ -6,6 +6,41 @@ what breaks, the migration, and an AI prompt that performs the migration in your
 
 ## [Unreleased]
 
+## [0.0.13-beta.12] - 2026-11-23
+
+### Breaking changes
+
+- **Only `dyna-ai-gateway` and `dyna-ai-gateway/vercel-ui` resolve; a deep import of a built file no longer does.** The
+  `exports` map no longer carries `./dist/*`, so `dyna-ai-gateway/dist/…` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED` in
+  Node and finds no module in TypeScript (`moduleResolution` `node16`, `nodenext` or `bundler`). Affected: a host that
+  imports a value or a type from a `dyna-ai-gateway/dist/…` path, often one an IDE's auto-import wrote. Such a path was
+  never a supported entry.
+
+  Migration: import from the package root, or from `dyna-ai-gateway/vercel-ui` for the Vercel UI module.
+
+  ```ts
+  // before
+  import type {IAIGatewayConfig} from "dyna-ai-gateway/dist/types";
+
+  // after
+  import type {IAIGatewayConfig} from "dyna-ai-gateway";
+  ```
+
+  A name that the root does not export is not public; ask for it to be exported instead of reaching into `dist/`.
+
+  AI prompt that performs the migration:
+
+  ```text
+  Migrate this codebase to the next dyna-ai-gateway release, whose package exports only two entries:
+  "dyna-ai-gateway" and "dyna-ai-gateway/vercel-ui". Search the code for the string "dyna-ai-gateway/dist/".
+  1. For each import or require from a "dyna-ai-gateway/dist/..." path, import the same names from "dyna-ai-gateway"
+     instead; for a path under "dist/entries/vercel-ui" or "dist/vercel-ui", import them from
+     "dyna-ai-gateway/vercel-ui". Keep `import type` as `import type`.
+  2. If a name is not exported by either entry, do not keep the deep import: list the name and where it is used, and
+     stop, so it can be reported to the library.
+  Verify: `tsc` passes and the tests pass.
+  ```
+
 ## [0.0.13-beta.10] - 2026-11-21
 
 ### Fixed
